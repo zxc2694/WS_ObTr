@@ -1,0 +1,18 @@
+﻿  mog_main_v2.cpp
+d:\myproject\vs_project\tracking 12_16_2015\consoleapplication1\MeanShiftTracker.h(32): warning C4305: 'initializing' : truncation from 'double' to 'const float'
+d:\myproject\vs_project\tracking 12_16_2015\consoleapplication1\MCFile.h(26): warning C4800: 'DWORD' : forcing value to bool 'true' or 'false' (performance warning)
+d:\myproject\vs_project\tracking 12_16_2015\consoleapplication1\MCFile.h(98): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+mog_main_v2.cpp(34): warning C4005: 'max' : macro redefinition
+          C:\Program Files (x86)\Windows Kits\8.1\Include\shared\minwindef.h(193) : see previous definition of 'max'
+mog_main_v2.cpp(35): warning C4005: 'min' : macro redefinition
+          C:\Program Files (x86)\Windows Kits\8.1\Include\shared\minwindef.h(197) : see previous definition of 'min'
+mog_main_v2.cpp(221): warning C4244: 'initializing' : conversion from 'LONGLONG' to 'long', possible loss of data
+mog_main_v2.cpp(309): warning C4805: '==' : unsafe mix of type 'char' and type 'bool' in operation
+mog_main_v2.cpp(315): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+mog_main_v2.cpp(321): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+mog_main_v2.cpp(322): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+mog_main_v2.cpp(86): warning C4101: 'iter' : unreferenced local variable
+mog_main_v2.cpp(86): warning C4101: 'n' : unreferenced local variable
+mog_main_v2.cpp(86): warning C4101: 'iter2' : unreferenced local variable
+mog_main_v2.cpp(86): warning C4101: 'c' : unreferenced local variable
+  ConsoleApplication1.vcxproj -> D:\Myproject\VS_Project\tracking 12_16_2015\x64\Debug\ConsoleApplication1.exe
