@@ -4,7 +4,7 @@
 #include <iomanip> 
 
 using namespace std;
-
+extern vector<Mat> TrackingLine;
 
 MeanShiftTracker::MeanShiftTracker() :kernel_type(0), radius(1), bin_width(32)
 {
@@ -96,6 +96,7 @@ bool MeanShiftTracker::checkTrackedList(vector<Object2D> &object_list, vector<Ob
 			else
 			{
 				object_list.erase(object_list.begin() + c);
+				(Mat)TrackingLine[c] = Scalar::all(0);
 				//prev_object_list.erase(prev_object_list.begin() + c);
 				c--;
 			}
