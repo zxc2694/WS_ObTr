@@ -25,7 +25,10 @@ typedef struct
 	Point3f xyz;				// 3d position of currnet time in world coordinate, minimum distance from camera
 	Size	objSize;
 	vector<float> descriptor;
+	Point point[100];
 	Scalar color;
+	int PtNumber;
+	int PtCount;
 	char Run;
 } Object2D;
 

@@ -35,7 +35,6 @@ int nframesToLearnBG = 1;  //if you use codebook, set 300. If you use MOG, set 1
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
 
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ		20
-vector<Mat> TrackingLine;
 
 int Overlap(Rect a, Rect b, float ration)
 {
@@ -83,6 +82,7 @@ int main(int argc, const char** argv)
 	char outFilePath[100];
 	char outFilePath2[100];
 	bool update_bg_model = true;
+	char plotTrajectory = false;
 	int c, n, iter, iter2, MaxObjNum, nframes = 0;
 	int pre_data_X[10] = { 0 }, pre_data_Y[10] = {0};	//for tracking line
 
@@ -103,8 +103,7 @@ int main(int argc, const char** argv)
 
 	Object2D object;
 	memset((object).hist, 0, MaxHistBins*sizeof(int));
-	char plotTrajectory = false;
-	char FirstROI_status = false;
+	plotTrajectory = false;
 
 	namedWindow("image", WINDOW_NORMAL);
 	namedWindow("foreground mask", WINDOW_NORMAL);
@@ -125,13 +124,13 @@ int main(int argc, const char** argv)
 	while (1)
 	{
 #if Save_imageOutput
-		sprintf(outFilePath, "video_output//%05d.png", nframes);
-		sprintf(outFilePath2, "video_output//m%05d.png", nframes);
+		sprintf(outFilePath, "video_output//%05d.png", nframes + 180);
+		sprintf(outFilePath2, "video_output//m%05d.png", nframes + 180);
 #endif
 
 #if Use_TestedVideo_Paul
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output1_20151211//%05d.png", nframes + 1500);
-		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 199);
+		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 180);
 		img = cvLoadImage(link, 1);
 #endif
 #if Use_TestedVideo_Hardy
@@ -159,16 +158,7 @@ int main(int argc, const char** argv)
 		IplImage *imgIpl;
 		imgIpl = &IplImage(img);
 
-		static Mat TrackingBG(img.rows, img.cols, CV_8UC3); // Set a background for plotting trajectory
-
-		if (nframes == 0)
-		{
-			TrackingBG = Scalar::all(0); // Seting the background of plotting trajectory is all black		
-			for (iter = 0; iter <= 8; iter++) // Duplicate ten background of plotting trajectory in order to support multi-objects.
-				TrackingLine.push_back(TrackingBG); 
-
-		}
-		else if (nframes < nframesToLearnBG)
+		if (nframes < nframesToLearnBG)
 		{
 
 		}
@@ -226,7 +216,7 @@ int main(int argc, const char** argv)
 			cout << "tracking time = " << decodeDulation << "ms" << endl;
 
 
-			if (nframes > nframesToLearnBG + 1)
+			if (nframes > nframesToLearnBG + 1) // Start to update the object tracking
 				ms_tracker->checkTrackedList(object_list, prev_object_list);
 
 			int bbs_iter;
@@ -301,22 +291,40 @@ int main(int argc, const char** argv)
 
 			/* plotting trajectory */
 			if (object_list.size() != NULL)
-			{						
+			{									
 				for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++) //Set all first ROI
 				{				
 					FirstROI[obj_list_iter].x = object_list[obj_list_iter].boundingBox.x;
 					FirstROI[obj_list_iter].y = object_list[obj_list_iter].boundingBox.y;
 					FirstROI[obj_list_iter].width = object_list[obj_list_iter].boundingBox.width;
 					FirstROI[obj_list_iter].height = object_list[obj_list_iter].boundingBox.height;
+					
 				}
 				if (plotTrajectory == true)
 				{
 					for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-					{										
+					{																
+						
 						if ((pre_data_Y[obj_list_iter] != NULL) && (pre_data_X[obj_list_iter] - (0.5 * FirstROI[obj_list_iter].width + object_list[obj_list_iter].boundingBox.x)) <= 80 && (pre_data_X[obj_list_iter] - (0.5 * FirstROI[obj_list_iter].width + object_list[obj_list_iter].boundingBox.x)) > -80)	{								//prevent the tracking line from plotting when pre_data is none.
-							line(TrackingLine[obj_list_iter], Point(0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x)
-								, 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y))
-								, Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]), object_list[obj_list_iter].color, 3, 1, 0);
+			//				line(TrackingLine[obj_list_iter], Point(0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x)
+			//					, 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y))
+			//					, Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]), object_list[obj_list_iter].color, 3, 1, 0);
+							
+							if (object_list[obj_list_iter].PtNumber <= 100){
+								for (int iter = 0; iter < object_list[obj_list_iter].PtNumber; iter++)
+								{
+									if (object_list[obj_list_iter].PtNumber < 5)
+										continue;
+									else
+										line(img, object_list[obj_list_iter].point[iter - 1]
+										, object_list[obj_list_iter].point[iter], object_list[obj_list_iter].color, 3, 1, 0);
+								}
+							}
+							else //Number>100
+							{
+
+							}
+						
 						}
 					}				
 				}
@@ -324,19 +332,24 @@ int main(int argc, const char** argv)
 				{
 					pre_data_X[obj_list_iter] = 0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x);
 					pre_data_Y[obj_list_iter] = 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y);
+					
+					object_list[obj_list_iter].PtNumber++;
+					object_list[obj_list_iter].PtCount++;
+					if (object_list[obj_list_iter].PtNumber == 100)
+					{
+						object_list[obj_list_iter].PtNumber = 0;
+					}
+					object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]);
+					
+
+					
 				}
 				plotTrajectory = true;			
 			} // end of plotting trajectory
 		}
 		nframes++;
 /////////////////////////////////////////////
-	//	for (iter = 0; iter <= object_list.size(); iter++)		
-	//		TrackingBG = TrackingBG + (Mat)TrackingLine[iter];
-
-
-		for (iter = 0; iter <= object_list.size(); iter++)
-			imshow("image", img + (Mat)TrackingLine[iter]);
-	//	imshow("image", img + TrackingBG);
+		imshow("image", img);
 		cvShowImage("foreground mask", fgmaskIpl);
 
 /////////////////////////////////////////////
@@ -353,7 +366,7 @@ int main(int argc, const char** argv)
 		}
 
 #if Save_imageOutput
-			imwrite(outFilePath, img + TrackingBG);
+			imwrite(outFilePath, img);
 			cvSaveImage(outFilePath2, fgmaskIpl);
 #endif
 	
