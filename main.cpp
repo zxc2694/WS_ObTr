@@ -31,6 +31,9 @@ using namespace cv;
 /* Update the initial frame number of codebook */
 int nframesToLearnBG = 1;  //if you use codebook, set 300. If you use MOG, set 1
 
+/* Set tracking line length, range: 20~100 */
+int plotLineLength = 50;			
+
 #define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
 
@@ -85,7 +88,6 @@ int main(int argc, const char** argv)
 
 	int c, n, iter, iter2, MaxObjNum, nframes = 0;
 	int pre_data_X[10] = { 0 }, pre_data_Y[10] = {0};	//for tracking line
-	int endLoop = 90;									//Set cycle times of runnung tracking line 
 
 	CvRect bbs[10];
 	CvPoint centers[10];
@@ -134,7 +136,7 @@ int main(int argc, const char** argv)
 
 #if Use_TestedVideo_Paul
 	//	sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes + 1);
-		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 180);
+		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 199);
 		img = cvLoadImage(link, 1);
 #endif
 #if Use_TestedVideo_Hardy
@@ -309,40 +311,39 @@ int main(int argc, const char** argv)
 				if (plotTrajectory == true)
 				{
 					for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-					{																
-						
+					{																			
 						if ((pre_data_Y[obj_list_iter] != NULL) && (pre_data_X[obj_list_iter] - (0.5 * FirstROI[obj_list_iter].width + object_list[obj_list_iter].boundingBox.x)) <= 80 && (pre_data_X[obj_list_iter] - (0.5 * FirstROI[obj_list_iter].width + object_list[obj_list_iter].boundingBox.x)) > -80) //prevent the tracking line from plotting when pre_data is none.
 						{
-							if (object_list[obj_list_iter].PtCount > endLoop+1)
+							if (object_list[obj_list_iter].PtCount > plotLineLength + 1)										//When plotting arrary is overflow:
 							{
-								line(img, object_list[obj_list_iter].point[0]
-									, object_list[obj_list_iter].point[endLoop], object_list[obj_list_iter].color, 3, 1, 0);
-								for (int iter1 = 0; iter1 < object_list[obj_list_iter].PtNumber - 1 ; iter1++)
+								if (object_list[obj_list_iter].PtNumber <= plotLineLength)										// Update of last number will influence plotting line on first number and last number, which must prevent. 
+								line(img, object_list[obj_list_iter].point[0]													//plotting line on first number and last number				
+								, object_list[obj_list_iter].point[plotLineLength], object_list[obj_list_iter].color, 3, 1, 0);
+								
+								for (int iter1 = 0; iter1 < object_list[obj_list_iter].PtNumber - 1 ; iter1++)					//plotting line from first number to PtNumber-1
 									line(img, object_list[obj_list_iter].point[iter1]
 									, object_list[obj_list_iter].point[iter1 + 1], object_list[obj_list_iter].color, 3, 1, 0);
-								for (int iter2 = 0; iter2 < endLoop - object_list[obj_list_iter].PtNumber; iter2++)
+								for (int iter2 = 0; iter2 < plotLineLength - object_list[obj_list_iter].PtNumber; iter2++)		//plotting line from PtNumber to last number
 									line(img, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2]
 									, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], object_list[obj_list_iter].color, 3, 1, 0);
-
 							}
-							else
+							else																								//When plotting arrary isn't overflow:
 								for (int iter = 1; iter < object_list[obj_list_iter].PtCount; iter++)
-									line(img, object_list[obj_list_iter].point[iter - 1]
+									line(img, object_list[obj_list_iter].point[iter - 1]										//Directly plot all the points array storages.
 										, object_list[obj_list_iter].point[iter], object_list[obj_list_iter].color, 3, 1, 0);
 						}
 					}				
 				}
 				for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 				{
-					pre_data_X[obj_list_iter] = 0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x);
+					pre_data_X[obj_list_iter] = 0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x); //Get previous point in order to use line function. 
 					pre_data_Y[obj_list_iter] = 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y);
 					
-					if (object_list[obj_list_iter].PtNumber == endLoop+1)
+					if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
 					{
-						object_list[obj_list_iter].PtNumber = 0;
-						object_list[obj_list_iter].times++;
+						object_list[obj_list_iter].PtNumber = 0;																  //PtNumber restarts when plotting arrary is overflow. 
 					}
-					object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]);
+					object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
 					object_list[obj_list_iter].PtNumber++;
 					object_list[obj_list_iter].PtCount++;
 				}
@@ -351,7 +352,7 @@ int main(int argc, const char** argv)
 		}
 		nframes++;
 
-		imshow("image", img + TrackingLine);
+		imshow("image", img);
 		cvShowImage("foreground mask", fgmaskIpl);
 
 
