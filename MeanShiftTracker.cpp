@@ -27,8 +27,12 @@ int MeanShiftTracker::DistBetObj(Rect a, Rect b)
 	int c, d;
 	if ((a.x > b.x + b.width || b.x > a.x + a.width) || (a.y > b.y + b.height || b.y > a.y + a.height))
 	{
-		c = min(abs(a.x - (b.x + b.width)), abs((a.x + a.width) - b.x));
-		d = min(abs(a.y - (b.y + b.height)), abs((a.y + a.height) - b.y));
+		if (!(a.x > b.x + b.width || b.x > a.x + a.width))		c = 0;
+		else	c = min(abs(a.x - (b.x + b.width)), abs((a.x + a.width) - b.x));
+
+		if (!(a.y > b.y + b.height || b.y > a.y + a.height))	d = 0;
+		else    d = min(abs(a.y - (b.y + b.height)), abs((a.y + a.height) - b.y));
+
 		return sqrt((float)(c*c + d*d));
 	}
 	else return 0;
@@ -48,8 +52,9 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	obj.status = 3;
 	obj.boundingBox = bbs; 
 	obj.xyz.z = 20;
-	obj.PtNumber = -1;
-	obj.PtCount = -1;
+	obj.PtNumber = 0;
+	obj.PtCount = 0;
+	obj.times = 1;
 	memset(obj.hist, 0, MaxHistBins*sizeof(int));
 
 	Mat kernel(obj.boundingBox.height, obj.boundingBox.width, CV_32FC1);
@@ -184,11 +189,6 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 			if (object_list[c].type == 2){
 				Scalar color(rand() % 128, 255, 0);
 				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
-				for (int iter = 0; iter <= object_list[c].PtNumber; iter++)
-				{
-
-				}
-
 
 				std::stringstream ss, ss1, ss2, ss3;
 				ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;

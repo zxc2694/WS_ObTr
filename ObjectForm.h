@@ -29,7 +29,8 @@ typedef struct
 	Scalar color;
 	int PtNumber;
 	int PtCount;
-	char Run;
+	int countDone;
+	int times;
 } Object2D;
 
 typedef struct
