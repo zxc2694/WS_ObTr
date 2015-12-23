@@ -32,7 +32,7 @@ using namespace cv;
 int nframesToLearnBG = 1;  //if you use codebook, set 300. If you use MOG, set 1
 
 /* Set tracking line length, range: 20~100 */
-int plotLineLength = 50;			
+int plotLineLength = 50;
 
 #define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
@@ -87,8 +87,8 @@ int main(int argc, const char** argv)
 	bool update_bg_model = true;
 
 	int c, n, iter, iter2, MaxObjNum, nframes = 0;
-	int pre_data_X[10] = { 0 }, pre_data_Y[10] = {0};	//for tracking line
-	int first_last_diff;								//compare first number with last number 
+	int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };	//for tracking line
+	int first_last_diff = 1;								//compare first number with last number 
 
 	CvRect bbs[10];
 	CvPoint centers[10];
@@ -98,7 +98,7 @@ int main(int argc, const char** argv)
 	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
 
 	Mat img, fgmask, fgimg, show_img;
-	
+
 	vector<Object2D> object_list;
 	vector<Object2D> prev_object_list;
 	Rect FirstROI[10];
@@ -134,17 +134,18 @@ int main(int argc, const char** argv)
 		//sprintf(outFilePath2, "video3_output//m%05d.png", nframes + 180);
 #endif
 
-
 #if Use_TestedVideo_Paul
-	//	sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes + 1);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes);
 		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 199);
 		img = cvLoadImage(link, 1);
 #endif
+
 #if Use_TestedVideo_Hardy
 		//sprintf(link, "D://test//tracking test//tracking test//video3//%05d.png", nframes + 180);
 		sprintf(link, "D://test//tracking test//tracking test//video//%05d.png", nframes + 1);
 		img = cvLoadImage(link, 1);
 #endif
+
 #if Use_Webcam
 		img = cvQueryFrame(capture);
 #endif
@@ -166,6 +167,9 @@ int main(int argc, const char** argv)
 		IplImage *imgIpl;
 		imgIpl = &IplImage(img);
 
+		static Mat TrackingLine(img.rows, img.cols, CV_8UC4);
+		TrackingLine = Scalar::all(0);
+		
 		if (nframes < nframesToLearnBG)
 		{
 
@@ -242,7 +246,7 @@ int main(int argc, const char** argv)
 						if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.5f)) // Overlap > 0.5 --> replace the boundingBox
 						{
 							replaceList.push_back((int)obj_list_iter);
-						}	
+						}
 					}
 					else
 					{
@@ -279,7 +283,7 @@ int main(int argc, const char** argv)
 						}
 					}
 				}
-				end: // break for loop
+			end: // break for loop
 
 				if ((int)replaceList.size() != 0 && iter1 == (int)replaceList.size())
 				{
@@ -292,18 +296,18 @@ int main(int argc, const char** argv)
 				}
 
 				if (!Overlapping && addToList)		ms_tracker->addTrackedList(img, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
-				
-				vector<int>().swap(replaceList);	
+
+				vector<int>().swap(replaceList);
 			}  // end of 1st for 
-	
+
 			//cout << "draw frame"<<nframes
 			ms_tracker->drawTrackBox(img, object_list);
 
 			/* plotting trajectory */
 			if (object_list.size() != NULL)
-			{						
+			{
 				for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++) //Set all first ROI
-				{				
+				{
 					FirstROI[obj_list_iter].x = object_list[obj_list_iter].boundingBox.x;
 					FirstROI[obj_list_iter].y = object_list[obj_list_iter].boundingBox.y;
 					FirstROI[obj_list_iter].width = object_list[obj_list_iter].boundingBox.width;
@@ -312,22 +316,22 @@ int main(int argc, const char** argv)
 				if (plotTrajectory == true)
 				{
 					for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-					{																			
+					{
 						if (pre_data_Y[obj_list_iter] != NULL) //prevent plotting tracking line when pre_data is none.
 						{
 							if (object_list[obj_list_iter].PtCount > plotLineLength + 1)										//When plotting arrary is overflow:
 							{
 								if (object_list[obj_list_iter].PtNumber <= plotLineLength)										// Update of last number will influence plotting line on first number and last number, which must prevent. 
-								line(img, object_list[obj_list_iter].point[0]													//plotting line on first number and last number				
-								, object_list[obj_list_iter].point[plotLineLength], object_list[obj_list_iter].color, 3, 1, 0);
-								
-								for (int iter1 = 0; iter1 < object_list[obj_list_iter].PtNumber - 1 ; iter1++)					//plotting line from first number to PtNumber-1
-									line(img, object_list[obj_list_iter].point[iter1]
-									, object_list[obj_list_iter].point[iter1 + 1], object_list[obj_list_iter].color, 3, 1, 0);
+									line(TrackingLine, object_list[obj_list_iter].point[0]													//plotting line on first number and last number				
+									, object_list[obj_list_iter].point[plotLineLength], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2]), 3, 1, 0);
+
+								for (int iter1 = 0; iter1 < object_list[obj_list_iter].PtNumber - 1; iter1++)					//plotting line from first number to PtNumber-1
+									line(TrackingLine, object_list[obj_list_iter].point[iter1]
+									, object_list[obj_list_iter].point[iter1 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2]), 3, 1, 0);
 								for (int iter2 = 0; iter2 < plotLineLength - object_list[obj_list_iter].PtNumber; iter2++)		//plotting line from PtNumber to last number
-									line(img, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2]
-									, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], object_list[obj_list_iter].color, 3, 1, 0);							
-								
+									line(TrackingLine, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2]
+									, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2]), 3, 1, 0);
+
 								/* Compare first number with last number  */
 								if (object_list[obj_list_iter].PtNumber <= plotLineLength)
 									first_last_diff = object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber - 1].x - object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber].x;
@@ -337,25 +341,25 @@ int main(int argc, const char** argv)
 							else
 							{																								//When plotting arrary isn't overflow:
 								for (int iter = 1; iter < object_list[obj_list_iter].PtCount; iter++)
-									line(img, object_list[obj_list_iter].point[iter - 1]										//Directly plot all the points array storages.
-									, object_list[obj_list_iter].point[iter], object_list[obj_list_iter].color, 3, 1, 0);
+									line(TrackingLine, object_list[obj_list_iter].point[iter - 1]										//Directly plot all the points array storages.
+									, object_list[obj_list_iter].point[iter], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 255), 3, 1, 0);
 							}
 
-							/* Removing the tracking box when it's motionless for a while */					
+							/* Removing the tracking box when it's motionless for a while */
 							if (first_last_diff == 0)
 							{
 								object_list.erase(object_list.begin() + obj_list_iter);
 								first_last_diff = 1;
 							}
-								
+
 						}
-					}				
+					}
 				}
 				for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 				{
 					pre_data_X[obj_list_iter] = 0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x); //Get previous point in order to use line function. 
 					pre_data_Y[obj_list_iter] = 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y);
-					
+
 					if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
 					{
 						object_list[obj_list_iter].PtNumber = 0;																  //PtNumber restarts when plotting arrary is overflow. 
@@ -364,14 +368,15 @@ int main(int argc, const char** argv)
 					object_list[obj_list_iter].PtNumber++;
 					object_list[obj_list_iter].PtCount++;
 				}
-				plotTrajectory = true;			
+				plotTrajectory = true;
 			} // end of plotting trajectory
 		}
 		nframes++;
 
-		imshow("image", img);
+		/* Merge 3-channel image (original) and 4-channel image (for tracking) */
+		overlayImage(img, TrackingLine, show_img, cv::Point(0, 0));
+		imshow("image", show_img);
 		cvShowImage("foreground mask", fgmaskIpl);
-
 
 		char k = (char)waitKey(10);
 		if (k == 27) break;
@@ -385,13 +390,13 @@ int main(int argc, const char** argv)
 		}
 
 #if Save_imageOutput
-			imwrite(outFilePath, img);
-			cvSaveImage(outFilePath2, fgmaskIpl);
+		imwrite(outFilePath, show_img);
+		cvSaveImage(outFilePath2, fgmaskIpl);
 #endif
-	
+
 	}
 #if Use_Webcam
-		cvReleaseCapture(&capture);
+	cvReleaseCapture(&capture);
 #endif
 
 	return 0;
