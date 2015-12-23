@@ -135,7 +135,7 @@ int main(int argc, const char** argv)
 #endif
 
 #if Use_TestedVideo_Paul
-		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
 		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 199);
 		img = cvLoadImage(link, 1);
 #endif
@@ -323,17 +323,20 @@ int main(int argc, const char** argv)
 							{
 								if (object_list[obj_list_iter].PtNumber <= plotLineLength)										// Update of last number will influence plotting line on first number and last number, which must prevent. 
 									line(TrackingLine, object_list[obj_list_iter].point[0]													//plotting line on first number and last number				
-									, object_list[obj_list_iter].point[plotLineLength], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2]), 3, 1, 0);
+									, object_list[obj_list_iter].point[plotLineLength], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * (plotLineLength - object_list[obj_list_iter].PtNumber) / plotLineLength), 3, 1, 0);
 
 								for (int iter1 = 0; iter1 < object_list[obj_list_iter].PtNumber - 1; iter1++)					//plotting line from first number to PtNumber-1
+								{
 									line(TrackingLine, object_list[obj_list_iter].point[iter1]
-									, object_list[obj_list_iter].point[iter1 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2]), 3, 1, 0);
+										, object_list[obj_list_iter].point[iter1 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * (plotLineLength - object_list[obj_list_iter].PtNumber + 1+iter1) / plotLineLength), 3, 1, 0);
+								}
 								for (int iter2 = 0; iter2 < plotLineLength - object_list[obj_list_iter].PtNumber; iter2++)		//plotting line from PtNumber to last number
+								{
 									line(TrackingLine, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2]
-									, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2]), 3, 1, 0);
+										, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * iter2 / plotLineLength), 3, 1, 0);
+								}
 
-								/* Compare first number with last number  */
-								if (object_list[obj_list_iter].PtNumber <= plotLineLength)
+								if(object_list[obj_list_iter].PtNumber <= plotLineLength)
 									first_last_diff = object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber - 1].x - object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber].x;
 								else
 									first_last_diff = object_list[obj_list_iter].point[0].x - object_list[obj_list_iter].point[plotLineLength].x;
@@ -342,7 +345,7 @@ int main(int argc, const char** argv)
 							{																								//When plotting arrary isn't overflow:
 								for (int iter = 1; iter < object_list[obj_list_iter].PtCount; iter++)
 									line(TrackingLine, object_list[obj_list_iter].point[iter - 1]										//Directly plot all the points array storages.
-									, object_list[obj_list_iter].point[iter], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 255), 3, 1, 0);
+									, object_list[obj_list_iter].point[iter], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * (iter - 1) / (object_list[obj_list_iter].PtCount-1)), 3, 1, 0);
 							}
 
 							/* Removing the tracking box when it's motionless for a while */
@@ -362,7 +365,7 @@ int main(int argc, const char** argv)
 
 					if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
 					{
-						object_list[obj_list_iter].PtNumber = 0;																  //PtNumber restarts when plotting arrary is overflow. 
+						object_list[obj_list_iter].PtNumber = 0;	
 					}
 					object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
 					object_list[obj_list_iter].PtNumber++;
