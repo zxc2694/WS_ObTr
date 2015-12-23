@@ -88,6 +88,7 @@ int main(int argc, const char** argv)
 
 	int c, n, iter, iter2, MaxObjNum, nframes = 0;
 	int pre_data_X[10] = { 0 }, pre_data_Y[10] = {0};	//for tracking line
+	int first_last_diff;								//compare first number with last number 
 
 	CvRect bbs[10];
 	CvPoint centers[10];
@@ -312,7 +313,7 @@ int main(int argc, const char** argv)
 				{
 					for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 					{																			
-						if ((pre_data_Y[obj_list_iter] != NULL) && (pre_data_X[obj_list_iter] - (0.5 * FirstROI[obj_list_iter].width + object_list[obj_list_iter].boundingBox.x)) <= 80 && (pre_data_X[obj_list_iter] - (0.5 * FirstROI[obj_list_iter].width + object_list[obj_list_iter].boundingBox.x)) > -80) //prevent the tracking line from plotting when pre_data is none.
+						if (pre_data_Y[obj_list_iter] != NULL) //prevent plotting tracking line when pre_data is none.
 						{
 							if (object_list[obj_list_iter].PtCount > plotLineLength + 1)										//When plotting arrary is overflow:
 							{
@@ -325,12 +326,28 @@ int main(int argc, const char** argv)
 									, object_list[obj_list_iter].point[iter1 + 1], object_list[obj_list_iter].color, 3, 1, 0);
 								for (int iter2 = 0; iter2 < plotLineLength - object_list[obj_list_iter].PtNumber; iter2++)		//plotting line from PtNumber to last number
 									line(img, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2]
-									, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], object_list[obj_list_iter].color, 3, 1, 0);
+									, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], object_list[obj_list_iter].color, 3, 1, 0);							
+								
+								/* Compare first number with last number  */
+								if (object_list[obj_list_iter].PtNumber <= plotLineLength)
+									first_last_diff = object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber - 1].x - object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber].x;
+								else
+									first_last_diff = object_list[obj_list_iter].point[0].x - object_list[obj_list_iter].point[plotLineLength].x;
 							}
-							else																								//When plotting arrary isn't overflow:
+							else
+							{																								//When plotting arrary isn't overflow:
 								for (int iter = 1; iter < object_list[obj_list_iter].PtCount; iter++)
 									line(img, object_list[obj_list_iter].point[iter - 1]										//Directly plot all the points array storages.
-										, object_list[obj_list_iter].point[iter], object_list[obj_list_iter].color, 3, 1, 0);
+									, object_list[obj_list_iter].point[iter], object_list[obj_list_iter].color, 3, 1, 0);
+							}
+
+							/* Removing the tracking box when it's motionless for a while */					
+							if (first_last_diff == 0)
+							{
+								object_list.erase(object_list.begin() + obj_list_iter);
+								first_last_diff = 1;
+							}
+								
 						}
 					}				
 				}
