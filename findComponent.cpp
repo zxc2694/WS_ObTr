@@ -195,3 +195,20 @@ int plotTrajectoryRun(vector<Object2D> &object_list, Mat &TrackingLine, size_t &
 	}
 
 }
+
+
+void MorphologyProcess(IplImage* &fgmaskIpl)
+{
+//	static IplImage *dilateImg = 0, *erodeImg = 0, *maskMorphology = 0;
+//	maskMorphology = cvCloneImage(fgmaskIpl);
+//	erodeImg = cvCreateImage(cvSize(maskMorphology->width, maskMorphology->height), maskMorphology->depth, 1);
+//	dilateImg = cvCreateImage(cvSize(maskMorphology->width, maskMorphology->height), maskMorphology->depth, 1);
+//	int pos = 1;
+//	IplConvKernel * pKernel = NULL;
+//	pKernel = cvCreateStructuringElementEx(pos * 2 + 1, pos * 2 + 1, pos, pos, CV_SHAPE_ELLIPSE, NULL);
+//	for (int iter = 0; iter < 3; iter++){
+//		cvErode(maskMorphology, erodeImg, pKernel, 1);
+//		cvDilate(erodeImg, dilateImg, pKernel, 1);
+//	}	
+//	fgmaskIpl= cvCloneImage(dilateImg);
+}

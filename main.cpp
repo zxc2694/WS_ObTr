@@ -85,7 +85,7 @@ int main(int argc, const char** argv)
 	char outFilePath[100];
 	char outFilePath2[100];
 	bool update_bg_model = true;
-
+	char plotTrajectory = false;
 	int c, n, iter, iter2, MaxObjNum, nframes = 0;
 	int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };	//for tracking line
 	int first_last_diff = 1;								//compare first number with last number 
@@ -93,21 +93,16 @@ int main(int argc, const char** argv)
 	CvRect bbs[10];
 	CvPoint centers[10];
 	IplImage *fgmaskIpl = 0;
-	IplImage *dilateImg = 0, *erodeImg = 0, *maskMorphology = 0;
 	IplImage* image = 0, *yuvImage = 0;					//yuvImage is for codebook method
 	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
-
 	Mat img, fgmask, fgimg, show_img;
-
 	vector<Object2D> object_list;
 	vector<Object2D> prev_object_list;
+	Object2D object;
 	Rect FirstROI[10];
 
-	auto ms_tracker = ObjectTrackerFactory::create("MeanShiftTracker");		//local variables.
-
-	Object2D object;
-	memset((object).hist, 0, MaxHistBins*sizeof(int));
-	char plotTrajectory = false;
+	auto ms_tracker = ObjectTrackerFactory::create("MeanShiftTracker");		//local variables.	
+	memset((object).hist, 0, MaxHistBins*sizeof(int));	
 
 	namedWindow("image", WINDOW_NORMAL);
 	namedWindow("foreground mask", WINDOW_NORMAL);
@@ -164,9 +159,6 @@ int main(int argc, const char** argv)
 		if (img.empty())
 			break;
 
-		IplImage *imgIpl;
-		imgIpl = &IplImage(img);
-
 		static Mat TrackingLine(img.rows, img.cols, CV_8UC4);
 		TrackingLine = Scalar::all(0);
 		
@@ -176,7 +168,7 @@ int main(int argc, const char** argv)
 		}
 		else if (nframes == nframesToLearnBG)
 		{
-			MaxObjNum = 10;															//less than 5 objects  
+			MaxObjNum = 10;															//less than 10 objects  
 			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
 
 			for (int iter = 0; iter < MaxObjNum; ++iter)
@@ -187,26 +179,15 @@ int main(int argc, const char** argv)
 		}
 		else
 		{
-			///* Do morphology */
-			//maskMorphology = cvCloneImage(fgmaskIpl);
-			//erodeImg = cvCreateImage(cvSize(maskMorphology->width, maskMorphology->height), maskMorphology->depth, 1);
-			//dilateImg = cvCreateImage(cvSize(maskMorphology->width, maskMorphology->height), maskMorphology->depth, 1);
-			//int pos = 1;
-			//IplConvKernel * pKernel = NULL;
-			//pKernel = cvCreateStructuringElementEx(pos * 2 + 1, pos * 2 + 1, pos, pos, CV_SHAPE_ELLIPSE, NULL);
-			//for (iter = 0; iter < 3; iter++){
-			//	cvErode(maskMorphology, erodeImg, pKernel, 1);
-			//	cvDilate(erodeImg, dilateImg, pKernel, 1);
-			//}	
-			//fgmaskIpl = cvCloneImage(dilateImg);
+			MorphologyProcess(fgmaskIpl);	// Run morphology 
 
 			/* find components ,and compute bbs information  */
-			MaxObjNum = 10;															//less than 5 objects  
+			MaxObjNum = 10;															//less than 10 objects  
 			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
 
-			///* Plot the rectangles background subtarction finds */
+			/* Plot the rectangles background subtarction finds */
 			//for (iter = 0; iter < MaxObjNum; iter++){
-			//	rectangle(img, bbs[iter], Scalar(0, 0, 255), 2);
+			//	rectangle(img, bbs[iter], Scalar(0, 0, 255), 2); 
 			//}
 
 			LARGE_INTEGER m_liPerfFreq = { 0 };
@@ -271,9 +252,6 @@ int main(int argc, const char** argv)
 							cout << Pixel32S(ms_tracker->DistMat, min(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
 								max(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;
 
-
-
-
 							if (Pixel32S(ms_tracker->DistMat, min(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
 								max(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
 							{
@@ -304,48 +282,38 @@ int main(int argc, const char** argv)
 			ms_tracker->drawTrackBox(img, object_list);
 
 			/* plotting trajectory */
-			if (object_list.size() != NULL)
+			for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++) //Set all first ROI
 			{
-				for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++) //Set all first ROI
-				{
-					FirstROI[obj_list_iter].x = object_list[obj_list_iter].boundingBox.x;
-					FirstROI[obj_list_iter].y = object_list[obj_list_iter].boundingBox.y;
-					FirstROI[obj_list_iter].width = object_list[obj_list_iter].boundingBox.width;
-					FirstROI[obj_list_iter].height = object_list[obj_list_iter].boundingBox.height;
-				}
-				if (plotTrajectory == true)
-				{
-					for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-					{
-						if (pre_data_Y[obj_list_iter] != NULL) //prevent plotting tracking line when pre_data is none.
-						{
-							/* Plotting all the tracking lines */
-							first_last_diff = plotTrajectoryRun(object_list, TrackingLine, obj_list_iter);
+				FirstROI[obj_list_iter].x = object_list[obj_list_iter].boundingBox.x;
+				FirstROI[obj_list_iter].y = object_list[obj_list_iter].boundingBox.y;
+				FirstROI[obj_list_iter].width = object_list[obj_list_iter].boundingBox.width;
+				FirstROI[obj_list_iter].height = object_list[obj_list_iter].boundingBox.height;
 
-							/* Removing the tracking box when it's motionless for a while */
-							if (first_last_diff == 0)
-							{
-								object_list.erase(object_list.begin() + obj_list_iter);
-								first_last_diff = 1;
-							}
-						}
-					}
-				}
-				for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+				if (pre_data_Y[obj_list_iter] != NULL && plotTrajectory == true) //prevent plotting tracking line when pre_data is none.
 				{
-					pre_data_X[obj_list_iter] = 0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x); //Get previous point in order to use line function. 
-					pre_data_Y[obj_list_iter] = 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y);
+					/* Plotting all the tracking lines */
+					first_last_diff = plotTrajectoryRun(object_list, TrackingLine, obj_list_iter);
 
-					if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
+					/* Removing the tracking box when it's motionless for a while */
+					if (first_last_diff == 0)
 					{
-						object_list[obj_list_iter].PtNumber = 0;	
+						object_list.erase(object_list.begin() + obj_list_iter);
+						first_last_diff = 1;
 					}
-					object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
-					object_list[obj_list_iter].PtNumber++;
-					object_list[obj_list_iter].PtCount++;
-				}
-				plotTrajectory = true;
-			} // end of plotting trajectory
+				}				
+				/* Get previous point in order to use line function. */
+				pre_data_X[obj_list_iter] = 0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x); 
+				pre_data_Y[obj_list_iter] = 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y);
+
+				if (object_list[obj_list_iter].PtNumber == plotLineLength + 1) //Restarting count when count > plotLineLength number
+					object_list[obj_list_iter].PtNumber = 0;	
+					
+				object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
+				object_list[obj_list_iter].PtNumber++;
+				object_list[obj_list_iter].PtCount++;
+			
+			}// end of plotting trajectory
+			plotTrajectory = true; 
 		}
 		nframes++;
 
@@ -356,14 +324,6 @@ int main(int argc, const char** argv)
 
 		char k = (char)waitKey(10);
 		if (k == 27) break;
-		if (k == ' ')
-		{
-			update_bg_model = !update_bg_model;
-			if (update_bg_model)
-				printf("Background update is on\n");
-			else
-				printf("Background update is off\n");
-		}
 
 #if Save_imageOutput
 		imwrite(outFilePath, show_img);
