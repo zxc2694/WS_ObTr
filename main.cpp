@@ -85,7 +85,7 @@ int main(int argc, const char** argv)
 	char outFilePath[100];
 	char outFilePath2[100];
 	bool update_bg_model = true;
-	char plotTrajectory = false;
+	char prevData = false;
 	int c, n, iter, iter2, MaxObjNum, nframes = 0;
 	int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };	//for tracking line
 	int first_last_diff = 1;								//compare first number with last number 
@@ -283,7 +283,7 @@ int main(int argc, const char** argv)
 			/* plotting trajectory */
 			for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++) //Set all first ROI
 			{			
-				if (pre_data_Y[obj_list_iter] != NULL && plotTrajectory == true) //prevent plotting tracking line when pre_data is none.
+				if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
 				{
 					// Plotting all the tracking lines
 					first_last_diff = ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
@@ -307,7 +307,7 @@ int main(int argc, const char** argv)
 				object_list[obj_list_iter].PtCount++;
 			
 			}// end of plotting trajectory
-			plotTrajectory = true; 
+			prevData = true;
 		}
 		nframes++;
 
