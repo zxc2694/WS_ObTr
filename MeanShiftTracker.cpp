@@ -173,11 +173,11 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 	for (size_t c = 0; c < object_list.size(); c++){
 		//for (size_t c = 0; c < 1; c++){
 		//if (object_list[c].status == 2){
-			if (object_list[c].type == 1){
+			if (object_list[c].type == 1){ //vehicle
 //				Scalar color(0, rand() % 128, 255);
-				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
-				
+				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);			
 				std::stringstream ss,ss1,ss2,ss3;
+				
 				ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;
 				//cv::putText(img, "person:" + ss.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y - 8), 1, 1, ColorMatrix[c]);
 				ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
@@ -187,20 +187,20 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 				ss3 << object_list[c].No;
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 			}
-			if (object_list[c].type == 2){
-				Scalar color(rand() % 128, 255, 0);
+			if (object_list[c].type == 2){ //pedestrian
+//				Scalar color(rand() % 128, 255, 0);
 				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
-
 				std::stringstream ss, ss1, ss2, ss3;
-				ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;
+				
+				//ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;
 				//cv::putText(img, "car:" + ss.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y - 8), 1, 1, ColorMatrix[c]); //object_list[c].color
-				ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
-				ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
+				//ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
+				//ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
 				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);
+
 				ss3 << object_list[c].No;
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
-				/*ss1 << std::fixed << std::setprecision(2) << object_list[c].similar_val;
-				cv::putText(img, "prob:" + ss1.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, color);*/
+
 			}
 		//}
 	}

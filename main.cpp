@@ -88,7 +88,7 @@ int main(int argc, const char** argv)
 	char prevData = false;
 	int c, n, iter, iter2, MaxObjNum, nframes = 0;
 	int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };	//for tracking line
-	int first_last_diff = 1;								//compare first number with last number 
+	int first_last_diff = 1;							//compare first number with last number 
 
 	CvRect bbs[10];
 	CvPoint centers[10];
@@ -158,8 +158,8 @@ int main(int argc, const char** argv)
 		if (img.empty())
 			break;
 
-		static Mat TrackingLine(img.rows, img.cols, CV_8UC4);
-		TrackingLine = Scalar::all(0);
+		static Mat TrackingLine(img.cols, img.rows, CV_8UC4);   //Normal: cols =640, rows =480
+		TrackingLine = Scalar::all(0);                          //Set TrackingLine image as black background
 		
 		if (nframes < nframesToLearnBG)
 		{
@@ -241,7 +241,8 @@ int main(int argc, const char** argv)
 					for (int iter = 0; iter < object_list.size(); ++iter)
 					{
 						if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height)
-							&& Overlap(bbs[bbs_iter], object_list[iter].boundingBox, 0.5f))		replaceList.push_back(iter);
+							&& Overlap(bbs[bbs_iter], object_list[iter].boundingBox, 0.5f))		
+							replaceList.push_back(iter);
 					}
 
 					for (iter1 = 0; iter1 < (int)replaceList.size(); ++iter1)
@@ -280,8 +281,9 @@ int main(int argc, const char** argv)
 			//cout << "draw frame"<<nframes
 			ms_tracker->drawTrackBox(img, object_list);
 
+
 			/* plotting trajectory */
-			for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++) //Set all first ROI
+			for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 			{			
 				if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
 				{
@@ -309,7 +311,11 @@ int main(int argc, const char** argv)
 			}// end of plotting trajectory
 			prevData = true;
 		}
-		nframes++;
+		nframes++;	
+
+		stringstream textFrameNo; 
+		textFrameNo << nframes;
+		putText(img, "Frame=" + textFrameNo.str(), Point(10,img.rows-10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
 
 		/* Merge 3-channel image (original) and 4-channel image (for tracking) */
 		overlayImage(img, TrackingLine, show_img, cv::Point(0, 0));
