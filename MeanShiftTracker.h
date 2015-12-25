@@ -20,6 +20,7 @@ public:
 	bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
 	bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
 	void drawTrackBox(Mat &img, vector<Object2D> &object_list);
+	int  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
 	int  track(Mat &img, vector<Object2D> &object_list);
 	//
 	void setRadius(int _r){ radius = _r; }

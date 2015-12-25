@@ -291,17 +291,17 @@ int main(int argc, const char** argv)
 
 				if (pre_data_Y[obj_list_iter] != NULL && plotTrajectory == true) //prevent plotting tracking line when pre_data is none.
 				{
-					/* Plotting all the tracking lines */
-					first_last_diff = plotTrajectoryRun(object_list, TrackingLine, obj_list_iter);
-
-					/* Removing the tracking box when it's motionless for a while */
+					// Plotting all the tracking lines
+					first_last_diff = ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
+					
+					// Removing the tracking box when it's motionless for a while 
 					if (first_last_diff == 0)
 					{
 						object_list.erase(object_list.begin() + obj_list_iter);
 						first_last_diff = 1;
 					}
 				}				
-				/* Get previous point in order to use line function. */
+				// Get previous point in order to use line function. 
 				pre_data_X[obj_list_iter] = 0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x); 
 				pre_data_Y[obj_list_iter] = 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y);
 
