@@ -9,8 +9,8 @@ const short MaxHistBins = 4096;
 
 typedef struct
 {
-	int No;
-	short	type;				// 1: pedestrian, 2: vehicle, 3: unknown
+	int No;						// numbers of track boxes 
+	short	type;				// 1:vehicle , 2: pedestrian, 3: unknown
 	short	status;				// 1: detected, 2: tracked, 3: miss to detect, 4: loss to track
 	Point2d cen_pos;
 	CvRect	boundingBox;		// in pixels
