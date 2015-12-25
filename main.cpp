@@ -18,8 +18,8 @@ using namespace cv;
 
 /* Select images input */
 #define Use_Webcam				0
-#define Use_TestedVideo_Paul	0
-#define Use_TestedVideo_Hardy	1
+#define Use_TestedVideo_Paul	1
+#define Use_TestedVideo_Hardy	0
 
 /* Save images output into the "video_output" file */
 #define Save_imageOutput	1 
@@ -99,7 +99,6 @@ int main(int argc, const char** argv)
 	vector<Object2D> object_list;
 	vector<Object2D> prev_object_list;
 	Object2D object;
-	Rect FirstROI[10];
 
 	auto ms_tracker = ObjectTrackerFactory::create("MeanShiftTracker");		//local variables.	
 	memset((object).hist, 0, MaxHistBins*sizeof(int));	
@@ -283,12 +282,7 @@ int main(int argc, const char** argv)
 
 			/* plotting trajectory */
 			for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++) //Set all first ROI
-			{
-				FirstROI[obj_list_iter].x = object_list[obj_list_iter].boundingBox.x;
-				FirstROI[obj_list_iter].y = object_list[obj_list_iter].boundingBox.y;
-				FirstROI[obj_list_iter].width = object_list[obj_list_iter].boundingBox.width;
-				FirstROI[obj_list_iter].height = object_list[obj_list_iter].boundingBox.height;
-
+			{			
 				if (pre_data_Y[obj_list_iter] != NULL && plotTrajectory == true) //prevent plotting tracking line when pre_data is none.
 				{
 					// Plotting all the tracking lines
@@ -302,8 +296,8 @@ int main(int argc, const char** argv)
 					}
 				}				
 				// Get previous point in order to use line function. 
-				pre_data_X[obj_list_iter] = 0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x); 
-				pre_data_Y[obj_list_iter] = 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y);
+				pre_data_X[obj_list_iter] = 0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x);
+				pre_data_Y[obj_list_iter] = 0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y);
 
 				if (object_list[obj_list_iter].PtNumber == plotLineLength + 1) //Restarting count when count > plotLineLength number
 					object_list[obj_list_iter].PtNumber = 0;	
