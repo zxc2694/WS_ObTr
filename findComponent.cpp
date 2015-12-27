@@ -158,6 +158,22 @@ void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat 
 	}
 }
 
+/* Bubble Sort Algorithm */
+void BubbleSort(int* array, int size) 
+{
+	for (int i = 0; i < size; i++)
+	{
+		for (int j = 1; j < size - i; j++)
+		{
+			if (array[j] < array[j - 1])
+			{
+				int temp = array[j];
+				array[j] = array[j - 1];
+				array[j - 1] = temp;
+			}
+		}
+	}
+}
 void MorphologyProcess(IplImage* &fgmaskIpl)
 {
 //	static IplImage *dilateImg = 0, *erodeImg = 0, *maskMorphology = 0;

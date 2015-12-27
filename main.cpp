@@ -15,7 +15,6 @@ using namespace std;
 using namespace cv;
 #define Pixel32S(img,x,y)	((int*)img.data)[(y)*img.cols + (x)]
 
-
 /* Select images input */
 #define Use_Webcam				0
 #define Use_TestedVideo_Paul	1
@@ -38,6 +37,9 @@ int plotLineLength = 50;
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
 
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ		38
+
+extern int objNumArray[10];
+extern int objNumArray_BS[10];
 
 int Overlap(Rect a, Rect b, float ration)
 {
@@ -185,9 +187,8 @@ int main(int argc, const char** argv)
 			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
 
 			/* Plot the rectangles background subtarction finds */
-			//for (iter = 0; iter < MaxObjNum; iter++){
-			//	rectangle(img, bbs[iter], Scalar(0, 0, 255), 2); 
-			//}
+//			for (iter = 0; iter < MaxObjNum; iter++)
+//				rectangle(img, bbs[iter], Scalar(0, 0, 255), 2); 
 
 			LARGE_INTEGER m_liPerfFreq = { 0 };
 			QueryPerformanceFrequency(&m_liPerfFreq);
@@ -278,14 +279,19 @@ int main(int argc, const char** argv)
 				vector<int>().swap(replaceList);
 			}  // end of 1st for 
 
-			//cout << "draw frame"<<nframes
-			ms_tracker->drawTrackBox(img, object_list);
+
+			for (iter = 0; iter < 10; iter++)
+				objNumArray_BS[iter] = objNumArray[iter]; // Copy array from objNumArray to objNumArray_BS
+
+			BubbleSort(objNumArray_BS, 10);               // Let objNumArray_BS array execute bubble sort 
+		
+			ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
 
 
-			/* plotting trajectory */
+			/* Plotting trajectory */
 			for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 			{			
-				if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
+				if (prevData == true) // Prevent plotting tracking line when previous tracking data is none.
 				{
 					// Plotting all the tracking lines
 					first_last_diff = ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
@@ -308,17 +314,18 @@ int main(int argc, const char** argv)
 				object_list[obj_list_iter].PtNumber++;
 				object_list[obj_list_iter].PtCount++;
 			
-			}// end of plotting trajectory
+			}// End of plotting trajectory
 			prevData = true;
 		}
 		nframes++;	
 
+		/* Show the number of the frame on the image */
 		stringstream textFrameNo; 
 		textFrameNo << nframes;
 		putText(img, "Frame=" + textFrameNo.str(), Point(10,img.rows-10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
 
-		/* Merge 3-channel image (original) and 4-channel image (for tracking) */
-		overlayImage(img, TrackingLine, show_img, cv::Point(0, 0));
+		/* Display image output */
+		overlayImage(img, TrackingLine, show_img, cv::Point(0, 0)); // Merge 3-channel image and 4-channel image
 		imshow("image", show_img);
 		cvShowImage("foreground mask", fgmaskIpl);
 

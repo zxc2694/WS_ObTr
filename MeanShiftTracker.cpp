@@ -5,6 +5,8 @@
 
 using namespace std;
 extern int plotLineLength;
+int objNumArray[10] = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
+int objNumArray_BS[10] = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
 
 MeanShiftTracker::MeanShiftTracker() :kernel_type(0), radius(1), bin_width(32)
 {
@@ -76,6 +78,24 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 		cout << "";
 
 	}
+
+	static int countNo = 0;
+	char UpdateNo = false;
+	
+	for (size_t iter = 0; iter < 10; ++iter)
+	{
+		if (objNumArray[iter] == 1000)
+		{
+			objNumArray[iter] = obj.No;
+			UpdateNo = true;
+			break;
+		}
+	}
+	if (UpdateNo == false)
+	{
+		objNumArray[countNo] = obj.No;
+		countNo++;
+	}
 }
 
 void MeanShiftTracker::updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx)
@@ -102,6 +122,14 @@ bool MeanShiftTracker::checkTrackedList(vector<Object2D> &object_list, vector<Ob
 			}
 			else
 			{
+				for (int iter = 0; iter < 10; iter++)
+				{
+					if (objNumArray_BS[c] == objNumArray[iter])
+					{
+						objNumArray[iter] = 1000;
+						break;
+					}
+				}			
 				object_list.erase(object_list.begin() + c);
 				//prev_object_list.erase(prev_object_list.begin() + c);
 				c--;
@@ -170,6 +198,7 @@ bool MeanShiftTracker::updateTrackedList(vector<Object2D> &object_list, vector<O
 
 void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 {
+	int iter = 0;
 	for (size_t c = 0; c < object_list.size(); c++){
 		//for (size_t c = 0; c < 1; c++){
 		//if (object_list[c].status == 2){
@@ -197,10 +226,17 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 				//ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
 				//ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
 				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);
+				//ss3 << object_list[c].No;
 
-				ss3 << object_list[c].No;
+				for (iter = 0; iter < 10; iter++)
+				{
+					if (objNumArray_BS[c] == objNumArray[iter])
+					{
+						ss3 << iter + 1;
+						break;
+					}
+				}
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
-
 			}
 		//}
 	}
