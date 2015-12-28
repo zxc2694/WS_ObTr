@@ -302,7 +302,10 @@ int main(int argc, const char** argv)
 						object_list.erase(object_list.begin() + obj_list_iter);
 						first_last_diff = 1;
 					}
-				}				
+				}
+				if (object_list.size() == 0)
+					break;
+
 				// Get previous point in order to use line function. 
 				pre_data_X[obj_list_iter] = 0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x);
 				pre_data_Y[obj_list_iter] = 0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y);
