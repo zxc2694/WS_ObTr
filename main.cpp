@@ -92,7 +92,7 @@ int main(int argc, const char** argv)
 	int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };  //for tracking line
 	int first_last_diff = 1;                             //compare first number with last number 
 
-	CvRect bbs[10];
+	CvRect bbs[10],bbsV2[10];
 	CvPoint centers[10];
 	IplImage *fgmaskIpl = 0;
 	IplImage* image = 0, *yuvImage = 0;                  //yuvImage is for codebook method
@@ -160,9 +160,11 @@ int main(int argc, const char** argv)
 		if (img.empty())
 			break;
 
-		static Mat TrackingLine(img.cols, img.rows, CV_8UC4);
+		static Mat TrackingLine(img.cols, img.rows, CV_8UC4); // Normal: cols = 640, rows = 480
+		static Mat background_BBS(img.cols, img.rows, CV_8UC1);
 		TrackingLine = Scalar::all(0);
-		
+		background_BBS = Scalar::all(0);
+
 		if (nframes == 0)
 		{
 			for (unsigned int s = 0; s < 10; s++)
@@ -193,11 +195,29 @@ int main(int argc, const char** argv)
 			/* find components ,and compute bbs information  */
 			MaxObjNum = 10;                                                         //less than 10 objects  
 			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
+			
+			Mat(fgmaskIpl).copyTo(background_BBS); // Copy fgmaskIpl to background_BBS
+			static Mat srcROI[10];				   // for shadow rectangle
 
+			/* Eliminating people's shadow method */
+			for (iter = 0; iter < MaxObjNum; iter++){ // Get all shadow rectangles named bbsV2
+				bbsV2[iter].x = bbs[iter].x;
+				bbsV2[iter].y = bbs[iter].y + bbs[iter].height * 0.7;
+				bbsV2[iter].width = bbs[iter].width;
+				bbsV2[iter].height = bbs[iter].height * 0.33;
+				srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height));
+				srcROI[iter] = Scalar::all(0);
+			}
+			IplImage *BBSIpl = &IplImage(background_BBS);
+			find_connected_components(BBSIpl, 1, 4, &MaxObjNum, bbs, centers); //Secondly, Run the function of searching components	to get bbs
+			
+			for (iter = 0; iter < MaxObjNum; iter++)
+				bbs[iter].height = bbs[iter].height + bbsV2[iter].height; //Merge bbs and bbsV2 to get final ROI
+			
 			/* Plot the rectangles background subtarction finds */
-			//for (iter = 0; iter < MaxObjNum; iter++){
-			//	rectangle(img, bbs[iter], Scalar(0, 0, 0), 2); 
-			//}
+			for (iter = 0; iter < MaxObjNum; iter++){
+				rectangle(img, bbs[iter], Scalar(0, 0, 0), 2); 
+			}
 
 			LARGE_INTEGER m_liPerfFreq = { 0 };
 			QueryPerformanceFrequency(&m_liPerfFreq);
