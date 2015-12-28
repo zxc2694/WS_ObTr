@@ -4,6 +4,9 @@
 #include <iomanip> 
 
 using namespace std;
+extern int plotLineLength;
+int objNumArray[10] = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
+int objNumArray_BS[10] = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
 
 MeanShiftTracker::MeanShiftTracker() :kernel_type(0), radius(1), bin_width(32)
 {
@@ -75,6 +78,23 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 		cout << "";
 
 	}
+	static int countNo = 0;
+	char UpdateNo = false;
+
+	for (size_t iter = 0; iter < 10; ++iter)
+	{
+		if (objNumArray[iter] == 1000)
+		{
+			objNumArray[iter] = obj.No;
+			UpdateNo = true;
+			break;
+		}
+	}
+	if (UpdateNo == false)
+	{
+		objNumArray[countNo] = obj.No;
+		countNo++;
+	}
 }
 
 void MeanShiftTracker::updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx)
@@ -101,6 +121,14 @@ bool MeanShiftTracker::checkTrackedList(vector<Object2D> &object_list, vector<Ob
 			}
 			else
 			{
+				for (int iter = 0; iter < 10; iter++)
+				{
+					if (objNumArray_BS[c] == objNumArray[iter])
+					{
+						objNumArray[iter] = 1000;
+						break;
+					}
+				}	
 				object_list.erase(object_list.begin() + c);
 				//prev_object_list.erase(prev_object_list.begin() + c);
 				c--;
@@ -169,10 +197,11 @@ bool MeanShiftTracker::updateTrackedList(vector<Object2D> &object_list, vector<O
 
 void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 {
+	int iter;
 	for (size_t c = 0; c < object_list.size(); c++){
 		//for (size_t c = 0; c < 1; c++){
 		//if (object_list[c].status == 2){
-			if (object_list[c].type == 1){
+			if (object_list[c].type == 1){ //vehicle
 //				Scalar color(0, rand() % 128, 255);
 				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				
@@ -186,24 +215,67 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 				ss3 << object_list[c].No;
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 			}
-			if (object_list[c].type == 2){
-				Scalar color(rand() % 128, 255, 0);
+			if (object_list[c].type == 2){ //pedestrian
+				//				Scalar color(rand() % 128, 255, 0);
 				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
-
 				std::stringstream ss, ss1, ss2, ss3;
-				ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;
+
+				//ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;
 				//cv::putText(img, "car:" + ss.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y - 8), 1, 1, ColorMatrix[c]); //object_list[c].color
-				ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
-				ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
+				//ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
+				//ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
 				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);
-				ss3 << object_list[c].No;
+				//ss3 << object_list[c].No;
+
+				for (iter = 0; iter < 10; iter++)
+				{
+					if (objNumArray_BS[c] == objNumArray[iter])
+					{
+						ss3 << iter + 1;
+						break;
+					}
+				}
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
-				/*ss1 << std::fixed << std::setprecision(2) << object_list[c].similar_val;
-				cv::putText(img, "prob:" + ss1.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, color);*/
 			}
 		//}
 	}
 }
+
+int MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter)
+{
+	if (object_list[obj_list_iter].PtCount > plotLineLength + 1)										//When plotting arrary is overflow:
+	{
+		if (object_list[obj_list_iter].PtNumber <= plotLineLength)										// Update of last number will influence plotting line on first number and last number, which must prevent. 
+			line(TrackingLine, object_list[obj_list_iter].point[0]													//plotting line on first number and last number				
+			, object_list[obj_list_iter].point[plotLineLength], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * (plotLineLength - object_list[obj_list_iter].PtNumber) / plotLineLength), 3, 1, 0);
+
+		for (int iter1 = 0; iter1 < object_list[obj_list_iter].PtNumber - 1; iter1++)					//plotting line from first number to PtNumber-1
+		{
+			line(TrackingLine, object_list[obj_list_iter].point[iter1]
+				, object_list[obj_list_iter].point[iter1 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * (plotLineLength - object_list[obj_list_iter].PtNumber + 1 + iter1) / plotLineLength), 3, 1, 0);
+		}
+		for (int iter2 = 0; iter2 < plotLineLength - object_list[obj_list_iter].PtNumber; iter2++)		//plotting line from PtNumber to last number
+		{
+			line(TrackingLine, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2]
+				, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * iter2 / plotLineLength), 3, 1, 0);
+		}
+
+		if (object_list[obj_list_iter].PtNumber <= plotLineLength)
+			return object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber - 1].x - object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber].x;
+		else
+			return object_list[obj_list_iter].point[0].x - object_list[obj_list_iter].point[plotLineLength].x;
+	}
+	else
+	{																								//When plotting arrary isn't overflow:
+		for (int iter = 1; iter < object_list[obj_list_iter].PtNumber; iter++)
+			line(TrackingLine, object_list[obj_list_iter].point[iter - 1]										//Directly plot all the points array storages.
+			, object_list[obj_list_iter].point[iter], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * (iter - 1) / (object_list[obj_list_iter].PtNumber - 1)), 3, 1, 0);
+
+		return 1;
+	}
+
+}
+
 
 int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 {

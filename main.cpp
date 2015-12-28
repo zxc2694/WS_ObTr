@@ -18,8 +18,8 @@ using namespace cv;
 
 /* Select images input */
 #define Use_Webcam				0
-#define Use_TestedVideo_Paul	0
-#define Use_TestedVideo_Hardy	1
+#define Use_TestedVideo_Paul	1
+#define Use_TestedVideo_Hardy	0
 
 /* Save images output into the "video_output" file */
 #define Save_imageOutput	1 
@@ -32,12 +32,15 @@ using namespace cv;
 int nframesToLearnBG = 1;  //if you use codebook, set 300. If you use MOG, set 1
 
 /* Set tracking line length, range: 20~100 */
-int plotLineLength = 50;
+int plotLineLength = 25;
 
 #define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
 
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ		38
+
+extern int objNumArray[10];
+extern int objNumArray_BS[10];
 
 int Overlap(Rect a, Rect b, float ration)
 {
@@ -85,7 +88,7 @@ int main(int argc, const char** argv)
 	char outFilePath[100];
 	char outFilePath2[100];
 	bool update_bg_model = true;
-	char plotTrajectory = false;
+	char prevData = false;
 	int c, n, iter, iter2, MaxObjNum, nframes = 0;
 	int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };	//for tracking line
 	int first_last_diff = 1;								//compare first number with last number 
@@ -99,7 +102,6 @@ int main(int argc, const char** argv)
 	vector<Object2D> object_list;
 	vector<Object2D> prev_object_list;
 	Object2D object;
-	Rect FirstROI[10];
 
 	auto ms_tracker = ObjectTrackerFactory::create("MeanShiftTracker");		//local variables.	
 	memset((object).hist, 0, MaxHistBins*sizeof(int));	
@@ -278,32 +280,32 @@ int main(int argc, const char** argv)
 				vector<int>().swap(replaceList);
 			}  // end of 1st for 
 
-			//cout << "draw frame"<<nframes
-			ms_tracker->drawTrackBox(img, object_list);
+			for (iter = 0; iter < 10; iter++)
+				objNumArray_BS[iter] = objNumArray[iter]; // Copy array from objNumArray to objNumArray_BS
+
+			BubbleSort(objNumArray_BS, 10);               // Let objNumArray_BS array execute bubble sort 
+
+			ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
+
 
 			/* plotting trajectory */
-			for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++) //Set all first ROI
-			{
-				FirstROI[obj_list_iter].x = object_list[obj_list_iter].boundingBox.x;
-				FirstROI[obj_list_iter].y = object_list[obj_list_iter].boundingBox.y;
-				FirstROI[obj_list_iter].width = object_list[obj_list_iter].boundingBox.width;
-				FirstROI[obj_list_iter].height = object_list[obj_list_iter].boundingBox.height;
-
-				if (pre_data_Y[obj_list_iter] != NULL && plotTrajectory == true) //prevent plotting tracking line when pre_data is none.
+			for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+			{			
+				if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
 				{
-					/* Plotting all the tracking lines */
-					first_last_diff = plotTrajectoryRun(object_list, TrackingLine, obj_list_iter);
-
-					/* Removing the tracking box when it's motionless for a while */
+					// Plotting all the tracking lines
+					first_last_diff = ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
+					
+					// Removing the tracking box when it's motionless for a while 
 					if (first_last_diff == 0)
 					{
 						object_list.erase(object_list.begin() + obj_list_iter);
 						first_last_diff = 1;
 					}
 				}				
-				/* Get previous point in order to use line function. */
-				pre_data_X[obj_list_iter] = 0.5 * FirstROI[obj_list_iter].width + (object_list[obj_list_iter].boundingBox.x); 
-				pre_data_Y[obj_list_iter] = 0.9 * FirstROI[obj_list_iter].height + (object_list[obj_list_iter].boundingBox.y);
+				// Get previous point in order to use line function. 
+				pre_data_X[obj_list_iter] = 0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x);
+				pre_data_Y[obj_list_iter] = 0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y);
 
 				if (object_list[obj_list_iter].PtNumber == plotLineLength + 1) //Restarting count when count > plotLineLength number
 					object_list[obj_list_iter].PtNumber = 0;	
@@ -313,12 +315,17 @@ int main(int argc, const char** argv)
 				object_list[obj_list_iter].PtCount++;
 			
 			}// end of plotting trajectory
-			plotTrajectory = true; 
+			prevData = true;
 		}
 		nframes++;
+		
+		/* Show the number of the frame on the image */
+		stringstream textFrameNo;
+		textFrameNo << nframes;
+		putText(img, "Frame=" + textFrameNo.str(), Point(10, img.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
 
-		/* Merge 3-channel image (original) and 4-channel image (for tracking) */
-		overlayImage(img, TrackingLine, show_img, cv::Point(0, 0));
+		/* Display image output */
+		overlayImage(img, TrackingLine, show_img, cv::Point(0, 0)); // Merge 3-channel image and 4-channel image
 		imshow("image", show_img);
 		cvShowImage("foreground mask", fgmaskIpl);
 
@@ -337,4 +344,3 @@ int main(int argc, const char** argv)
 
 	return 0;
 }
-
