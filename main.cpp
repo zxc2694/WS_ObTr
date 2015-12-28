@@ -15,18 +15,17 @@ using namespace std;
 using namespace cv;
 #define Pixel32S(img,x,y)	((int*)img.data)[(y)*img.cols + (x)]
 
-
 /* Select images input */
-#define Use_Webcam				0
-#define Use_TestedVideo_Paul	1
-#define Use_TestedVideo_Hardy	0
+#define Use_Webcam             0
+#define Use_TestedVideo_Paul   1
+#define Use_TestedVideo_Hardy  0
 
 /* Save images output into the "video_output" file */
-#define Save_imageOutput	1 
+#define Save_imageOutput  1 
 
 /* Select background subtrction algorithm */
-#define Use_CodeBook	0
-#define Use_MOG			1
+#define Use_CodeBook  0
+#define Use_MOG       1
 
 /* Update the initial frame number of codebook */
 int nframesToLearnBG = 1;  //if you use codebook, set 300. If you use MOG, set 1
@@ -37,7 +36,7 @@ int plotLineLength = 25;
 #define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
 
-#define MAX_DIS_BET_PARTS_OF_ONE_OBJ		38
+#define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 
 int objNumArray[10];
 int objNumArray_BS[10];
@@ -90,20 +89,20 @@ int main(int argc, const char** argv)
 	bool update_bg_model = true;
 	char prevData = false;
 	int c, n, iter, iter2, MaxObjNum, nframes = 0;
-	int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };	//for tracking line
-	int first_last_diff = 1;								//compare first number with last number 
+	int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };  //for tracking line
+	int first_last_diff = 1;                             //compare first number with last number 
 
 	CvRect bbs[10];
 	CvPoint centers[10];
 	IplImage *fgmaskIpl = 0;
-	IplImage* image = 0, *yuvImage = 0;					//yuvImage is for codebook method
+	IplImage* image = 0, *yuvImage = 0;                  //yuvImage is for codebook method
 	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
 	Mat img, fgmask, fgimg, show_img;
 	vector<Object2D> object_list;
 	vector<Object2D> prev_object_list;
 	Object2D object;
 
-	auto ms_tracker = ObjectTrackerFactory::create("MeanShiftTracker");		//local variables.	
+	auto ms_tracker = ObjectTrackerFactory::create("MeanShiftTracker");  //local variables.	
 	memset((object).hist, 0, MaxHistBins*sizeof(int));	
 
 	namedWindow("image", WINDOW_NORMAL);
@@ -115,11 +114,11 @@ int main(int argc, const char** argv)
 #endif
 
 #if Use_MOG		
-	BackgroundSubtractorMOG2 bg_model;					//(100, 3, 0.3, 5);
+	BackgroundSubtractorMOG2 bg_model;                  //(100, 3, 0.3, 5);
 #endif
 
 #if Use_CodeBook
-	CodeBookInit();										//Codebook initial function
+	CodeBookInit();                                     //Codebook initial function
 #endif
 
 	while (1)
@@ -178,7 +177,7 @@ int main(int argc, const char** argv)
 		}
 		else if (nframes == nframesToLearnBG)
 		{
-			MaxObjNum = 10;															//less than 10 objects  
+			MaxObjNum = 10;                                                         //less than 10 objects  
 			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
 
 			for (int iter = 0; iter < MaxObjNum; ++iter)
@@ -189,16 +188,16 @@ int main(int argc, const char** argv)
 		}
 		else
 		{
-			MorphologyProcess(fgmaskIpl);	// Run morphology 
+			MorphologyProcess(fgmaskIpl);  // Run morphology 
 
 			/* find components ,and compute bbs information  */
-			MaxObjNum = 10;															//less than 10 objects  
+			MaxObjNum = 10;                                                         //less than 10 objects  
 			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
 
 			/* Plot the rectangles background subtarction finds */
-			for (iter = 0; iter < MaxObjNum; iter++){
-				rectangle(img, bbs[iter], Scalar(0, 0, 0), 2); 
-			}
+			//for (iter = 0; iter < MaxObjNum; iter++){
+			//	rectangle(img, bbs[iter], Scalar(0, 0, 0), 2); 
+			//}
 
 			LARGE_INTEGER m_liPerfFreq = { 0 };
 			QueryPerformanceFrequency(&m_liPerfFreq);
@@ -219,7 +218,7 @@ int main(int argc, const char** argv)
 			cout << "tracking time = " << decodeDulation << "ms" << endl;
 
 
-			if (nframes > nframesToLearnBG + 1) // Start to update the object tracking
+			if (nframes > nframesToLearnBG + 1) //Start to update the object tracking
 				ms_tracker->checkTrackedList(object_list, prev_object_list);
 
 			int bbs_iter;
