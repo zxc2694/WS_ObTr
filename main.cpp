@@ -196,9 +196,9 @@ int main(int argc, const char** argv)
 			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
 
 			/* Plot the rectangles background subtarction finds */
-			//for (iter = 0; iter < MaxObjNum; iter++){
-			//	rectangle(img, bbs[iter], Scalar(0, 0, 255), 2); 
-			//}
+			for (iter = 0; iter < MaxObjNum; iter++){
+				rectangle(img, bbs[iter], Scalar(0, 0, 0), 2); 
+			}
 
 			LARGE_INTEGER m_liPerfFreq = { 0 };
 			QueryPerformanceFrequency(&m_liPerfFreq);
