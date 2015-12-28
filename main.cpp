@@ -160,7 +160,7 @@ int main(int argc, const char** argv)
 		if (img.empty())
 			break;
 
-		static Mat TrackingLine(img.rows, img.cols, CV_8UC4);
+		static Mat TrackingLine(img.cols, img.rows, CV_8UC4);
 		TrackingLine = Scalar::all(0);
 		
 		if (nframes == 0)
