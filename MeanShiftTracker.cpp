@@ -5,8 +5,10 @@
 
 using namespace std;
 extern int plotLineLength;
+Scalar *ColorPtr;
 int objNumArray[10] = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
 int objNumArray_BS[10] = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
+int ColorNo=0;
 
 MeanShiftTracker::MeanShiftTracker() :kernel_type(0), radius(1), bin_width(32)
 {
@@ -23,6 +25,7 @@ MeanShiftTracker::MeanShiftTracker() :kernel_type(0), radius(1), bin_width(32)
 	ColorMatrix[8] = Scalar(0, 255, 122);
 	ColorMatrix[9] = Scalar(80, 255, 80);
 
+	ColorPtr = &ColorMatrix[0];
 }
 
 int MeanShiftTracker::DistBetObj(Rect a, Rect b)
@@ -201,34 +204,28 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 	for (size_t c = 0; c < object_list.size(); c++){
 		//for (size_t c = 0; c < 1; c++){
 		//if (object_list[c].status == 2){
-			if (object_list[c].type == 1){ //vehicle
-//				Scalar color(0, rand() % 128, 255);
-				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
-				
-				std::stringstream ss,ss1,ss2,ss3;
+
+			if (object_list[c].type == 1){ //vehicle				
+				std::stringstream ss,ss1,ss2,ss3;			
 				ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;
-				//cv::putText(img, "person:" + ss.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y - 8), 1, 1, ColorMatrix[c]);
 				ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
 				ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
+				//cv::putText(img, "person:" + ss.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y - 8), 1, 1, ColorMatrix[c]);
 				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);
 				//cv::putText(img, "prob:" + ss1.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);
+				
 				ss3 << object_list[c].No;
+				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 			}
 			if (object_list[c].type == 2){ //pedestrian
-				//				Scalar color(rand() % 128, 255, 0);
-				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				std::stringstream ss, ss1, ss2, ss3;
 
 				//ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;
 				//cv::putText(img, "car:" + ss.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y - 8), 1, 1, ColorMatrix[c]); //object_list[c].color
 				//ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
 				//ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
-				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);
-				
-
-				//ss3 << object_list[c].No;
-
+				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);		
 				for (iter = 0; iter < 10; iter++)
 				{
 					if (objNumArray_BS[c] == objNumArray[iter])
@@ -237,7 +234,14 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 						break;
 					}
 				}
+				object_list[c].color = *(ColorPtr + iter);
+
+	//			ss3 << object_list[c].No;
+				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
+	//			cv::rectangle(img, object_list[c].boundingBox, *(ColorPtr + ColorNo), 2);
+	//			cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, *(ColorPtr + ColorNo), 3);
+
 			}
 		//}
 	}
