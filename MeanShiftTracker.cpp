@@ -6,8 +6,8 @@
 using namespace std;
 extern int plotLineLength;
 Scalar *ColorPtr;
-int objNumArray[10] = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
-int objNumArray_BS[10] = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
+extern int objNumArray[10];
+extern int objNumArray_BS[10];
 int ColorNo=0;
 
 MeanShiftTracker::MeanShiftTracker() :kernel_type(0), radius(1), bin_width(32)
@@ -189,6 +189,14 @@ bool MeanShiftTracker::updateTrackedList(vector<Object2D> &object_list, vector<O
 			}
 			else
 			{
+				for (int iterColor = 0; iterColor < 10; iterColor++)
+				{
+					if (objNumArray_BS[c] == objNumArray[iterColor])
+					{
+						objNumArray[iterColor] = 1000;
+						break;
+					}
+				}
 				object_list.erase(object_list.begin() + c);
 				prev_object_list.erase(prev_object_list.begin() + c);
 				c--;

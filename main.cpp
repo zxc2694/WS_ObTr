@@ -39,8 +39,8 @@ int plotLineLength = 25;
 
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ		38
 
-extern int objNumArray[10];
-extern int objNumArray_BS[10];
+int objNumArray[10];
+int objNumArray_BS[10];
 
 int Overlap(Rect a, Rect b, float ration)
 {
@@ -164,7 +164,15 @@ int main(int argc, const char** argv)
 		static Mat TrackingLine(img.rows, img.cols, CV_8UC4);
 		TrackingLine = Scalar::all(0);
 		
-		if (nframes < nframesToLearnBG)
+		if (nframes == 0)
+		{
+			for (unsigned int s = 0; s < 10; s++)
+			{
+				objNumArray[s] = 65535;
+				objNumArray_BS[s] = 65535;
+			}
+		}
+		else if (nframes < nframesToLearnBG)
 		{
 
 		}
@@ -271,6 +279,14 @@ int main(int argc, const char** argv)
 					ms_tracker->updateObjBbs(img, object_list, bbs[bbs_iter], replaceList[0]);
 					for (int iter = 1; iter < (int)replaceList.size(); ++iter)
 					{
+						for (int iterColor = 0; iterColor < 10; iterColor++)
+						{
+							if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+							{
+								objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+								break;
+							}
+						}
 						object_list.erase(object_list.begin() + replaceList[iter]);
 					}
 				}
