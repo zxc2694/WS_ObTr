@@ -124,14 +124,14 @@ bool MeanShiftTracker::checkTrackedList(vector<Object2D> &object_list, vector<Ob
 			}
 			else
 			{
-				for (int iter = 0; iter < 10; iter++)
+				for (int iterColor = 0; iterColor < 10; iterColor++)
 				{
-					if (objNumArray_BS[c] == objNumArray[iter])
+					if (objNumArray_BS[c] == objNumArray[iterColor])
 					{
-						objNumArray[iter] = 1000;
+						objNumArray[iterColor] = 1000;
 						break;
 					}
-				}	
+				}
 				object_list.erase(object_list.begin() + c);
 				//prev_object_list.erase(prev_object_list.begin() + c);
 				c--;

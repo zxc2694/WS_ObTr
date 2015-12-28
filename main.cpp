@@ -299,13 +299,21 @@ int main(int argc, const char** argv)
 					// Removing the tracking box when it's motionless for a while 
 					if (first_last_diff == 0)
 					{
-						object_list.erase(object_list.begin() + obj_list_iter);
+						for (int iterColor = 0; iterColor < 10; iterColor++)
+						{
+							if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor]) 
+							{
+								objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+								break;
+							}
+						}
+						object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
 						first_last_diff = 1;
 					}
 				}
-				if (object_list.size() == 0)
+				if (object_list.size() == 0){ //Prevent out of vector range
 					break;
-
+				}
 				// Get previous point in order to use line function. 
 				pre_data_X[obj_list_iter] = 0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x);
 				pre_data_Y[obj_list_iter] = 0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y);
