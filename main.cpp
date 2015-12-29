@@ -202,9 +202,9 @@ int main(int argc, const char** argv)
 			/* Eliminating people's shadow method */
 			for (iter = 0; iter < MaxObjNum; iter++){                               // Get all shadow rectangles named bbsV2
 				bbsV2[iter].x = bbs[iter].x;
-				bbsV2[iter].y = bbs[iter].y + bbs[iter].height * 0.7;
+				bbsV2[iter].y = bbs[iter].y + bbs[iter].height * 0.75;
 				bbsV2[iter].width = bbs[iter].width;
-				bbsV2[iter].height = bbs[iter].height * 0.33;
+				bbsV2[iter].height = bbs[iter].height * 0.25;
 				srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
 				srcROI[iter] = Scalar::all(0);                                     // Set srcROI as showing black color
 			}
@@ -216,7 +216,7 @@ int main(int argc, const char** argv)
 			
 			/* Plot the rectangles background subtarction finds */
 			for (iter = 0; iter < MaxObjNum; iter++){
-				rectangle(img, bbs[iter], Scalar(0, 0, 0), 2); 
+				rectangle(img, bbs[iter], Scalar(0, 255, 255), 2); 
 			}
 
 			LARGE_INTEGER m_liPerfFreq = { 0 };
