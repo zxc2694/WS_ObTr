@@ -31,7 +31,7 @@ using namespace cv;
 int nframesToLearnBG = 1;  //if you use codebook, set 300. If you use MOG, set 1
 
 /* Set tracking line length, range: 20~100 */
-int plotLineLength = 25;
+int plotLineLength = 50;
 
 #define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
@@ -97,7 +97,7 @@ int main(int argc, const char** argv)
 	IplImage *fgmaskIpl = 0;
 	IplImage* image = 0, *yuvImage = 0;                  //yuvImage is for codebook method
 	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
-	Mat img, fgmask, fgimg, show_img;
+	Mat img, fgmask, show_img;
 	vector<Object2D> object_list;
 	vector<Object2D> prev_object_list;
 	Object2D object;
@@ -160,16 +160,15 @@ int main(int argc, const char** argv)
 		if (img.empty())
 			break;
 
-		static Mat TrackingLine(img.cols, img.rows, CV_8UC4); // Normal: cols = 640, rows = 480
-		static Mat background_BBS(img.cols, img.rows, CV_8UC1);
+		static Mat TrackingLine(img.rows, img.cols, CV_8UC4); // Normal: cols = 640, rows = 480
+		static Mat background_BBS(img.rows, img.cols, CV_8UC1);
 		TrackingLine = Scalar::all(0);
-		background_BBS = Scalar::all(0);
 
 		if (nframes == 0)
 		{
 			for (unsigned int s = 0; s < 10; s++)
 			{
-				objNumArray[s] = 65535;
+				objNumArray[s] = 65535;                       // Set all values as max number for ordered arrangement
 				objNumArray_BS[s] = 65535;
 			}
 		}
@@ -179,7 +178,8 @@ int main(int argc, const char** argv)
 		}
 		else if (nframes == nframesToLearnBG)
 		{
-			MaxObjNum = 10;                                                         //less than 10 objects  
+			/* find components ,and compute bbs information  */
+			MaxObjNum = 10;                                                         // less than 10 objects  
 			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
 
 			for (int iter = 0; iter < MaxObjNum; ++iter)
@@ -193,26 +193,26 @@ int main(int argc, const char** argv)
 			MorphologyProcess(fgmaskIpl);  // Run morphology 
 
 			/* find components ,and compute bbs information  */
-			MaxObjNum = 10;                                                         //less than 10 objects  
+			MaxObjNum = 10;                                                         // less than 10 objects  
 			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
 			
-			Mat(fgmaskIpl).copyTo(background_BBS); // Copy fgmaskIpl to background_BBS
-			static Mat srcROI[10];				   // for shadow rectangle
+			Mat(fgmaskIpl).copyTo(background_BBS);                                  // Copy fgmaskIpl to background_BBS
+			static Mat srcROI[10];                                                  // for shadow rectangle
 
 			/* Eliminating people's shadow method */
-			for (iter = 0; iter < MaxObjNum; iter++){ // Get all shadow rectangles named bbsV2
+			for (iter = 0; iter < MaxObjNum; iter++){                               // Get all shadow rectangles named bbsV2
 				bbsV2[iter].x = bbs[iter].x;
 				bbsV2[iter].y = bbs[iter].y + bbs[iter].height * 0.7;
 				bbsV2[iter].width = bbs[iter].width;
 				bbsV2[iter].height = bbs[iter].height * 0.33;
-				srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height));
-				srcROI[iter] = Scalar::all(0);
+				srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
+				srcROI[iter] = Scalar::all(0);                                     // Set srcROI as showing black color
 			}
 			IplImage *BBSIpl = &IplImage(background_BBS);
-			find_connected_components(BBSIpl, 1, 4, &MaxObjNum, bbs, centers); //Secondly, Run the function of searching components	to get bbs
+			find_connected_components(BBSIpl, 1, 4, &MaxObjNum, bbs, centers);     // Secondly, Run the function of searching components to get update of bbs
 			
 			for (iter = 0; iter < MaxObjNum; iter++)
-				bbs[iter].height = bbs[iter].height + bbsV2[iter].height; //Merge bbs and bbsV2 to get final ROI
+				bbs[iter].height = bbs[iter].height + bbsV2[iter].height;          // Merge bbs and bbsV2 to get final ROI
 			
 			/* Plot the rectangles background subtarction finds */
 			for (iter = 0; iter < MaxObjNum; iter++){
