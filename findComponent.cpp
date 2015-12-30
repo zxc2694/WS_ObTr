@@ -158,6 +158,31 @@ void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat 
 	}
 }
 
+int Overlap(Rect a, Rect b, float ration)
+{
+	Rect c = a.x + a.width >= b.x + b.width ? a : b;
+	Rect d = a.x + a.width >= b.x + b.width ? b : a;
+
+	int e = min(d.x + d.width - c.x, d.width);
+	if (e <= 0)
+		return 0;
+
+	c = a.y + a.height >= b.y + b.height ? a : b;
+	d = a.y + a.height >= b.y + b.height ? b : a;
+
+	int f = min(d.y + d.height - c.y, d.height);
+	if (f <= 0)
+		return 0;
+
+	int overlapArea = e*f;
+	int area_a = a.width * a.height;
+	int area_b = b.width * b.height;
+	int minArea = (area_a <= area_b ? area_a : area_b);
+
+	if ((float)overlapArea / (float)minArea > ration) return 1;
+	return 0;
+}
+
 /* Bubble Sort Algorithm */
 void BubbleSort(int* array, int size)
 {

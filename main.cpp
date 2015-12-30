@@ -41,46 +41,6 @@ int plotLineLength = 50;
 int objNumArray[10];
 int objNumArray_BS[10];
 
-int Overlap(Rect a, Rect b, float ration)
-{
-	Rect c, d;
-	if (a.x + a.width >= b.x + b.width)
-	{
-		c = a;
-		d = b;
-	}
-	else
-	{
-		c = b;
-		d = a;
-	}
-	int e = min(d.x + d.width - c.x, d.width);
-	if (e <= 0)   return 0;
-
-	if (a.y + a.height >= b.y + b.height)
-	{
-		c = a;
-		d = b;
-	}
-	else
-	{
-		c = b;
-		d = a;
-	}
-	int f = min(d.y + d.height - c.y, d.height);
-	if (f <= 0)   return 0;
-
-	int overlapArea = e*f;
-
-	int area_a = a.width * a.height;
-	int area_b = b.width * b.height;
-
-	int minArea = (area_a <= area_b ? area_a : area_b);
-
-	if ((float)overlapArea / (float)minArea > ration) return 1;
-	return 0;
-}
-
 int main(int argc, const char** argv)
 {
 	char link[512];
@@ -132,7 +92,7 @@ int main(int argc, const char** argv)
 
 #if Use_TestedVideo_Paul
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
-		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 199);
+		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 180);
 		img = cvLoadImage(link, 1);
 #endif
 
