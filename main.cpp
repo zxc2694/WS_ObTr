@@ -31,7 +31,7 @@ using namespace cv;
 int nframesToLearnBG = 1;  //if you use codebook, set 300. If you use MOG, set 1
 
 /* Set tracking line length, range: 20~100 */
-int plotLineLength = 50;
+int plotLineLength = 30;
 
 #define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
