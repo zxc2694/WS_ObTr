@@ -13,8 +13,8 @@ using namespace std;
 using namespace cv;
 
 /* Select images input */
-#define Use_TestedVideo_Paul   1
-#define Use_TestedVideo_Hardy  0
+#define inputPath_Paul   1
+#define inputPath_Hardy  0
 
 /* Select background subtrction algorithm */
 #define Use_CodeBook  0
@@ -30,7 +30,7 @@ int main(int argc, const char** argv)
 	IplImage *fgmaskIpl = 0;
 	IplImage* image = 0, *yuvImage = 0;                  
 	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
-	Mat img, fgmask, show_img;
+	Mat img, fgmask;
 	Object2D object;
 	BackgroundSubtractorMOG2 bg_model;
 	CodeBookInit();
@@ -44,13 +44,13 @@ int main(int argc, const char** argv)
 	while (1)
 	{
 
-#if Use_TestedVideo_Paul
+#if inputPath_Paul
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
 		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 180);
 		img = cvLoadImage(link, 1);
 #endif
 
-#if Use_TestedVideo_Hardy
+#if inputPath_Hardy
 		//sprintf(link, "D://test//tracking test//tracking test//video3//%05d.png", nframes + 180);
 		sprintf(link, "D://test//tracking test//tracking test//video//%05d.png", nframes + 1);
 		img = cvLoadImage(link, 1);
@@ -68,10 +68,9 @@ int main(int argc, const char** argv)
 #endif
 
 		if (img.empty()) break;
-		img.copyTo(show_img);
 	
 		/* Plot tracking rectangles and its trajectory */
-		tracking_function(show_img, fgmask, ms_tracker, object, nframes);
+		tracking_function(img, fgmask, ms_tracker, object, nframes);
 
 		nframes++;	
 		char k = (char)waitKey(10);
