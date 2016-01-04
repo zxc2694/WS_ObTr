@@ -202,42 +202,6 @@ private:
 	bool testIntraObjectIntersection(vector<Object2D> &object_list, int cur_pos);
 };
 
-//class ObjectTrackerFactory
-//{
-//public:
-//	ObjectTrackerFactory();
-//	~ObjectTrackerFactory();
-//
-//	//IObjectTracker* create(std::string tracker_type);
-//	static shared_ptr<IObjectTracker> create(std::string tracker_type);
-//
-//private:
-//
-//};
-//
-//ObjectTrackerFactory::ObjectTrackerFactory()
-//{
-//}
-//
-//ObjectTrackerFactory::~ObjectTrackerFactory()
-//{
-//}
-//
-//shared_ptr<IObjectTracker> ObjectTrackerFactory::create(std::string tracker_name)
-//{
-//	IObjectTracker *instance = nullptr;
-//	if (tracker_name == "MeanShiftTracker")
-//		instance = new MeanShiftTracker();
-//
-//	//if (tracker_name == "PFTracker")
-//	//  instance = new PFTracker;
-//	//
-//	if (instance != nullptr)
-//		return std::shared_ptr<IObjectTracker>(instance);
-//	else
-//		return nullptr;
-//}
-
 void CodeBookInit();
 void RunCodeBook(IplImage* &image, IplImage* &yuvImage, IplImage* &ImaskCodeBook, IplImage* &ImaskCodeBookCC, int &nframes);
 void find_connected_components(IplImage *mask, int poly1_hull0, float perimScale, int *num, CvRect *bbs, CvPoint *centers);

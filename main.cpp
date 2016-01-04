@@ -68,7 +68,6 @@ int main(int argc, const char** argv)
 #endif
 
 		if (img.empty()) break;
-
 		img.copyTo(show_img);
 	
 		/* Plot tracking rectangles and its trajectory */
