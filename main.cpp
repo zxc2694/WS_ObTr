@@ -4,7 +4,7 @@
 #include "opencv2/video/background_segm.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/legacy/legacy.hpp"
-#include "ObjectTrackerFactory.h"
+#include "Tracking.h"
 #include "math.h"
 #include <stdio.h>
 #include <windows.h>
@@ -60,7 +60,9 @@ int main(int argc, const char** argv)
 	vector<Object2D> prev_object_list;
 	Object2D object;
 
-	auto ms_tracker = ObjectTrackerFactory::create("MeanShiftTracker");  //local variables.	
+	//auto ms_tracker = ObjectTrackerFactory::create("MeanShiftTracker");  //local variables.	
+	IObjectTracker *ms_tracker = new MeanShiftTracker();
+	
 	memset((object).hist, 0, MaxHistBins*sizeof(int));	
 
 	namedWindow("image", WINDOW_NORMAL);
