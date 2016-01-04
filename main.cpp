@@ -37,9 +37,6 @@ int main(int argc, const char** argv)
 		
 	IObjectTracker *ms_tracker = new MeanShiftTracker();
 	memset((object).hist, 0, MaxHistBins*sizeof(int));
-
-	namedWindow("image", WINDOW_NORMAL);
-	namedWindow("foreground mask", WINDOW_NORMAL);
 	
 	while (1)
 	{
