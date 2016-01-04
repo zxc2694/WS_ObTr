@@ -2,7 +2,7 @@
 #define OBJECTTRACKERFACTORY_H
 
 #include <memory>
-#include "MeanShiftTracker.h"
+#include "Tracking.h"
 
 using namespace std;
 
@@ -41,21 +41,5 @@ shared_ptr<IObjectTracker> ObjectTrackerFactory::create(std::string tracker_name
 	else
 		return nullptr;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #endif

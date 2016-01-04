@@ -1,14 +1,52 @@
-#ifndef OBJECTTRACKER_H
-#define OBJECTTRACKER_H
+#ifndef MEANSHIFTTRACKER_H
+#define MEANSHIFTTRACKER_H
+#define MEANSHIFTTRACKER_H
+#define MAX_OBJ_LIST_SIZE    100
+#define Pixel32S(img,x,y)	((int*)img.data)[(y)*img.cols + (x)]
+#include <memory>
+#include "opencv2/core/core.hpp"
 
-#include "opencv2\core\core.hpp"
-#include "opencv2\imgproc\imgproc.hpp"
-//#include "DescriptorFactory.h"
-//#include "IObjectDescriptor.h"
-#include "ObjectForm.h"
-
-//using namespace ObjectDescriptor;
 using namespace cv;
+using namespace std;
+
+const short MaxHistBins = 4096;
+
+typedef struct
+{
+	int No;						// numbers of track boxes 
+	short	type;				// 1:vehicle , 2: pedestrian, 3: unknown
+	short	status;				// 1: detected, 2: tracked, 3: miss to detect, 4: loss to track
+	Point2d cen_pos;
+	CvRect	boundingBox;		// in pixels
+	float	hist[MaxHistBins];	// disparity(32_bins) + intensity(32_bins) : for tracking
+	double	similar_val;		// value of similarity function
+	float	minDisparity;
+	float	maxDisparity;
+	float	medianDisparity;
+	float	meanDisparity;
+	float	stdDisparity;
+	Point3f xyz0;				// 3d position of previous time instance in world coordinate, minimum distance from camera
+	Point3f xyz;				// 3d position of currnet time in world coordinate, minimum distance from camera
+	Size	objSize;
+	vector<float> descriptor;
+	Point point[100];
+	Scalar color;
+	int PtNumber;
+	int PtCount;
+	int countDone;
+	int times;
+} Object2D;
+
+typedef struct
+{
+	short	type;				// 1: vehicle, 2:pedestrian , 3: unknown
+	short	status;				// 1: detected, 2: tracked, 3: miss to detect, 4: loss to track
+	Rect	boundingBox;		// in pixels
+	Point3f xyz0;				// 3d position of previous time instance in world coordinate, minimum distance from camera
+	Point3f xyz;				// 3d position of currnet time in world coordinate, minimum distance from camera
+	float	hist[MaxHistBins];	// disparity(32_bins) + intensity(32_bins) : for tracking
+	vector<float> descriptor;
+} Object3D;
 
 class IObjectTracker
 {
@@ -31,7 +69,7 @@ public:
 	virtual void drawTrackBox(Mat &img, vector<Object2D> &object_list) = 0;
 	virtual int  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
 	//float getDistanceThreshold(){ return Dist_Threshold; }
-	
+
 	//float track(Mat &img, Object2D &object); // track single object
 	//float getDistanceThreshold(){ return Dist_Threshold; }
 	//vector<float> track2(Mat &img, vector<Object2D> &object_list); // track multiple objects
@@ -40,7 +78,7 @@ private:
 	/*DescriptorFactory *pDescriptorFac;
 	IObjectDescriptor *HOG;
 	const float	Dist_Threshold = 0.1f;*/
-	
+
 	//float computeDistance(vector<float> &feature1, vector<float> &feature2);
 
 };
@@ -127,5 +165,83 @@ private:
 //	}
 //}
 
+class MeanShiftTracker : public IObjectTracker
+{
+public:
+	MeanShiftTracker();
+	~MeanShiftTracker();
+
+	int DistBetObj(Rect a, Rect b);
+	void addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type);
+	void updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx);
+	bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
+	bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
+	void drawTrackBox(Mat &img, vector<Object2D> &object_list);
+	int  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
+	int  track(Mat &img, vector<Object2D> &object_list);
+	//
+	void setRadius(int _r){ radius = _r; }
+	void setBinWidt(int _bin_width){ bin_width = _bin_width; }
+private:
+
+
+	int count = 0;
+	const int Max_Iters = 8;
+	const float Similar_Val_Threshold = 0.165;
+	int  kernel_type;
+	int  radius;
+	int	 bin_width;
+	int  bins;
+	void getParzenWindow(Mat &kernel, const int R, const int func_type = 0);
+	void getDensityEstimate(const Mat &roiMat, const Mat &kernel, float hist[]);
+	double computeSimilarity(const Mat &roiMat, const Mat &kernel, const float target[], const float candidate[], Mat &weight);
+	//
+	bool testObjectIntersection(Object2D &obj1, Object2D &obj2);
+	bool testIntraObjectIntersection(vector<Object2D> &object_list, int cur_pos);
+};
+
+//class ObjectTrackerFactory
+//{
+//public:
+//	ObjectTrackerFactory();
+//	~ObjectTrackerFactory();
+//
+//	//IObjectTracker* create(std::string tracker_type);
+//	static shared_ptr<IObjectTracker> create(std::string tracker_type);
+//
+//private:
+//
+//};
+//
+//ObjectTrackerFactory::ObjectTrackerFactory()
+//{
+//}
+//
+//ObjectTrackerFactory::~ObjectTrackerFactory()
+//{
+//}
+//
+//shared_ptr<IObjectTracker> ObjectTrackerFactory::create(std::string tracker_name)
+//{
+//	IObjectTracker *instance = nullptr;
+//	if (tracker_name == "MeanShiftTracker")
+//		instance = new MeanShiftTracker();
+//
+//	//if (tracker_name == "PFTracker")
+//	//  instance = new PFTracker;
+//	//
+//	if (instance != nullptr)
+//		return std::shared_ptr<IObjectTracker>(instance);
+//	else
+//		return nullptr;
+//}
+
+void CodeBookInit();
+void RunCodeBook(IplImage* &image, IplImage* &yuvImage, IplImage* &ImaskCodeBook, IplImage* &ImaskCodeBookCC, int &nframes);
+void find_connected_components(IplImage *mask, int poly1_hull0, float perimScale, int *num, CvRect *bbs, CvPoint *centers);
+void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
+int Overlap(Rect a, Rect b, float ration);
+void MorphologyProcess(IplImage* &fgmaskIpl);
+void BubbleSort(int* array, int size);
 
 #endif

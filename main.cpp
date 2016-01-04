@@ -4,12 +4,10 @@
 #include "opencv2/video/background_segm.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/legacy/legacy.hpp"
-#include "findComponent.h"
-#include "codebook.h"
 #include "ObjectTrackerFactory.h"
 #include "math.h"
-#include "MCFile.h"
 #include <stdio.h>
+#include <windows.h>
 
 using namespace std;
 using namespace cv;
