@@ -58,20 +58,20 @@ int main(int argc, const char** argv)
 
 #if Use_MOG		
 		bg_model(img, fgmask, update_bg_model ? -1 : 0); //update the model
-		fgmaskIpl = &IplImage(fgmask);
 #endif
 
 #if Use_CodeBook
 		image = &IplImage(img);
 		RunCodeBook(image, yuvImage, ImaskCodeBook, ImaskCodeBookCC, nframes);  //Run codebook function
 		fgmaskIpl = cvCloneImage(ImaskCodeBook);
+		fgmask = Mat(fgmaskIpl);
 #endif
 
 		if (img.empty()) break;
 		img.copyTo(show_img);
 	
 		/* Plot tracking rectangles and its trajectory */
-		tracking_function(show_img, fgmaskIpl, ms_tracker, object, nframes);
+		tracking_function(show_img, fgmask, ms_tracker, object, nframes);
 
 		nframes++;	
 		char k = (char)waitKey(10);

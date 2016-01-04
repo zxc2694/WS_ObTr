@@ -772,7 +772,7 @@ void BubbleSort(int* array, int size)
 	}
 }
 
-void tracking_function(Mat &img, IplImage *fgmaskIpl, IObjectTracker *ms_tracker, Object2D &object, int &nframes)
+void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, Object2D &object, int &nframes)
 {
 	Mat show_img;
 	CvRect bbs[10], bbsV2[10];
@@ -789,6 +789,7 @@ void tracking_function(Mat &img, IplImage *fgmaskIpl, IObjectTracker *ms_tracker
 	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
 	
 	TrackingLine = Scalar::all(0);
+	IplImage *fgmaskIpl = &IplImage(fgmask);
 
 #if Save_imageOutput
 	sprintf(outFilePath, "video_output//%05d.png", nframes + 1);
