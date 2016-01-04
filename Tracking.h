@@ -11,6 +11,8 @@ using namespace std;
 
 const short MaxHistBins = 4096;
 
+
+
 typedef struct
 {
 	int No;						// numbers of track boxes 
@@ -243,5 +245,6 @@ void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat 
 int Overlap(Rect a, Rect b, float ration);
 void MorphologyProcess(IplImage* &fgmaskIpl);
 void BubbleSort(int* array, int size);
+void tracking_function(Mat &img, IplImage *fgmaskIpl, IObjectTracker *ms_tracker, Object2D &object, int &nframes);
 
 #endif
