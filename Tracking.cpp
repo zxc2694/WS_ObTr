@@ -4,7 +4,6 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/legacy/legacy.hpp"
 #include "Tracking.h"
-#include "GeometricFuncs.h"
 #include <iostream>
 #include <iomanip> 
 
@@ -485,6 +484,15 @@ double MeanShiftTracker::computeSimilarity(const Mat &roiMat, const Mat &kernel,
 		}
 	}
 	return similar_val / double(roiMat.rows*roiMat.cols);
+}
+
+bool testBoxIntersection(int left1, int top1, int right1, int bottom1, int left2, int top2, int right2, int bottom2)
+{
+	if (right1 < left2)	return false;	// 1 is left of 2
+	if (left1 > right2) return false;	// 1 is right of 2
+	if (bottom1 < top2)	return false;	// 1 is above of 2
+	if (top1 > bottom2) return false;	// 1 is below of 2
+	return true;
 }
 
 bool MeanShiftTracker::testObjectIntersection(Object2D &obj1, Object2D &obj2)
