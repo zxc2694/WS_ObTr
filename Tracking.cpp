@@ -10,11 +10,6 @@
 
 using namespace std;
 
-
-
-/* Save images output into the "video_output" file */
-#define Save_imageOutput  1
-
 /* Update the initial frame number of codebook */
 int nframesToLearnBG = 1;  //if you use codebook, set 300. If you use MOG, set 1
 
@@ -27,7 +22,6 @@ int ColorNo=0;
 #define CVCLOSE_ITR				1	
 #define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
-
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 
 int objNumArray[10];
@@ -791,12 +785,11 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, Object
 	TrackingLine = Scalar::all(0);
 	IplImage *fgmaskIpl = &IplImage(fgmask);
 
-#if Save_imageOutput
 	sprintf(outFilePath, "video_output//%05d.png", nframes + 1);
 	sprintf(outFilePath2, "video_output//m%05d.png", nframes + 1);
 	//sprintf(outFilePath, "video3_output//%05d.png", nframes + 180);
 	//sprintf(outFilePath2, "video3_output//m%05d.png", nframes + 180);
-#endif
+
 
 	if (nframes == 0)
 	{
@@ -1008,8 +1001,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, Object
 	imshow("image", show_img);
 	cvShowImage("foreground mask", fgmaskIpl);
 
-#if Save_imageOutput
 	imwrite(outFilePath, show_img);
 	cvSaveImage(outFilePath2, fgmaskIpl);
-#endif
+
 }
