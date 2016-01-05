@@ -1,8 +1,7 @@
 #ifndef MEANSHIFTTRACKER_H
 #define MEANSHIFTTRACKER_H
 #define MEANSHIFTTRACKER_H
-#define MAX_OBJ_LIST_SIZE    100
-#define Pixel32S(img,x,y)	((int*)img.data)[(y)*img.cols + (x)]
+
 #include <memory>
 #include "opencv2/core/core.hpp"
 
@@ -11,7 +10,20 @@ using namespace std;
 
 const short MaxHistBins = 4096;
 
+/* Update the initial frame number of codebook */
+#define nframesToLearnBG  1  //if you use codebook, set 300. If you use MOG, set 1
 
+/* Set tracking line length, range: 20~100 */
+#define plotLineLength   30
+
+#define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
+#define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
+#define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
+
+#define CVCONTOUR_APPROX_LEVEL         2
+#define CVCLOSE_ITR                    1	
+#define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
+#define MAX_OBJ_LIST_SIZE            100
 
 typedef struct
 {
