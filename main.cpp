@@ -9,9 +9,6 @@
 #include <stdio.h>
 #include <windows.h>
 
-using namespace std;
-using namespace cv;
-
 /* Select images input */
 #define inputPath_Paul   1
 #define inputPath_Hardy  0

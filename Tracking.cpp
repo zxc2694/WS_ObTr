@@ -8,8 +8,6 @@
 #include <iomanip> 
 #include <windows.h>
 
-using namespace std;
-
 int objNumArray[10];
 int objNumArray_BS[10];
 CvBGCodeBookModel* model = 0;
