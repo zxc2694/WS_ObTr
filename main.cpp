@@ -33,6 +33,7 @@ int main(int argc, const char** argv)
 	CodeBookInit();
 		
 	IObjectTracker *ms_tracker = new MeanShiftTracker();
+//	memset((object).hist, 0, MaxHistBins*sizeof(int));
 	
 	while (1)
 	{
