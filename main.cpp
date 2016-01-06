@@ -33,7 +33,6 @@ int main(int argc, const char** argv)
 	CodeBookInit();
 		
 	IObjectTracker *ms_tracker = new MeanShiftTracker();
-	memset((object).hist, 0, MaxHistBins*sizeof(int));
 	
 	while (1)
 	{
@@ -64,7 +63,15 @@ int main(int argc, const char** argv)
 		if (img.empty()) break;
 	
 		/* Plot tracking rectangles and its trajectory */
-		tracking_function(img, fgmask, ms_tracker, object, nframes);
+		tracking_function(img, fgmask, ms_tracker, nframes);
+
+
+//		int MaxObjNum = 10;  
+//		CvRect bbs[10];
+//		CvPoint centers[10];
+//		IplImage *fgmaskIpl = &IplImage(fgmask);
+//		find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
+//		tracking_ROI_function(img, bbs, MaxObjNum, ms_tracker, nframes);
 
 		nframes++;	
 		char k = (char)waitKey(10);
