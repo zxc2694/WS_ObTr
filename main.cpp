@@ -62,22 +62,27 @@ int main(int argc, const char** argv)
 #endif
 
 		if (img.empty()) break;
-	
+
+		// Get executing time 
+		LARGE_INTEGER m_liPerfFreq = { 0 };
+		QueryPerformanceFrequency(&m_liPerfFreq);	
+		LARGE_INTEGER m_liPerfStart = { 0 }; 
+		QueryPerformanceCounter(&m_liPerfStart);
+
+
 		/* Plot tracking rectangles and its trajectory */
-		tracking_function(img, fgmask, ms_tracker, nframes);
+		tracking_function(img, fgmask, ms_tracker, nframes, NULL, NULL);
 
-
-//		int MaxObjNum = 10;  
-//		CvRect bbs[10];
-//		CvPoint centers[10];
-//		IplImage *fgmaskIpl = &IplImage(fgmask);
-//		find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
-//		tracking_ROI_function(img, bbs, MaxObjNum, ms_tracker, nframes);
+	
+		LARGE_INTEGER liPerfNow = { 0 }; 
+		QueryPerformanceCounter(&liPerfNow);
+		long decodeDulation = (((liPerfNow.QuadPart - m_liPerfStart.QuadPart) * 1000) / m_liPerfFreq.QuadPart);// Compute total needed time (millisecond)
+		cout << "tracking time = " << decodeDulation << "ms" << endl;
 
 		nframes++;	
 		char k = (char)waitKey(10);
 		if (k == 27) break;
-
+	
 	}
 	return 0;
 }

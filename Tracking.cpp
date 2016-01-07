@@ -19,8 +19,13 @@ Scalar *ColorPtr;
  * @param: fgmask     - Image after processing of background subtraction
  * @param: ms_tracker - Builded track object list pointer
  * @param: nframes    - The number of executions 
+ * @param: ROI        - Input all ROIs
+ * @param: ObjNum     - The number of objects
+ * Note: 
+ * 1. Both ROI and ObjNum are NULL, the funciton will use fgmask to find all ROIs of objects.
+ * 2. Both ROI and ObjNum are not NULL, the function will ignore fgmask image.
 */
-void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &nframes)
+void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &nframes, CvRect *ROI, int ObjNum)
 {
 	Mat show_img;
 	CvRect bbs[10], bbsV2[10];
@@ -59,65 +64,46 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 	}
 	else if (nframes == nframesToLearnBG)
 	{
-		/* find components ,and compute bbs information  */
-		MaxObjNum = 10;                                                         // less than 10 objects  
-		find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
-
-		for (int iter = 0; iter < MaxObjNum; ++iter)
-		{
-			ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
-		}
 		ms_tracker->track(img, object_list);
 	}
 	else
 	{
-		MorphologyProcess(fgmaskIpl);  // Run morphology 
+		if (ObjNum == NULL)                                                      //If ObjNum is NULL, we need to find all ROIs.
+		{
+			/* find components ,and compute bbs information  */
+			MaxObjNum = 10;                                                      // less than 10 objects  
+			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
 
-		/* find components ,and compute bbs information  */
-		MaxObjNum = 10;                                                         // less than 10 objects  
-		find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
+			Mat(fgmaskIpl).copyTo(background_BBS);                               // Copy fgmaskIpl to background_BBS
+			static Mat srcROI[10];                                               // for shadow rectangle
 
-		Mat(fgmaskIpl).copyTo(background_BBS);                                  // Copy fgmaskIpl to background_BBS
-		static Mat srcROI[10];                                                  // for shadow rectangle
+			/* Eliminating people's shadow method */
+			for (iter = 0; iter < MaxObjNum; iter++){                            // Get all shadow rectangles named bbsV2
+				bbsV2[iter].x = bbs[iter].x;
+				bbsV2[iter].y = bbs[iter].y + bbs[iter].height * 0.75;
+				bbsV2[iter].width = bbs[iter].width;
+				bbsV2[iter].height = bbs[iter].height * 0.25;
+				srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
+				srcROI[iter] = Scalar::all(0);                                  // Set srcROI as showing black color
+			}
+			IplImage *BBSIpl = &IplImage(background_BBS);
+			find_connected_components(BBSIpl, 1, 4, &MaxObjNum, bbs, centers);  // Secondly, Run the function of searching components to get update of bbs
 
-		/* Eliminating people's shadow method */
-		for (iter = 0; iter < MaxObjNum; iter++){                               // Get all shadow rectangles named bbsV2
-			bbsV2[iter].x = bbs[iter].x;
-			bbsV2[iter].y = bbs[iter].y + bbs[iter].height * 0.75;
-			bbsV2[iter].width = bbs[iter].width;
-			bbsV2[iter].height = bbs[iter].height * 0.25;
-			srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
-			srcROI[iter] = Scalar::all(0);                                     // Set srcROI as showing black color
+			for (iter = 0; iter < MaxObjNum; iter++)
+				bbs[iter].height = bbs[iter].height + bbsV2[iter].height;       // Merge bbs and bbsV2 to get final ROI
+
+			/* Plot the rectangles background subtarction finds */
+//          for (iter = 0; iter < MaxObjNum; iter++){
+//				rectangle(img, bbs[iter], Scalar(0, 255, 255), 2);
+//          }
 		}
-		IplImage *BBSIpl = &IplImage(background_BBS);
-		find_connected_components(BBSIpl, 1, 4, &MaxObjNum, bbs, centers);     // Secondly, Run the function of searching components to get update of bbs
-
-		for (iter = 0; iter < MaxObjNum; iter++)
-			bbs[iter].height = bbs[iter].height + bbsV2[iter].height;          // Merge bbs and bbsV2 to get final ROI
-
-		/* Plot the rectangles background subtarction finds */
-		for (iter = 0; iter < MaxObjNum; iter++){
-			rectangle(img, bbs[iter], Scalar(0, 255, 255), 2);
+		else   //If ObjNum is not NULL, we use existing ROIs.
+		{
+			MaxObjNum = ObjNum;
+			for (int iter = 0; iter < MaxObjNum; iter++)
+				bbs[iter] = ROI[iter];
 		}
-
-		LARGE_INTEGER m_liPerfFreq = { 0 };
-		QueryPerformanceFrequency(&m_liPerfFreq);
-
-		// Get executing time 
-		LARGE_INTEGER m_liPerfStart = { 0 };
-		QueryPerformanceCounter(&m_liPerfStart);
-
 		ms_tracker->track(img, object_list);
-
-		// Get executing time 
-		LARGE_INTEGER liPerfNow = { 0 };
-		QueryPerformanceCounter(&liPerfNow);
-
-		// Compute total needed time (millisecond)
-		long decodeDulation = (((liPerfNow.QuadPart - m_liPerfStart.QuadPart) * 1000) / m_liPerfFreq.QuadPart);
-		// print 
-		cout << "tracking time = " << decodeDulation << "ms" << endl;
-
 
 		if (nframes > nframesToLearnBG + 1) //Start to update the object tracking
 			ms_tracker->checkTrackedList(object_list, prev_object_list);
@@ -159,8 +145,8 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				{
 					for (iter2 = iter1 + 1; iter2 < (int)replaceList.size(); ++iter2)
 					{
-						cout << Pixel32S(ms_tracker->DistMat, min(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
-							max(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;
+//						cout << Pixel32S(ms_tracker->DistMat, min(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
+//							max(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;
 
 						if (Pixel32S(ms_tracker->DistMat, min(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
 							max(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
@@ -260,215 +246,6 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 }
 
-/* Function: tracking_ROI_function
- * @param: img        - Image input(RGB)
- * @param: bbs        - Input of ROI array
- * @param: MaxObjNum  - The number of objects
- * @param: ms_tracker - Builded track object list pointer
- * @param: nframes    - The number of executions
-*/
-void tracking_ROI_function(Mat &img, CvRect *bbs, int &MaxObjNum, IObjectTracker *ms_tracker, int &nframes)
-{
-	Mat show_img;
-	char outFilePath[100];
-	char outFilePath2[100];
-	int c, n, iter, iter2;
-	int first_last_diff = 1;                                    //compare first number with last number 
-	static vector<Object2D> object_list;
-	static vector<Object2D> prev_object_list;
-	static char prevData = false;
-	static int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };  //for tracking line
-	static Mat background_BBS(img.rows, img.cols, CV_8UC1);
-	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
-
-	TrackingLine = Scalar::all(0);
-
-	sprintf(outFilePath, "video_output//%05d.png", nframes + 1);
-	sprintf(outFilePath2, "video_output//m%05d.png", nframes + 1);
-	//sprintf(outFilePath, "video3_output//%05d.png", nframes + 180);
-	//sprintf(outFilePath2, "video3_output//m%05d.png", nframes + 180);
-
-
-	if (nframes == 0)
-	{
-		for (unsigned int s = 0; s < 10; s++)
-		{
-			objNumArray[s] = 65535;                       // Set all values as max number for ordered arrangement
-			objNumArray_BS[s] = 65535;
-		}
-	}
-	else if (nframes < nframesToLearnBG)
-	{
-
-	}
-	else if (nframes == nframesToLearnBG)
-	{
-		for (int iter = 0; iter < MaxObjNum; ++iter)
-		{
-			ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
-		}
-		ms_tracker->track(img, object_list);
-	}
-	else
-	{
-
-		LARGE_INTEGER m_liPerfFreq = { 0 };
-		QueryPerformanceFrequency(&m_liPerfFreq);
-
-		// Get executing time 
-		LARGE_INTEGER m_liPerfStart = { 0 };
-		QueryPerformanceCounter(&m_liPerfStart);
-
-		ms_tracker->track(img, object_list);
-
-		// Get executing time 
-		LARGE_INTEGER liPerfNow = { 0 };
-		QueryPerformanceCounter(&liPerfNow);
-
-		// Compute total needed time (millisecond)
-		long decodeDulation = (((liPerfNow.QuadPart - m_liPerfStart.QuadPart) * 1000) / m_liPerfFreq.QuadPart);
-		// print 
-		cout << "tracking time = " << decodeDulation << "ms" << endl;
-
-
-		if (nframes > nframesToLearnBG + 1) //Start to update the object tracking
-			ms_tracker->checkTrackedList(object_list, prev_object_list);
-
-		int bbs_iter;
-		size_t obj_list_iter;
-		for (bbs_iter = 0; bbs_iter < MaxObjNum; ++bbs_iter)
-		{
-			bool Overlapping = false, addToList = true;
-			vector<int> replaceList;
-
-			for (obj_list_iter = 0; obj_list_iter < object_list.size(); ++obj_list_iter)
-			{
-				if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, replace the boundingBox.
-					// && (bbs[bbs_iter].width*bbs[bbs_iter].height < 4.0f*object_list[obj_list_iter].boundingBox.width*object_list[obj_list_iter].boundingBox.height)
-				{
-					if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.5f)) // Overlap > 0.5 --> replace the boundingBox
-					{
-						replaceList.push_back((int)obj_list_iter);
-					}
-				}
-				else
-				{
-					if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.3f))		addToList = false; //If the size of overlap is small, don't add to object list. (no replace)
-				}
-			} // end of 2nd for 
-
-			int iter1 = 0, iter2 = 0;
-
-			if ((int)replaceList.size() != 0)
-			{
-				for (int iter = 0; iter < object_list.size(); ++iter)
-				{
-					if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height)
-						&& Overlap(bbs[bbs_iter], object_list[iter].boundingBox, 0.5f))		replaceList.push_back(iter);
-				}
-
-				for (iter1 = 0; iter1 < (int)replaceList.size(); ++iter1)
-				{
-					for (iter2 = iter1 + 1; iter2 < (int)replaceList.size(); ++iter2)
-					{
-						cout << Pixel32S(ms_tracker->DistMat, min(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
-							max(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;
-
-						if (Pixel32S(ms_tracker->DistMat, min(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
-							max(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
-						{
-							addToList = false;
-							goto end;
-						}
-					}
-				}
-			}
-		end: // break for loop
-
-			if ((int)replaceList.size() != 0 && iter1 == (int)replaceList.size())
-			{
-				Overlapping = true;
-				ms_tracker->updateObjBbs(img, object_list, bbs[bbs_iter], replaceList[0]);
-				for (int iter = 1; iter < (int)replaceList.size(); ++iter)
-				{
-					for (int iterColor = 0; iterColor < 10; iterColor++)
-					{
-						if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
-						{
-							objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-							break;
-						}
-					}
-					object_list.erase(object_list.begin() + replaceList[iter]);
-				}
-			}
-
-			if (!Overlapping && addToList)		ms_tracker->addTrackedList(img, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
-
-			vector<int>().swap(replaceList);
-		}  // end of 1st for 
-
-		for (iter = 0; iter < 10; iter++)
-			objNumArray_BS[iter] = objNumArray[iter]; // Copy array from objNumArray to objNumArray_BS
-
-		BubbleSort(objNumArray_BS, 10);               // Let objNumArray_BS array execute bubble sort 
-
-		ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
-
-
-		/* plotting trajectory */
-		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		{
-			if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
-			{
-				// Plotting all the tracking lines
-				first_last_diff = ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
-
-				// Removing the tracking box when it's motionless for a while 
-				if (first_last_diff == 0)
-				{
-					for (int iterColor = 0; iterColor < 10; iterColor++)
-					{
-						if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
-						{
-							objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-							break;
-						}
-					}
-					object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
-					first_last_diff = 1;
-				}
-			}
-			if (object_list.size() == 0){ //Prevent out of vector range
-				break;
-			}
-			// Get previous point in order to use line function. 
-			pre_data_X[obj_list_iter] = 0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x);
-			pre_data_Y[obj_list_iter] = 0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y);
-
-			if (object_list[obj_list_iter].PtNumber == plotLineLength + 1) //Restarting count when count > plotLineLength number
-				object_list[obj_list_iter].PtNumber = 0;
-
-			object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
-			object_list[obj_list_iter].PtNumber++;
-			object_list[obj_list_iter].PtCount++;
-
-		}// end of plotting trajectory
-		prevData = true;
-	}
-
-	/* Show the number of the frame on the image */
-	stringstream textFrameNo;
-	textFrameNo << nframes;
-	putText(img, "Frame=" + textFrameNo.str(), Point(10, img.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
-
-	/* Display image output */
-	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0)); // Merge 3-channel image and 4-channel image
-	imshow("image", show_img);
-	imwrite(outFilePath, show_img);
-
-}
-
 MeanShiftTracker::MeanShiftTracker() :kernel_type(0), radius(1), bin_width(32)
 {
 	bins = 256 / bin_width;
@@ -534,8 +311,8 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 		else if (obj.No > object_list[(int)iter].No) 
 			Pixel32S(DistMat, object_list[(int)iter].No, obj.No) = DistBetObj(obj.boundingBox, object_list[(int)iter].boundingBox);
 
-		cout << Pixel32S(DistMat, object_list[(int)iter].No, obj.No);
-		cout << "";
+//		cout << Pixel32S(DistMat, object_list[(int)iter].No, obj.No);
+//		cout << "";
 
 	}
 	static int countNo = 0;
@@ -775,7 +552,7 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 			getDensityEstimate(tempMat, kernel, hist);
 			Mat weight(Pos.height, Pos.width, CV_32FC1);
 			object_list[c].similar_val = computeSimilarity(tempMat, kernel, object_list[c].hist, hist, weight);
-			cout << object_list[c].similar_val << endl;
+//			cout << object_list[c].similar_val << endl;
 			int iters = 0;
 			while (iters < Max_Iters && object_list[c].similar_val < Similar_Val_Threshold)
 			{
@@ -806,9 +583,9 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 				object_list[c].similar_val = computeSimilarity(tempMat, kernel, object_list[c].hist, hist, weight);
 				object_list[c].boundingBox = Pos;
 				iters++;
-				cout << iters << ":" << object_list[c].similar_val << "...";
+//				cout << iters << ":" << object_list[c].similar_val << "...";
 			} //end of while
-			cout << Pos << endl;
+//			cout << Pos << endl;
 		//} // end of if
 	} // end of for
 	return 1;
