@@ -4,6 +4,7 @@
 
 #include <memory>
 #include "opencv2/core/core.hpp"
+#include "opencv2/video/tracking.hpp"
 
 using namespace cv;
 using namespace std;
@@ -222,5 +223,6 @@ int Overlap(Rect a, Rect b, float ration);
 void MorphologyProcess(IplImage* &fgmaskIpl);
 void BubbleSort(int* array, int size);
 void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &nframes, CvRect *bbs, int MaxObjNum);
+void KF_init(cv::KalmanFilter *kf);
 
 #endif

@@ -3,6 +3,8 @@
 #include "opencv2/video/background_segm.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/legacy/legacy.hpp"
+#include "opencv2/video/video.hpp"
+#include "opencv2/video/tracking.hpp"
 #include "Tracking.h"
 #include <iostream>
 #include <iomanip> 
@@ -12,7 +14,6 @@ int objNumArray[10];
 int objNumArray_BS[10];
 CvBGCodeBookModel* model = 0;
 Scalar *ColorPtr;
-
 
 /* Function: tracking_function
  * @param: img        - Image input(RGB)
@@ -40,7 +41,23 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 	static int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };  //for tracking line
 	static Mat background_BBS(img.rows, img.cols, CV_8UC1);
 	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
-
+	
+	// >>>> Kalman Filter
+	int stateSize = 6;
+	int measSize = 4;
+	int contrSize = 0;
+	unsigned int type = CV_32F;
+	static double ticks = 0;
+	static bool found = false;
+	static int notFoundCount = 0;
+	static KalmanFilter kf[5] = { KalmanFilter(stateSize, measSize, contrSize, type), KalmanFilter(stateSize, measSize, contrSize, type), KalmanFilter(stateSize, measSize, contrSize, type), KalmanFilter(stateSize, measSize, contrSize, type), KalmanFilter(stateSize, measSize, contrSize, type) };
+	static Mat state[5] = { Mat(stateSize, 1, type), Mat(stateSize, 1, type), Mat(stateSize, 1, type), Mat(stateSize, 1, type), Mat(stateSize, 1, type) };
+	static Mat meas[5] = { Mat(measSize, 1, type), Mat(measSize, 1, type), Mat(measSize, 1, type), Mat(measSize, 1, type), Mat(measSize, 1, type) };
+	double precTick = ticks;
+	ticks = (double)cv::getTickCount();
+	double dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
+	// <<<< Kalman Filter
+	
 	TrackingLine = Scalar::all(0);
 	IplImage *fgmaskIpl = &IplImage(fgmask);
 
@@ -49,7 +66,6 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 	//sprintf(outFilePath, "video3_output//%05d.png", nframes + 180);
 	//sprintf(outFilePath2, "video3_output//m%05d.png", nframes + 180);
 
-
 	if (nframes == 0)
 	{
 		for (unsigned int s = 0; s < 10; s++)
@@ -57,6 +73,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			objNumArray[s] = 65535;                       // Set all values as max number for ordered arrangement
 			objNumArray_BS[s] = 65535;
 		}
+		KF_init(kf);
 	}
 	else if (nframes < nframesToLearnBG)
 	{
@@ -468,7 +485,7 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 				//ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
 				//ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
 				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);		
-				for (iter = 0; iter < 10; iter++)
+/*				for (iter = 0; iter < 10; iter++)
 				{
 					if (objNumArray_BS[c] == objNumArray[iter])
 					{
@@ -477,8 +494,8 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 					}
 				}
 				object_list[c].color = *(ColorPtr + iter);
-
-	//			ss3 << object_list[c].No;
+*/
+                ss3 << object_list[c].No;
 				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 
@@ -977,3 +994,52 @@ void BubbleSort(int* array, int size)
 	}
 }
 
+void KF_init(cv::KalmanFilter *kf)
+{
+	int stateSize = 6;
+	int measSize = 4;
+	int contrSize = 0;
+	unsigned int type = CV_32F;
+	for (int i = 0; i < 5; i++)
+	{
+		// Transition State Matrix A
+		// Note: set dT at each processing step!
+		// [ 1 0 dT 0  0 0 ]
+		// [ 0 1 0  dT 0 0 ]
+		// [ 0 0 1  0  0 0 ]
+		// [ 0 0 0  1  0 0 ]
+		// [ 0 0 0  0  1 0 ]
+		// [ 0 0 0  0  0 1 ]
+		setIdentity(kf[i].transitionMatrix);
+
+		// Measure Matrix H
+		// [ 1 0 0 0 0 0 ]
+		// [ 0 1 0 0 0 0 ]
+		// [ 0 0 0 0 1 0 ]
+		// [ 0 0 0 0 0 1 ]
+		kf[i].measurementMatrix = Mat::zeros(measSize, stateSize, type);
+		kf[i].measurementMatrix.at<float>(0) = 1.0f;
+		kf[i].measurementMatrix.at<float>(7) = 1.0f;
+		kf[i].measurementMatrix.at<float>(16) = 1.0f;
+		kf[i].measurementMatrix.at<float>(23) = 1.0f;
+
+		// Process Noise Covariance Matrix Q
+		// [ Ex   0   0     0     0    0  ]
+		// [ 0    Ey  0     0     0    0  ]
+		// [ 0    0   Ev_x  0     0    0  ]
+		// [ 0    0   0     Ev_y  0    0  ]
+		// [ 0    0   0     0     Ew   0  ]
+		// [ 0    0   0     0     0    Eh ]
+		//setIdentity(kf.processNoiseCov, Scalar(1e-2));
+		kf[i].processNoiseCov.at<float>(0) = 1e-2;
+		kf[i].processNoiseCov.at<float>(7) = 1e-2;
+		kf[i].processNoiseCov.at<float>(14) = 5.0f;
+		kf[i].processNoiseCov.at<float>(21) = 5.0f;
+		kf[i].processNoiseCov.at<float>(28) = 1e-2;
+		kf[i].processNoiseCov.at<float>(35) = 1e-2;
+
+		// Measures Noise Covariance Matrix R
+		setIdentity(kf[i].measurementNoiseCov, Scalar(1e-1));
+		// <<<< Kalman Filter
+	}	
+}
