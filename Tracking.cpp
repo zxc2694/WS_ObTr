@@ -83,6 +83,17 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 	}
 	else if (nframes == nframesToLearnBG)
 	{
+		if (ObjNum == NULL)                                                      //If ObjNum is NULL, we need to find all ROIs.
+		{
+			/* find components ,and compute bbs information  */
+			MaxObjNum = 10;                                                         // less than 10 objects  
+			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
+
+			for (int iter = 0; iter < MaxObjNum; ++iter)
+			{
+				ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
+			}
+		}
 		ms_tracker->track(img, object_list);
 	}
 	else
