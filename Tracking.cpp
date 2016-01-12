@@ -358,7 +358,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 }
 
-MeanShiftTracker::MeanShiftTracker() :kernel_type(0), radius(1), bin_width(32)
+MeanShiftTracker::MeanShiftTracker() :kernel_type(0), radius(1), bin_width(32), count(0), Max_Iters(8), Similar_Val_Threshold(0.165)
 {
 	bins = 256 / bin_width;
 	DistMat = Mat::zeros(MAX_OBJ_LIST_SIZE, MAX_OBJ_LIST_SIZE, CV_32SC1);
