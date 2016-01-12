@@ -121,11 +121,14 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 			for (iter = 0; iter < MaxObjNum; iter++)
 				bbs[iter].height = bbs[iter].height + bbsV2[iter].height;       // Merge bbs and bbsV2 to get final ROI
-
-			/* Plot the rectangles background subtarction finds */
-//          for (iter = 0; iter < MaxObjNum; iter++){
-//				rectangle(img, bbs[iter], Scalar(0, 255, 255), 2);
-//          }
+          
+			if (display_bbsRectangle == true)
+			{
+				/* Plot the rectangles background subtarction finds */
+				for (iter = 0; iter < MaxObjNum; iter++){
+					rectangle(img, bbs[iter], Scalar(0, 255, 255), 2);
+				}
+			}
 		}
 		else   //If ObjNum is not NULL, we use existing ROIs.
 		{
@@ -285,7 +288,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				cv::Point center;
 				center.x = state[i].at<float>(0);
 				center.y = state[i].at<float>(1);
-				if ((predRect.x != 0) && (predRect.y != 0))
+				if ((predRect.x != 0) && (predRect.y != 0) && display_kalmanRectangle == true)
 				{
 					cv::circle(img, center, 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
 					cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
@@ -577,7 +580,7 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 				//ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
 				//ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
 				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);		
-/*				for (iter = 0; iter < 10; iter++)
+				for (iter = 0; iter < 10; iter++)
 				{
 					if (objNumArray_BS[c] == objNumArray[iter])
 					{
@@ -586,8 +589,8 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 					}
 				}
 				object_list[c].color = *(ColorPtr + iter);
-*/
-                ss3 << object_list[c].No;
+
+            //    ss3 << object_list[c].No;
 				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 

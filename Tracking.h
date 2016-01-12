@@ -17,6 +17,10 @@ const short MaxHistBins = 4096;
 /* Set tracking line length, range: 20~100 */
 #define plotLineLength   30
 
+/* Setting 1 if you want to display it */
+#define display_bbsRectangle     0
+#define display_kalmanRectangle  0
+
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
 #define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
 #define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
