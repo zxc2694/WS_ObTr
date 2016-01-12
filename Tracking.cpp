@@ -266,80 +266,80 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 		// >>>>> Kalman Update
 		// >>>> Kalman Filter
-		if (found)
-		{
-			for (int i = 0; i < object_list.size(); i++)
-			{
-				// >>>> Matrix A
-				kf[i].transitionMatrix.at<float>(2) = dT;
-				kf[i].transitionMatrix.at<float>(9) = dT;
-				// <<<< Matrix A
+		//if (found)
+		//{
+		//	for (int i = 0; i < object_list.size(); i++)
+		//	{
+		//		// >>>> Matrix A
+		//		kf[i].transitionMatrix.at<float>(2) = dT;
+		//		kf[i].transitionMatrix.at<float>(9) = dT;
+		//		// <<<< Matrix A
 
-				//cout << "dT:" << endl << dT << endl;
-				state[i] = kf[i].predict();
-				//cout << "State post:" << endl << state[i] << endl;
+		//		//cout << "dT:" << endl << dT << endl;
+		//		state[i] = kf[i].predict();
+		//		//cout << "State post:" << endl << state[i] << endl;
 
-				cv::Rect predRect;
-				predRect.width = state[i].at<float>(4);
-				predRect.height = state[i].at<float>(5);
-				predRect.x = state[i].at<float>(0) - predRect.width / 2;
-				predRect.y = state[i].at<float>(1) - predRect.height / 2;
+		//		cv::Rect predRect;
+		//		predRect.width = state[i].at<float>(4);
+		//		predRect.height = state[i].at<float>(5);
+		//		predRect.x = state[i].at<float>(0) - predRect.width / 2;
+		//		predRect.y = state[i].at<float>(1) - predRect.height / 2;
 
-				cv::Point center;
-				center.x = state[i].at<float>(0);
-				center.y = state[i].at<float>(1);
-				if ((predRect.x != 0) && (predRect.y != 0) && display_kalmanRectangle == true)
-				{
-					cv::circle(img, center, 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
-					cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
-				}
-			}
-		}
-		for (int iter = 0; iter < object_list.size(); iter++){
-			ballsBox.push_back(object_list[iter].boundingBox);
-		}
-		// <<<< Kalman Filter
-		if (object_list.size() == 0)
-		{
-			notFoundCount++;
-			if (notFoundCount >= 100)
-				found = false;
-		}
-		else
-		{
-			notFoundCount = 0;
-			for (int i = 0; i < object_list.size(); i++)
-			{
-				meas[i].at<float>(0) = ballsBox[i].x + ballsBox[i].width / 2;
-				meas[i].at<float>(1) = ballsBox[i].y + ballsBox[i].height / 2;
-				meas[i].at<float>(2) = (float)ballsBox[i].width;
-				meas[i].at<float>(3) = (float)ballsBox[i].height;
+		//		cv::Point center;
+		//		center.x = state[i].at<float>(0);
+		//		center.y = state[i].at<float>(1);
+		//		if ((predRect.x != 0) && (predRect.y != 0) && display_kalmanRectangle == true)
+		//		{
+		//			cv::circle(img, center, 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
+		//			cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
+		//		}
+		//	}
+		//}
+		//for (int iter = 0; iter < object_list.size(); iter++){
+		//	ballsBox.push_back(object_list[iter].boundingBox);
+		//}
+		//// <<<< Kalman Filter
+		//if (object_list.size() == 0)
+		//{
+		//	notFoundCount++;
+		//	if (notFoundCount >= 100)
+		//		found = false;
+		//}
+		//else
+		//{
+		//	notFoundCount = 0;
+		//	for (int i = 0; i < object_list.size(); i++)
+		//	{
+		//		meas[i].at<float>(0) = ballsBox[i].x + ballsBox[i].width / 2;
+		//		meas[i].at<float>(1) = ballsBox[i].y + ballsBox[i].height / 2;
+		//		meas[i].at<float>(2) = (float)ballsBox[i].width;
+		//		meas[i].at<float>(3) = (float)ballsBox[i].height;
 
-				if (!found) // First detection!
-				{
-					// >>>> Initialization
-					kf[i].errorCovPre.at<float>(0) = 1; // px
-					kf[i].errorCovPre.at<float>(7) = 1; // px
-					kf[i].errorCovPre.at<float>(14) = 1;
-					kf[i].errorCovPre.at<float>(21) = 1;
-					kf[i].errorCovPre.at<float>(28) = 1; // px
-					kf[i].errorCovPre.at<float>(35) = 1; // px
+		//		if (!found) // First detection!
+		//		{
+		//			// >>>> Initialization
+		//			kf[i].errorCovPre.at<float>(0) = 1; // px
+		//			kf[i].errorCovPre.at<float>(7) = 1; // px
+		//			kf[i].errorCovPre.at<float>(14) = 1;
+		//			kf[i].errorCovPre.at<float>(21) = 1;
+		//			kf[i].errorCovPre.at<float>(28) = 1; // px
+		//			kf[i].errorCovPre.at<float>(35) = 1; // px
 
-					state[i].at<float>(0) = meas[i].at<float>(0);
-					state[i].at<float>(1) = meas[i].at<float>(1);
-					state[i].at<float>(2) = 0;
-					state[i].at<float>(3) = 0;
-					state[i].at<float>(4) = meas[i].at<float>(2);
-					state[i].at<float>(5) = meas[i].at<float>(3);
-					// <<<< Initialization
+		//			state[i].at<float>(0) = meas[i].at<float>(0);
+		//			state[i].at<float>(1) = meas[i].at<float>(1);
+		//			state[i].at<float>(2) = 0;
+		//			state[i].at<float>(3) = 0;
+		//			state[i].at<float>(4) = meas[i].at<float>(2);
+		//			state[i].at<float>(5) = meas[i].at<float>(3);
+		//			// <<<< Initialization
 
-					found = true;
-				}
-				else
-					kf[i].correct(meas[i]); // Kalman Correction
-				//cout << "Measure matrix:" << endl << meas[i] << endl;
-			}
-		}
+		//			found = true;
+		//		}
+		//		else
+		//			kf[i].correct(meas[i]); // Kalman Correction
+		//		//cout << "Measure matrix:" << endl << meas[i] << endl;
+		//	}
+		//}
 		// <<<<< Kalman Update
 	}
 
