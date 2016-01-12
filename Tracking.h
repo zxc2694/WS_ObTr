@@ -70,7 +70,7 @@ typedef struct
 class IObjectTracker
 {
 public:
-	IObjectTracker(){}
+	IObjectTracker(){count = 0;}
 	~IObjectTracker(){}
 
 
@@ -92,8 +92,8 @@ public:
 	//float track(Mat &img, Object2D &object); // track single object
 	//float getDistanceThreshold(){ return Dist_Threshold; }
 	//vector<float> track2(Mat &img, vector<Object2D> &object_list); // track multiple objects
+	int count;
 private:
-	int count = 0;
 	/*DescriptorFactory *pDescriptorFac;
 	IObjectDescriptor *HOG;
 	const float	Dist_Threshold = 0.1f;*/
@@ -201,12 +201,11 @@ public:
 	//
 	void setRadius(int _r){ radius = _r; }
 	void setBinWidt(int _bin_width){ bin_width = _bin_width; }
+	int count;
+	const int Max_Iters;
+	const float Similar_Val_Threshold;
 private:
 
-
-	int count = 0;
-	const int Max_Iters = 8;
-	const float Similar_Val_Threshold = 0.165;
 	int  kernel_type;
 	int  radius;
 	int	 bin_width;
