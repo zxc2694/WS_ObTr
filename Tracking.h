@@ -28,11 +28,12 @@ const short MaxHistBins = 4096;
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 #define MAX_OBJ_LIST_SIZE            100
 # define PI       3.141592653589793238463
-#define DELE_RECT_FRAMENO              3
+#define DELE_RECT_FRAMENO              15
 
 typedef struct
 {
-	int p1[10];  //It decides whether rectangles is motionless or not.
+	//It decides whether rectangles is motionless or not.
+	int p1[10];  
 	int p2[10];
 	int p3[10];
 	int p4[10];
@@ -89,14 +90,11 @@ typedef struct
 	vector<double> descriptor;
 } Object3D;
 
-
-
 class IObjectTracker
 {
 public:
 	IObjectTracker(){ count = 0; }
 	~IObjectTracker(){}
-
 
 	//virtual void addTrackedList(const Mat &img, vector<Object2D> &object_list, Object2D &obj) = 0;
 	Mat DistMat;

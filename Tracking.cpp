@@ -242,21 +242,18 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				// Plotting all the tracking lines
 				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
 
-				// Removing the tracking box when it's motionless for a while 
-//				if ((object_list[obj_list_iter].comparePoint[0].x != 0) && (object_list[obj_list_iter].comparePoint[0] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]) && (object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO / 2] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]))
+				// Removing the tracking box when it's motionless for a while 	
+				int black=0;
+				for (int i = 0; i < DELE_RECT_FRAMENO; i++)
+				{
+					if (object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] != 0) // Calculating how much black point in image of background subtracion.
+						break;
+					else
+						black++;
+				}
 
-					//CvScalar cvGet2D(const CvArr* arr, int idx0, int idx1);
-				//int tmp;
-				//tmp = cvGet2D(fgmaskIpl, 253, 12).val[0]; // Note: cvGet2D(IplImage*, y, x)
-				//if (comparePoint_9 == 255)
-				//{
-				//	int a=1;
-				//	a++;
-				//}
-
-				
-				if ((object_list[obj_list_iter].comparePoint[0].x) && (object_list[obj_list_iter].comparePoint[0] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]) && (object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO / 2] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]))
-
+				// Removing tracking rectangle when its central point is all black in image of background subtracion.	
+				if (DELE_RECT_FRAMENO == black)
 				{
 					for (int iterColor = 0; iterColor < 10; iterColor++)
 					{
@@ -286,11 +283,8 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
 				object_list[obj_list_iter].cPtNumber = 0;
 
-			//object_list[obj_list_iter].comparePoint[object_list[obj_list_iter].cPtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
-			//object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, pre_data_Y[obj_list_iter], pre_data_X[obj_list_iter]).val[0];
-			//object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, pre_data_Y[obj_list_iter], pre_data_X[obj_list_iter]).val[0];
-			//object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, pre_data_Y[obj_list_iter], pre_data_X[obj_list_iter]).val[0];
-
+			object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, 0.5 * object_list[obj_list_iter].boundingBox.height + object_list[obj_list_iter].boundingBox.y, 0.5*object_list[obj_list_iter].boundingBox.width + object_list[obj_list_iter].boundingBox.x).val[0]; // Note: cvGet2D(IplImage*, y, x)
+			
 			object_list[obj_list_iter].PtNumber++;
 			object_list[obj_list_iter].cPtNumber++;
 			object_list[obj_list_iter].PtCount++;
@@ -376,7 +370,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 		//}
 		// <<<<< Kalman Update
 	
-} // end while 
+	} // end while 
 
 
 
