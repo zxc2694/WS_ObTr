@@ -29,6 +29,7 @@ const short MaxHistBins = 4096;
 #define CVCLOSE_ITR                    1	
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 #define MAX_OBJ_LIST_SIZE            100
+#define DELE_RECT_FRAMENO             30
 
 typedef struct
 {
@@ -49,8 +50,10 @@ typedef struct
 	Size	objSize;
 	vector<float> descriptor;
 	Point point[100];
+	Point comparePoint[100];     //It decides whether rectangles is motionless or not.  
 	Scalar color;
 	int PtNumber;
+	int cPtNumber;
 	int PtCount;
 	int countDone;
 	int times;
@@ -86,7 +89,7 @@ public:
 	virtual bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list) = 0;
 	virtual bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list) = 0;
 	virtual void drawTrackBox(Mat &img, vector<Object2D> &object_list) = 0;
-	virtual int  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
+	virtual void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
 	//float getDistanceThreshold(){ return Dist_Threshold; }
 
 	//float track(Mat &img, Object2D &object); // track single object
@@ -196,7 +199,7 @@ public:
 	bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
 	bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
 	void drawTrackBox(Mat &img, vector<Object2D> &object_list);
-	int  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
+	void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
 	int  track(Mat &img, vector<Object2D> &object_list);
 	//
 	void setRadius(int _r){ radius = _r; }

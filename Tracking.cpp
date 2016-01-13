@@ -34,7 +34,6 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 	char outFilePath[100];
 	char outFilePath2[100];
 	int c, n, iter, iter2, MaxObjNum;
-	int first_last_diff = 1;                                    //compare first number with last number 
 	static vector<Object2D> object_list;
 	static vector<Object2D> prev_object_list;
 	static char prevData = false;
@@ -230,10 +229,10 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
 			{
 				// Plotting all the tracking lines
-				first_last_diff = ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
-
+				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
+				
 				// Removing the tracking box when it's motionless for a while 
-				if (first_last_diff == 0)
+				if ((object_list[obj_list_iter].comparePoint[0].x != 0) && (object_list[obj_list_iter].comparePoint[0] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]) && (object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO/2] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]))
 				{
 					for (int iterColor = 0; iterColor < 10; iterColor++)
 					{
@@ -244,8 +243,9 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 						}
 					}
 					object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
-					first_last_diff = 1;
 				}
+
+
 			}
 			if (object_list.size() == 0){ //Prevent out of vector range
 				break;
@@ -253,12 +253,21 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			// Get previous point in order to use line function. 
 			pre_data_X[obj_list_iter] = 0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x);
 			pre_data_Y[obj_list_iter] = 0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y);
-
-			if (object_list[obj_list_iter].PtNumber == plotLineLength + 1) //Restarting count when count > plotLineLength number
+			
+			//Restarting count when count > plotLineLength number
+			if (object_list[obj_list_iter].PtNumber == plotLineLength + 1) 
 				object_list[obj_list_iter].PtNumber = 0;
 
 			object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
+			
+			//Restarting count when count > DELE_RECT_FRAMENO number
+			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1) 
+				object_list[obj_list_iter].cPtNumber = 0;
+			
+			object_list[obj_list_iter].comparePoint[object_list[obj_list_iter].cPtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
+
 			object_list[obj_list_iter].PtNumber++;
+			object_list[obj_list_iter].cPtNumber++;
 			object_list[obj_list_iter].PtCount++;
 
 		}// end of plotting trajectory
@@ -405,6 +414,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	obj.boundingBox = bbs; 
 	obj.xyz.z = 20;
 	obj.PtNumber = 0;
+	obj.cPtNumber = 0;
 	obj.PtCount = 0;
 	obj.times = 1;
 	memset(obj.hist, 0, MaxHistBins*sizeof(int));
@@ -599,7 +609,7 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 	}
 }
 
-int MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter)
+void MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter)
 {
 	if (object_list[obj_list_iter].PtCount > plotLineLength + 1)										//When plotting arrary is overflow:
 	{
@@ -617,19 +627,12 @@ int MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &o
 			line(TrackingLine, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2]
 				, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * iter2 / plotLineLength), 3, 1, 0);
 		}
-
-		if (object_list[obj_list_iter].PtNumber <= plotLineLength)
-			return object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber - 1].x - object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber].x;
-		else
-			return object_list[obj_list_iter].point[0].x - object_list[obj_list_iter].point[plotLineLength].x;
 	}
 	else
 	{																								//When plotting arrary isn't overflow:
 		for (int iter = 1; iter < object_list[obj_list_iter].PtNumber; iter++)
 			line(TrackingLine, object_list[obj_list_iter].point[iter - 1]										//Directly plot all the points array storages.
 			, object_list[obj_list_iter].point[iter], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * (iter - 1) / (object_list[obj_list_iter].PtNumber - 1)), 3, 1, 0);
-
-		return 1;
 	}
 
 }
