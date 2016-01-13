@@ -27,8 +27,8 @@ const short MaxHistBins = 4096;
 #define CVCLOSE_ITR                    1	
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 #define MAX_OBJ_LIST_SIZE            100
-# define PI       3.141592653589793238463
-#define DELE_RECT_FRAMENO              15
+#define PI       3.141592653589793238463
+#define DELE_RECT_FRAMENO             15
 
 typedef struct
 {

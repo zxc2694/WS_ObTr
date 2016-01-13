@@ -381,8 +381,8 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 	/* Display image output */
 	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0)); // Merge 3-channel image and 4-channel image
-	imshow("image", show_img);
-	cvShowImage("foreground mask", fgmaskIpl);
+	imshow("Tracking_image", show_img);
+	//cvShowImage("foreground mask", fgmaskIpl);
 
 	imwrite(outFilePath, show_img);
 	cvSaveImage(outFilePath2, fgmaskIpl);
@@ -449,6 +449,8 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	obj.times = 1;
 	obj.objScale = 1;
 	obj.kernel.create(obj.boundingBox.height, obj.boundingBox.width, CV_64FC1);
+
+	memset(obj.CP.p5, 255, sizeof(obj.CP.p5));
 
 	getKernel(obj.kernel, kernel_type);
 
