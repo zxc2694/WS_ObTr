@@ -231,7 +231,20 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
 
 				// Removing the tracking box when it's motionless for a while 
-				if ((object_list[obj_list_iter].comparePoint[0].x != 0) && (object_list[obj_list_iter].comparePoint[0] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]) && (object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO / 2] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]))
+//				if ((object_list[obj_list_iter].comparePoint[0].x != 0) && (object_list[obj_list_iter].comparePoint[0] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]) && (object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO / 2] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]))
+
+					//CvScalar cvGet2D(const CvArr* arr, int idx0, int idx1);
+				//int tmp;
+				//tmp = cvGet2D(fgmaskIpl, 253, 12).val[0]; // Note: cvGet2D(IplImage*, y, x)
+				//if (comparePoint_9 == 255)
+				//{
+				//	int a=1;
+				//	a++;
+				//}
+
+				
+				if ((object_list[obj_list_iter].comparePoint[0].x) && (object_list[obj_list_iter].comparePoint[0] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]) && (object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO / 2] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]))
+
 				{
 					for (int iterColor = 0; iterColor < 10; iterColor++)
 					{
@@ -243,8 +256,6 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 					}
 					object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
 				}
-
-
 			}
 			if (object_list.size() == 0){ //Prevent out of vector range
 				break;
@@ -263,7 +274,10 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
 				object_list[obj_list_iter].cPtNumber = 0;
 
-			object_list[obj_list_iter].comparePoint[object_list[obj_list_iter].cPtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
+			//object_list[obj_list_iter].comparePoint[object_list[obj_list_iter].cPtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
+			//object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, pre_data_Y[obj_list_iter], pre_data_X[obj_list_iter]).val[0];
+			//object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, pre_data_Y[obj_list_iter], pre_data_X[obj_list_iter]).val[0];
+			//object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, pre_data_Y[obj_list_iter], pre_data_X[obj_list_iter]).val[0];
 
 			object_list[obj_list_iter].PtNumber++;
 			object_list[obj_list_iter].cPtNumber++;
@@ -1432,4 +1446,8 @@ void KF_init(cv::KalmanFilter *kf)
 	}	
 }
 
+//void ComparedPoints(int x, int y, int w,int h)
+//{
+//	Point p1 = Point(x+)
+//}
 

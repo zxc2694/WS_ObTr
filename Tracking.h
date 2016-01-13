@@ -18,8 +18,8 @@ const short MaxHistBins = 4096;
 #define plotLineLength   30
 
 /* Setting 1 if you want to display it */
-#define display_bbsRectangle     0
-#define display_kalmanRectangle  0
+#define display_bbsRectangle     1
+#define display_kalmanRectangle  1
 
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
 
@@ -29,6 +29,19 @@ const short MaxHistBins = 4096;
 #define MAX_OBJ_LIST_SIZE            100
 # define PI       3.141592653589793238463
 #define DELE_RECT_FRAMENO              3
+
+typedef struct
+{
+	int p1[10];  //It decides whether rectangles is motionless or not.
+	int p2[10];
+	int p3[10];
+	int p4[10];
+	int p5[10];
+	int p6[10];
+	int p7[10];
+	int p8[10];
+	int p9[10];
+} ComparePoint;
 
 typedef struct
 {
@@ -51,11 +64,12 @@ typedef struct
 	Size	objSize;
 	vector<double> descriptor;
 	Point point[100];           // trajectory points 
-	Point comparePoint[100];     //It decides whether rectangles is motionless or not.  
+	Point comparePoint[100];    //It decides whether rectangles is motionless or not. 
 	Scalar color;               // bbs color 
 	Mat kernelDownScale;        // kernel for the down-scaled bbs
 	Mat kernel;                 // kernel for the bbs
 	Mat kernelUpScale;          // kernel for the up-scaled bbs
+	ComparePoint CP;
 	float objScale;
 	int PtNumber;
 	int cPtNumber;
@@ -74,6 +88,8 @@ typedef struct
 	double	hist[MaxHistBins];	// disparity(32_bins) + intensity(32_bins) : for tracking
 	vector<double> descriptor;
 } Object3D;
+
+
 
 class IObjectTracker
 {
