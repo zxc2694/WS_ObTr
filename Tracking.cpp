@@ -92,7 +92,6 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 		{
 			ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
 		}
-		ms_tracker->track(img, object_list);
 	}
 	else
 	{
@@ -149,7 +148,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 			for (obj_list_iter = 0; obj_list_iter < object_list.size(); ++obj_list_iter)
 			{
-				if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, replace the boundingBox.
+				if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
 					// && (bbs[bbs_iter].width*bbs[bbs_iter].height < 4.0f*object_list[obj_list_iter].boundingBox.width*object_list[obj_list_iter].boundingBox.height)
 				{
 					if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.5f)) // Overlap > 0.5 --> replace the boundingBox
@@ -159,7 +158,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				}
 				else
 				{
-					if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.3f))		addToList = false; //If the size of overlap is small, don't add to object list. (no replace)
+					if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.3f))		addToList = false; // If the size of overlap is small, don't add to object list. (no replace)
 				}
 			} // end of 2nd for 
 
@@ -169,7 +168,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			{
 				for (int iter = 0; iter < object_list.size(); ++iter)
 				{
-					if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height)
+					if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above judgement
 						&& Overlap(bbs[bbs_iter], object_list[iter].boundingBox, 0.5f))		replaceList.push_back(iter);
 				}
 
@@ -177,8 +176,8 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				{
 					for (iter2 = iter1 + 1; iter2 < (int)replaceList.size(); ++iter2)
 					{
-						cout << Pixel32S(ms_tracker->DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
-							MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;
+						/*cout << Pixel32S(ms_tracker->DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
+							MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;*/
 
 						if (Pixel32S(ms_tracker->DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
 							MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
@@ -191,12 +190,24 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			}
 		end: // break for loop
 
+
 			if ((int)replaceList.size() != 0 && iter1 == (int)replaceList.size())
 			{
 				Overlapping = true;
-				ms_tracker->updateObjBbs(img, object_list, bbs[bbs_iter], replaceList[0]);
-				for (int iter = 1; iter < (int)replaceList.size(); ++iter)
+
+				// choose obj with longest duration from replaceList to update it by new bbs found by codebook
+				int  objWithLongestDuration = 0;
+				for (int iter = 0; iter < (int)replaceList.size(); ++iter)
 				{
+					if (object_list[replaceList[iter]].PtCount > object_list[replaceList[objWithLongestDuration]].PtCount)		objWithLongestDuration = iter;
+				}
+
+				ms_tracker->updateObjBbs(img, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
+
+				for (int iter = 0; iter < (int)replaceList.size(); ++iter)
+				{
+					if (iter == objWithLongestDuration)		continue; // reserve the obj with longest duration in replaceList
+
 					for (int iterColor = 0; iterColor < 10; iterColor++)
 					{
 						if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
@@ -210,6 +221,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			}
 
 			if (!Overlapping && addToList)		ms_tracker->addTrackedList(img, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
+
 
 			vector<int>().swap(replaceList);
 		}  // end of 1st for 
@@ -457,9 +469,8 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 			Pixel32S(DistMat, obj.No, object_list[(int)iter].No) = DistBetObj(obj.boundingBox, object_list[(int)iter].boundingBox);
 		else if (obj.No > object_list[(int)iter].No)
 			Pixel32S(DistMat, object_list[(int)iter].No, obj.No) = DistBetObj(obj.boundingBox, object_list[(int)iter].boundingBox);
-
-		cout << Pixel32S(DistMat, object_list[(int)iter].No, obj.No);
-		cout << "";
+		
+		//cout << Pixel32S(DistMat, object_list[(int)iter].No, obj.No);
 	}
 
 	static int countNo = 0;
@@ -800,7 +811,7 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 				}
 
 				// if too small bbs center shift, then stop iteration
-				if (pow(shift_x, 2) + pow(shift_x, 2) < epsilon)	break;
+				if (pow(shift_x, 2) + pow(shift_y, 2) < epsilon)	break;
 
 				// iterate at most Max_Mean_Shift_Iter times
 				if (Mean_Shift_Iter == Max_Mean_Shift_Iter)		break;
@@ -885,6 +896,7 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 
 		// Mean_Shift iteration
 		delBbsOutImg = false;
+
 		while (1)
 		{
 			++Mean_Shift_Iter;
@@ -908,9 +920,33 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 
 			double shift_x = normalizedShiftVec.x * CandCen.x; // denormalized shift in img x-axis
 			double shift_y = normalizedShiftVec.y * CandCen.y; // denormalized shift in img y-axis
+			shift_x = round(shift_x);
+			shift_y = round(shift_y);
 
-			object_list[c].boundingBox.x += shift_x;
-			object_list[c].boundingBox.y += shift_y;
+			//if (shift_x > 0)
+			//{
+			//	shift_x += 0.7;
+			//	shift_x = round(shift_x);
+			//}
+			//else
+			//{
+			//	shift_x -= 0.7;
+			//	shift_x = round(shift_x);
+			//}
+
+			//if (shift_y > 0)
+			//{
+			//	shift_y += 0.7;
+			//	shift_y = round(shift_y);
+			//}
+			//else
+			//{
+			//	shift_y -= 0.7;
+			//	shift_y = round(shift_y);
+			//}
+
+			object_list[c].boundingBox.x += (int)shift_x;
+			object_list[c].boundingBox.y += (int)shift_y;
 
 			// if bbs exceed img boundary after shift, then stop iteration
 			if (object_list[c].boundingBox.x < 0 || object_list[c].boundingBox.y < 0 || object_list[c].boundingBox.br().x >= img.cols || object_list[c].boundingBox.br().y >= img.rows)
@@ -938,10 +974,18 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 			}
 
 			// if too small bbs center shift, then stop iteration
-			if (pow(shift_x, 2) + pow(shift_x, 2) < epsilon)	break;
+			if (pow(shift_x, 2) + pow(shift_y, 2) < epsilon)
+			{
+				cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
+				break;
+			}
 
 			// iterate at most Max_Mean_Shift_Iter times
-			if (Mean_Shift_Iter == Max_Mean_Shift_Iter)		break;
+			if (Mean_Shift_Iter == Max_Mean_Shift_Iter)
+			{
+				cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
+				break;
+			}
 
 			// compute color hist
 			tempMat = img(object_list[c].boundingBox);
@@ -1446,8 +1490,4 @@ void KF_init(cv::KalmanFilter *kf)
 	}	
 }
 
-//void ComparedPoints(int x, int y, int w,int h)
-//{
-//	Point p1 = Point(x+)
-//}
 

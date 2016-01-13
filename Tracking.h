@@ -237,7 +237,7 @@ private:
 	int  bins;
 	const float scaleBetFrame = 0.1;
 	const double scaleLearningRate = 0.1; // scale change rate
-	const double epsilon = 9; // min shift in Mean-Shift iteration
+	const double epsilon = 1; // min shift in Mean-Shift iteration
 	void getKernel(Mat &kernel, const int func_type = 0);
 	void computeHist(const Mat &roiMat, const Mat &kernel, double hist[]);
 	int setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight);

@@ -47,8 +47,8 @@ int main(int argc, const char** argv)
 #endif
 
 #if inputPath_Hardy
-		//sprintf(link, "D://test//tracking test//tracking test//video3//%05d.png", nframes + 180);
-		sprintf(link, "D://test//tracking test//tracking test//video//%05d.png", nframes + 1);
+		//sprintf(link, "D://tracking data//3//%05d.png", nframes + 180);
+		sprintf(link, "D://tracking data//4//%05d.png", nframes + 1);
 		img = cvLoadImage(link, 1);
 #endif
 
