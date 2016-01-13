@@ -17,6 +17,10 @@ const short MaxHistBins = 4096;
 /* Set tracking line length, range: 20~100 */
 #define plotLineLength   30
 
+/* Setting 1 if you want to display it */
+#define display_bbsRectangle     0
+#define display_kalmanRectangle  0
+
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
 
 #define CVCONTOUR_APPROX_LEVEL         2
@@ -24,6 +28,7 @@ const short MaxHistBins = 4096;
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 #define MAX_OBJ_LIST_SIZE            100
 # define PI       3.141592653589793238463
+#define DELE_RECT_FRAMENO              3
 
 typedef struct
 {
@@ -46,12 +51,14 @@ typedef struct
 	Size	objSize;
 	vector<double> descriptor;
 	Point point[100];           // trajectory points 
+	Point comparePoint[100];     //It decides whether rectangles is motionless or not.  
 	Scalar color;               // bbs color 
 	Mat kernelDownScale;        // kernel for the down-scaled bbs
 	Mat kernel;                 // kernel for the bbs
 	Mat kernelUpScale;          // kernel for the up-scaled bbs
 	float objScale;
 	int PtNumber;
+	int cPtNumber;
 	int PtCount;
 	int countDone;
 	int times;
@@ -71,7 +78,7 @@ typedef struct
 class IObjectTracker
 {
 public:
-	IObjectTracker(){}
+	IObjectTracker(){ count = 0; }
 	~IObjectTracker(){}
 
 
@@ -88,14 +95,14 @@ public:
 	virtual bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list) = 0;
 	virtual bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list) = 0;
 	virtual void drawTrackBox(Mat &img, vector<Object2D> &object_list) = 0;
-	virtual int  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
+	virtual void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
 	//double getDistanceThreshold(){ return Dist_Threshold; }
 
 	//double track(Mat &img, Object2D &object); // track single object
 	//double getDistanceThreshold(){ return Dist_Threshold; }
 	//vector<double> track2(Mat &img, vector<Object2D> &object_list); // track multiple objects
+	int count;
 private:
-	int count = 0;
 	/*DescriptorFactory *pDescriptorFac;
 	IObjectDescriptor *HOG;
 	const double	Dist_Threshold = 0.1f;*/
@@ -198,16 +205,15 @@ public:
 	bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
 	bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
 	void drawTrackBox(Mat &img, vector<Object2D> &object_list);
-	int  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
+	void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
 	int  track(Mat &img, vector<Object2D> &object_list);
-
+	int count;
 private:
 	// del too small obj 
 	const int minObjArea = 1000;
 	const int minObjWidth = 20;
 	const int minObjHeight = 20;
 
-	int count = 0;
 	const int Max_Mean_Shift_Iter = 8;
 	const double Similar_Val_Threshold = 0.165;
 	int  kernel_type;

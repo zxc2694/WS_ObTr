@@ -120,10 +120,13 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			for (iter = 0; iter < MaxObjNum; iter++)
 				bbs[iter].height = bbs[iter].height + bbsV2[iter].height;       // Merge bbs and bbsV2 to get final ROI
 
-			/* Plot the rectangles background subtarction finds */
-//          for (iter = 0; iter < MaxObjNum; iter++){
-//				rectangle(img, bbs[iter], Scalar(0, 255, 255), 2);
-//          }
+			if (display_bbsRectangle == true)
+			{
+				/* Plot the rectangles background subtarction finds */
+				for (iter = 0; iter < MaxObjNum; iter++){
+					rectangle(img, bbs[iter], Scalar(0, 255, 255), 2);
+				}
+			}
 		}
 		else   //If ObjNum is not NULL, we use existing ROIs.
 		{
@@ -225,10 +228,10 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
 			{
 				// Plotting all the tracking lines
-				first_last_diff = ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
+				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
 
 				// Removing the tracking box when it's motionless for a while 
-				if (first_last_diff == 0)
+				if ((object_list[obj_list_iter].comparePoint[0].x != 0) && (object_list[obj_list_iter].comparePoint[0] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]) && (object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO / 2] == object_list[obj_list_iter].comparePoint[DELE_RECT_FRAMENO]))
 				{
 					for (int iterColor = 0; iterColor < 10; iterColor++)
 					{
@@ -239,8 +242,9 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 						}
 					}
 					object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
-					first_last_diff = 1;
 				}
+
+
 			}
 			if (object_list.size() == 0){ //Prevent out of vector range
 				break;
@@ -249,11 +253,20 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			pre_data_X[obj_list_iter] = 0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x);
 			pre_data_Y[obj_list_iter] = 0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y);
 
-			if (object_list[obj_list_iter].PtNumber == plotLineLength + 1) //Restarting count when count > plotLineLength number
+			//Restarting count when count > plotLineLength number
+			if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
 				object_list[obj_list_iter].PtNumber = 0;
 
 			object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
+
+			//Restarting count when count > DELE_RECT_FRAMENO number
+			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
+				object_list[obj_list_iter].cPtNumber = 0;
+
+			object_list[obj_list_iter].comparePoint[object_list[obj_list_iter].cPtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
+
 			object_list[obj_list_iter].PtNumber++;
+			object_list[obj_list_iter].cPtNumber++;
 			object_list[obj_list_iter].PtCount++;
 
 		}// end of plotting trajectory
@@ -261,80 +274,80 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 		// >>>>> Kalman Update
 		// >>>> Kalman Filter
-		if (found)
-		{
-			for (int i = 0; i < object_list.size(); i++)
-			{
-				// >>>> Matrix A
-				kf[i].transitionMatrix.at<float>(2) = dT;
-				kf[i].transitionMatrix.at<float>(9) = dT;
-				// <<<< Matrix A
+		//if (found)
+		//{
+		//	for (int i = 0; i < object_list.size(); i++)
+		//	{
+		//		// >>>> Matrix A
+		//		kf[i].transitionMatrix.at<float>(2) = dT;
+		//		kf[i].transitionMatrix.at<float>(9) = dT;
+		//		// <<<< Matrix A
 
-				//cout << "dT:" << endl << dT << endl;
-				state[i] = kf[i].predict();
-				//cout << "State post:" << endl << state[i] << endl;
+		//		//cout << "dT:" << endl << dT << endl;
+		//		state[i] = kf[i].predict();
+		//		//cout << "State post:" << endl << state[i] << endl;
 
-				cv::Rect predRect;
-				predRect.width = state[i].at<float>(4);
-				predRect.height = state[i].at<float>(5);
-				predRect.x = state[i].at<float>(0) - predRect.width / 2;
-				predRect.y = state[i].at<float>(1) - predRect.height / 2;
+		//		cv::Rect predRect;
+		//		predRect.width = state[i].at<float>(4);
+		//		predRect.height = state[i].at<float>(5);
+		//		predRect.x = state[i].at<float>(0) - predRect.width / 2;
+		//		predRect.y = state[i].at<float>(1) - predRect.height / 2;
 
-				cv::Point center;
-				center.x = state[i].at<float>(0);
-				center.y = state[i].at<float>(1);
-				if ((predRect.x != 0) && (predRect.y != 0))
-				{
-//					cv::circle(img, center, 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
-//					cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
-				}
-			}
-		}
-		for (int iter = 0; iter < object_list.size(); iter++){
-			ballsBox.push_back(object_list[iter].boundingBox);
-		}
-		// <<<< Kalman Filter
-		if (object_list.size() == 0)
-		{
-			notFoundCount++;
-			if (notFoundCount >= 100)
-				found = false;
-		}
-		else
-		{
-			notFoundCount = 0;
-			for (int i = 0; i < object_list.size(); i++)
-			{
-				meas[i].at<float>(0) = ballsBox[i].x + ballsBox[i].width / 2;
-				meas[i].at<float>(1) = ballsBox[i].y + ballsBox[i].height / 2;
-				meas[i].at<float>(2) = (float)ballsBox[i].width;
-				meas[i].at<float>(3) = (float)ballsBox[i].height;
+		//		cv::Point center;
+		//		center.x = state[i].at<float>(0);
+		//		center.y = state[i].at<float>(1);
+		//		if ((predRect.x != 0) && (predRect.y != 0) && display_kalmanRectangle == true)
+		//		{
+		//			cv::circle(img, center, 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
+		//			cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
+		//		}
+		//	}
+		//}
+		//for (int iter = 0; iter < object_list.size(); iter++){
+		//	ballsBox.push_back(object_list[iter].boundingBox);
+		//}
+		//// <<<< Kalman Filter
+		//if (object_list.size() == 0)
+		//{
+		//	notFoundCount++;
+		//	if (notFoundCount >= 100)
+		//		found = false;
+		//}
+		//else
+		//{
+		//	notFoundCount = 0;
+		//	for (int i = 0; i < object_list.size(); i++)
+		//	{
+		//		meas[i].at<float>(0) = ballsBox[i].x + ballsBox[i].width / 2;
+		//		meas[i].at<float>(1) = ballsBox[i].y + ballsBox[i].height / 2;
+		//		meas[i].at<float>(2) = (float)ballsBox[i].width;
+		//		meas[i].at<float>(3) = (float)ballsBox[i].height;
 
-				if (!found) // First detection!
-				{
-					// >>>> Initialization
-					kf[i].errorCovPre.at<float>(0) = 1; // px
-					kf[i].errorCovPre.at<float>(7) = 1; // px
-					kf[i].errorCovPre.at<float>(14) = 1;
-					kf[i].errorCovPre.at<float>(21) = 1;
-					kf[i].errorCovPre.at<float>(28) = 1; // px
-					kf[i].errorCovPre.at<float>(35) = 1; // px
+		//		if (!found) // First detection!
+		//		{
+		//			// >>>> Initialization
+		//			kf[i].errorCovPre.at<float>(0) = 1; // px
+		//			kf[i].errorCovPre.at<float>(7) = 1; // px
+		//			kf[i].errorCovPre.at<float>(14) = 1;
+		//			kf[i].errorCovPre.at<float>(21) = 1;
+		//			kf[i].errorCovPre.at<float>(28) = 1; // px
+		//			kf[i].errorCovPre.at<float>(35) = 1; // px
 
-					state[i].at<float>(0) = meas[i].at<float>(0);
-					state[i].at<float>(1) = meas[i].at<float>(1);
-					state[i].at<float>(2) = 0;
-					state[i].at<float>(3) = 0;
-					state[i].at<float>(4) = meas[i].at<float>(2);
-					state[i].at<float>(5) = meas[i].at<float>(3);
-					// <<<< Initialization
+		//			state[i].at<float>(0) = meas[i].at<float>(0);
+		//			state[i].at<float>(1) = meas[i].at<float>(1);
+		//			state[i].at<float>(2) = 0;
+		//			state[i].at<float>(3) = 0;
+		//			state[i].at<float>(4) = meas[i].at<float>(2);
+		//			state[i].at<float>(5) = meas[i].at<float>(3);
+		//			// <<<< Initialization
 
-					found = true;
-				}
-				else
-					kf[i].correct(meas[i]); // Kalman Correction
-				//cout << "Measure matrix:" << endl << meas[i] << endl;
-			}
-		}
+		//			found = true;
+		//		}
+		//		else
+		//			kf[i].correct(meas[i]); // Kalman Correction
+		//		//cout << "Measure matrix:" << endl << meas[i] << endl;
+		//	}
+		//}
 		// <<<<< Kalman Update
 	
 } // end while 
@@ -356,7 +369,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 }
 
-MeanShiftTracker::MeanShiftTracker() :kernel_type(2), bin_width(16)
+MeanShiftTracker::MeanShiftTracker() :kernel_type(2), bin_width(16), count(0)
 {
 	bins = 256 / bin_width;
 	histSize = bins*bins*bins;
@@ -411,6 +424,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	//obj.bbsCen = Point(bbs.x + (bbs.width - 1) / 2, bbs.y + (bbs.height - 1) / 2);
 	obj.xyz.z = 20;
 	obj.PtNumber = 0;
+	obj.cPtNumber = 0;
 	obj.PtCount = 0;
 	obj.times = 1;
 	obj.objScale = 1;
@@ -614,7 +628,7 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 	}
 }
 
-int MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter)
+void MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter)
 {
 	if (object_list[obj_list_iter].PtCount > plotLineLength + 1)										//When plotting arrary is overflow:
 	{
@@ -632,19 +646,12 @@ int MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &o
 			line(TrackingLine, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2]
 				, object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber + iter2 + 1], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * iter2 / plotLineLength), 3, 1, 0);
 		}
-
-		if (object_list[obj_list_iter].PtNumber <= plotLineLength)
-			return object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber - 1].x - object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber].x;
-		else
-			return object_list[obj_list_iter].point[0].x - object_list[obj_list_iter].point[plotLineLength].x;
 	}
 	else
 	{																								//When plotting arrary isn't overflow:
 		for (int iter = 1; iter < object_list[obj_list_iter].PtNumber; iter++)
 			line(TrackingLine, object_list[obj_list_iter].point[iter - 1]										//Directly plot all the points array storages.
 			, object_list[obj_list_iter].point[iter], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * (iter - 1) / (object_list[obj_list_iter].PtNumber - 1)), 3, 1, 0);
-
-		return 1;
 	}
 
 }

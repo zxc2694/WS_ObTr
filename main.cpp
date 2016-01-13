@@ -10,8 +10,8 @@
 #include <windows.h>
 
 /* Select images input */
-#define inputPath_Paul   0
-#define inputPath_Hardy  1
+#define inputPath_Paul   1
+#define inputPath_Hardy  0
 
 /* Select background subtrction algorithm */
 #define Use_CodeBook  0
@@ -39,8 +39,10 @@ int main(int argc, const char** argv)
 	{
 
 #if inputPath_Paul
-		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
-		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 197);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160111Image//R_one_man//Jan11163%d_R_Image.png", nframes + 332);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160111Image//R_two_man//Jan11164%d_R_Image.png", nframes + 513);
+		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video3//%05d.png", nframes + 197);
 		img = cvLoadImage(link, 1);
 #endif
 
