@@ -28,16 +28,14 @@ int main(int argc, const char** argv)
 	IplImage* image = 0, *yuvImage = 0;                  
 	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
 	Mat img, fgmask;
-	Object2D object;
 	BackgroundSubtractorMOG2 bg_model;
 	CodeBookInit();
 		
 	IObjectTracker *ms_tracker = new MeanShiftTracker();
-//	memset((object).hist, 0, MaxHistBins*sizeof(int));
-	
-	while (1)
-	{
 
+
+while (1)
+{
 #if inputPath_Paul
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160111Image//R_one_man//Jan11163%d_R_Image.png", nframes + 332);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160111Image//R_two_man//Jan11164%d_R_Image.png", nframes + 513);

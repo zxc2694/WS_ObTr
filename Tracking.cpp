@@ -90,10 +90,12 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 		for (int iter = 0; iter < MaxObjNum; ++iter)
 		{
-			ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
+			// don't track when obj just emerge at img edge			
+			if (!(bbs[iter].x < 3 || bbs[iter].y < 3 || bbs[iter].x + bbs[iter].width > img.cols - 1 || bbs[iter].y + bbs[iter].height > img.rows - 1))
+				ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
 		}
 	}
-	else
+	else // case of nframes < nframesToLearnBG
 	{
 		if (ObjNum == NULL)                                                      //If ObjNum is NULL, we need to find all ROIs.
 		{
@@ -105,7 +107,8 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			static Mat srcROI[10];                                               // for shadow rectangle
 
 			/* Eliminating people's shadow method */
-			for (iter = 0; iter < MaxObjNum; iter++){                            // Get all shadow rectangles named bbsV2
+			for (iter = 0; iter < MaxObjNum; iter++)
+			{                            // Get all shadow rectangles named bbsV2
 				bbsV2[iter].x = bbs[iter].x;
 				bbsV2[iter].y = bbs[iter].y + bbs[iter].height * 0.75;
 				bbsV2[iter].width = bbs[iter].width;
@@ -113,6 +116,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
 				srcROI[iter] = Scalar::all(0);                                  // Set srcROI as showing black color
 			}
+
 			IplImage *BBSIpl = &IplImage(background_BBS);
 			find_connected_components(BBSIpl, 1, 4, &MaxObjNum, bbs, centers);  // Secondly, Run the function of searching components to get update of bbs
 
@@ -134,10 +138,9 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				bbs[iter] = ROI[iter];
 		}
 
+
 		ms_tracker->track(img, object_list);
 
-//		if (nframes > nframesToLearnBG + 1) //Start to update the object tracking
-//			ms_tracker->checkTrackedList(object_list, prev_object_list);
 
 		int bbs_iter;
 		size_t obj_list_iter;
@@ -166,6 +169,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 			if ((int)replaceList.size() != 0)
 			{
+
 				for (int iter = 0; iter < object_list.size(); ++iter)
 				{
 					if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above judgement
@@ -204,10 +208,13 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 				ms_tracker->updateObjBbs(img, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
 
-				for (int iter = 0; iter < (int)replaceList.size(); ++iter)
-				{
-					if (iter == objWithLongestDuration)		continue; // reserve the obj with longest duration in replaceList
+				replaceList.erase(replaceList.begin() + objWithLongestDuration); // reserve the obj with longest duration in replaceList (exclude it from replaceList)
 
+				if ((int)replaceList.size() > 1)	BubbleSort(&replaceList[0], (int)replaceList.size());
+
+				//for (int iter = 0; iter < (int)replaceList.size(); ++iter)
+				for (int iter = (int)replaceList.size() - 1; iter >= 0; --iter)
+				{
 					for (int iterColor = 0; iterColor < 10; iterColor++)
 					{
 						if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
@@ -220,8 +227,12 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				}
 			}
 
-			if (!Overlapping && addToList)		ms_tracker->addTrackedList(img, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
-
+			if (!Overlapping && addToList)
+			{
+				// don't track when obj just emerge at img edge
+				if (!(bbs[bbs_iter].x < 3 || bbs[bbs_iter].y < 3 || bbs[bbs_iter].x + bbs[bbs_iter].width > img.cols - 1 || bbs[bbs_iter].y + bbs[bbs_iter].height > img.rows - 1))
+				ms_tracker->addTrackedList(img, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
+			}
 
 			vector<int>().swap(replaceList);
 		}  // end of 1st for 
@@ -368,10 +379,8 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 		//		//cout << "Measure matrix:" << endl << meas[i] << endl;
 		//	}
 		//}
-		// <<<<< Kalman Update
-	
-	} // end while 
-
+		// <<<<< Kalman Update	
+	} // case of nframes < nframesToLearnBG
 
 
 	/* Show the number of the frame on the image */
@@ -449,6 +458,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	obj.times = 1;
 	obj.objScale = 1;
 	obj.kernel.create(obj.boundingBox.height, obj.boundingBox.width, CV_64FC1);
+
 
 	memset(obj.CP.p5, 255, sizeof(obj.CP.p5));
 
@@ -694,6 +704,7 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 	float scale;
 	bool delBbsOutImg;
 
+
 	for (size_t c = 0; c < object_list.size(); c++)
 	{
 		//int bestScaleIter;
@@ -850,9 +861,9 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 			continue;
 		}
 
+
 		// determine scale by bestScale and scaleLearningRate
 		object_list[c].objScale = scaleLearningRate*bestScale + (1 - scaleLearningRate)*object_list[c].objScale;
-
 
 
 		// adopt candidate bbs scale determined above and implement Mean-Shift again

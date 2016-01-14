@@ -18,8 +18,8 @@ const short MaxHistBins = 4096;
 #define plotLineLength   30
 
 /* Setting 1 if you want to display it */
-#define display_bbsRectangle     1
-#define display_kalmanRectangle  1
+#define display_bbsRectangle     0
+#define display_kalmanRectangle  0
 
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
 
