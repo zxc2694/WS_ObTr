@@ -244,56 +244,58 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 		ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
 
+		/* Removing motionless tracking box  */
+		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		{
+			int black = 0;
+			// Calculating how much black point in image of background subtracion.
+			for (int i = 0; i < DELE_RECT_FRAMENO; i++)
+			{
+				if (object_list[obj_list_iter].CP.p5[i] != 0)
+					break;
+				else
+					black++;
+			}
+			// When its central point is all black in image of background subtracion.	
+			if (DELE_RECT_FRAMENO == black)
+			{
+				for (int iterColor = 0; iterColor < 10; iterColor++)
+				{
+					if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+					{
+						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+						break;
+					}
+				}
+				object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
+			}
+			if (object_list.size() == 0)//Prevent out of vector range
+				break;
+		}
 
 		/* plotting trajectory */
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
 			if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
-			{
-				// Plotting all the tracking lines
-				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
-
-				// Removing the tracking box when it's motionless for a while 	
-				int black=0;
-				for (int i = 0; i < DELE_RECT_FRAMENO; i++)
-				{
-					if (object_list[obj_list_iter].CP.p5[i] != 0) // Calculating how much black point in image of background subtracion.
-						break;
-					else
-						black++;
-				}
-
-				// Removing tracking rectangle when its central point is all black in image of background subtracion.	
-				if (DELE_RECT_FRAMENO == black)
-				{
-					for (int iterColor = 0; iterColor < 10; iterColor++)
-					{
-						if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
-						{
-							objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-							break;
-						}
-					}
-					object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
-				}
+			{			
+				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines			
 			}
-			if (object_list.size() == 0){ //Prevent out of vector range
-				break;
-			}
+
 			// Get previous point in order to use line function. 
 			pre_data_X[obj_list_iter] = 0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x);
 			pre_data_Y[obj_list_iter] = 0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y);
 
-			//Restarting count when count > plotLineLength number
+			// Restarting count when count > plotLineLength number
 			if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
 				object_list[obj_list_iter].PtNumber = 0;
 
 			object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
 
-			//Restarting count when count > DELE_RECT_FRAMENO number
+			// Restarting count when count > DELE_RECT_FRAMENO number
 			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
 				object_list[obj_list_iter].cPtNumber = 0;
 
+			// Get the color of central point from tracking box (white or black)
 			object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, 0.5 * object_list[obj_list_iter].boundingBox.height + object_list[obj_list_iter].boundingBox.y, 0.5*object_list[obj_list_iter].boundingBox.width + object_list[obj_list_iter].boundingBox.x).val[0]; // Note: cvGet2D(IplImage*, y, x)
 			
 			object_list[obj_list_iter].PtNumber++;
