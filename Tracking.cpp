@@ -257,7 +257,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				int black=0;
 				for (int i = 0; i < DELE_RECT_FRAMENO; i++)
 				{
-					if (object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] != 0) // Calculating how much black point in image of background subtracion.
+					if (object_list[obj_list_iter].CP.p5[i] != 0) // Calculating how much black point in image of background subtracion.
 						break;
 					else
 						black++;
@@ -459,8 +459,8 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	obj.objScale = 1;
 	obj.kernel.create(obj.boundingBox.height, obj.boundingBox.width, CV_64FC1);
 
-
-	memset(obj.CP.p5, 255, sizeof(obj.CP.p5));
+	  for (int i = 0; i < sizeof(obj.CP.p5); i++)
+		obj.CP.p5[i] = 255;
 
 	getKernel(obj.kernel, kernel_type);
 
