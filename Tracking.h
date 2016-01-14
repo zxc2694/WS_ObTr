@@ -22,36 +22,56 @@ const short MaxHistBins = 4096;
 #define display_kalmanRectangle  0
 
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
-#define max(X, Y) (((X) >= (Y)) ? (X) : (Y))
-#define min(X, Y) (((X) <= (Y)) ? (X) : (Y))
 
 #define CVCONTOUR_APPROX_LEVEL         2
 #define CVCLOSE_ITR                    1	
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 #define MAX_OBJ_LIST_SIZE            100
-#define DELE_RECT_FRAMENO             30
+#define PI       3.141592653589793238463
+#define DELE_RECT_FRAMENO             15
+
+typedef struct
+{
+	//It decides whether rectangles is motionless or not.
+	int p1[DELE_RECT_FRAMENO];
+	int p2[DELE_RECT_FRAMENO];
+	int p3[DELE_RECT_FRAMENO];
+	int p4[DELE_RECT_FRAMENO];
+	int p5[DELE_RECT_FRAMENO];
+	int p6[DELE_RECT_FRAMENO];
+	int p7[DELE_RECT_FRAMENO];
+	int p8[DELE_RECT_FRAMENO];
+	int p9[DELE_RECT_FRAMENO];
+} ComparePoint;
 
 typedef struct
 {
 	int No;						// numbers of track boxes 
 	short	type;				// 1:vehicle , 2: pedestrian, 3: unknown
 	short	status;				// 1: detected, 2: tracked, 3: miss to detect, 4: loss to track
-	Point2d cen_pos;
-	CvRect	boundingBox;		// in pixels
-	float	hist[MaxHistBins];	// disparity(32_bins) + intensity(32_bins) : for tracking
+	//Point   bbsCen;             // tracked obj's bbs's center   
+	Rect	boundingBox;		// in pixels
+	int     initialBbsWidth;    // in pixels
+	int     initialBbsHeight;   // in pixels
+	double	hist[MaxHistBins];	// disparity(32_bins) + intensity(32_bins) : for tracking
 	double	similar_val;		// value of similarity function
-	float	minDisparity;
-	float	maxDisparity;
-	float	medianDisparity;
-	float	meanDisparity;
-	float	stdDisparity;
+	double	minDisparity;
+	double	maxDisparity;
+	double	medianDisparity;
+	double	meanDisparity;
+	double	stdDisparity;
 	Point3f xyz0;				// 3d position of previous time instance in world coordinate, minimum distance from camera
 	Point3f xyz;				// 3d position of currnet time in world coordinate, minimum distance from camera
 	Size	objSize;
-	vector<float> descriptor;
-	Point point[100];
-	Point comparePoint[100];     //It decides whether rectangles is motionless or not.  
-	Scalar color;
+	vector<double> descriptor;
+	Point point[100];           // trajectory points 
+	Point comparePoint[100];    //It decides whether rectangles is motionless or not. 
+	Scalar color;               // bbs color 
+	Mat kernelDownScale;        // kernel for the down-scaled bbs
+	Mat kernel;                 // kernel for the bbs
+	Mat kernelUpScale;          // kernel for the up-scaled bbs
+	ComparePoint CP;
+	float objScale;
 	int PtNumber;
 	int cPtNumber;
 	int PtCount;
@@ -66,20 +86,20 @@ typedef struct
 	Rect	boundingBox;		// in pixels
 	Point3f xyz0;				// 3d position of previous time instance in world coordinate, minimum distance from camera
 	Point3f xyz;				// 3d position of currnet time in world coordinate, minimum distance from camera
-	float	hist[MaxHistBins];	// disparity(32_bins) + intensity(32_bins) : for tracking
-	vector<float> descriptor;
+	double	hist[MaxHistBins];	// disparity(32_bins) + intensity(32_bins) : for tracking
+	vector<double> descriptor;
 } Object3D;
 
 class IObjectTracker
 {
 public:
-	IObjectTracker(){count = 0;}
+	IObjectTracker(){ count = 0; }
 	~IObjectTracker(){}
-
 
 	//virtual void addTrackedList(const Mat &img, vector<Object2D> &object_list, Object2D &obj) = 0;
 	Mat DistMat;
 	Scalar ColorMatrix[10];
+	int histSize;
 
 	virtual int DistBetObj(Rect a, Rect b) = 0;
 	virtual void addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type) = 0;
@@ -90,18 +110,18 @@ public:
 	virtual bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list) = 0;
 	virtual void drawTrackBox(Mat &img, vector<Object2D> &object_list) = 0;
 	virtual void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
-	//float getDistanceThreshold(){ return Dist_Threshold; }
+	//double getDistanceThreshold(){ return Dist_Threshold; }
 
-	//float track(Mat &img, Object2D &object); // track single object
-	//float getDistanceThreshold(){ return Dist_Threshold; }
-	//vector<float> track2(Mat &img, vector<Object2D> &object_list); // track multiple objects
+	//double track(Mat &img, Object2D &object); // track single object
+	//double getDistanceThreshold(){ return Dist_Threshold; }
+	//vector<double> track2(Mat &img, vector<Object2D> &object_list); // track multiple objects
 	int count;
 private:
 	/*DescriptorFactory *pDescriptorFac;
 	IObjectDescriptor *HOG;
-	const float	Dist_Threshold = 0.1f;*/
+	const double	Dist_Threshold = 0.1f;*/
 
-	//float computeDistance(vector<float> &feature1, vector<float> &feature2);
+	//double computeDistance(vector<double> &feature1, vector<double> &feature2);
 
 };
 
@@ -116,7 +136,7 @@ private:
 //	delete pDescriptorFac;
 //}
 
-//float IObjectTracker::track(Mat &img, Object2D &object)
+//double IObjectTracker::track(Mat &img, Object2D &object)
 //{
 //	if (img.data == NULL) return -1;
 //	//if (object.size() == 0) return -1;
@@ -125,8 +145,8 @@ private:
 //	search_area.y = max(0.0f, object.boundingBox.y - 0.7f * object.boundingBox.height);
 //	search_area.width = (object.boundingBox.x + 2.1 * object.boundingBox.width) >= img.cols ? img.cols - object.boundingBox.x - 1 : 2.1 * object.boundingBox.width;
 //	search_area.height = (object.boundingBox.y + 2.1 * object.boundingBox.height) >= img.rows ? img.rows - object.boundingBox.y - 1 : 2.1 * object.boundingBox.height;
-//	vector<float> descriptor;
-//	float MinDist = 10000;
+//	vector<double> descriptor;
+//	double MinDist = 10000;
 //	double Magnit_Thre = 55000;
 //	for (int y = search_area.y; y + object.boundingBox.height < search_area.y + search_area.height; y += 3){
 //		for (int x = search_area.x; x + object.boundingBox.width < search_area.x + search_area.width; x += 3){
@@ -136,7 +156,7 @@ private:
 //			double magnit = HOG->computeDescriptor(roi_img, descriptor);
 //			if (magnit < Magnit_Thre)
 //				continue;
-//			float dist = computeDistance(object.descriptor, descriptor);
+//			double dist = computeDistance(object.descriptor, descriptor);
 //			if (dist < MinDist){
 //				MinDist = dist;
 //				object.boundingBox = roi;
@@ -147,18 +167,18 @@ private:
 //	return MinDist;
 //}
 //
-//float IObjectTracker::computeDistance(vector<float> &feature1, vector<float> &feature2)
+//double IObjectTracker::computeDistance(vector<double> &feature1, vector<double> &feature2)
 //{
-//	float sum = 0;
+//	double sum = 0;
 //	for (size_t i = 0; i < feature1.size(); i++){
 //		sum += fabs(feature1[i] - feature2[i]);
 //	}
 //	return sum / feature1.size();
 //}
 
-//vector<float> IObjectTracker::track2(Mat &img, vector<Object2D> &object_list)
+//vector<double> IObjectTracker::track2(Mat &img, vector<Object2D> &object_list)
 //{
-//	vector<float> track_prob;
+//	vector<double> track_prob;
 //	if (img.data == NULL) return track_prob;
 //	for (size_t c = 0; c < object_list.size(); c++){
 //		Rect search_area;
@@ -166,8 +186,8 @@ private:
 //		search_area.y = max(0.0f, object_list[c].boundingBox.y - 1.0f * object_list[c].boundingBox.height);
 //		search_area.width = (object_list[c].boundingBox.x + 3 * object_list[c].boundingBox.width) >= img.cols ? img.cols - object_list[c].boundingBox.x - 1 : 4 * object_list[c].boundingBox.width;
 //		search_area.height = (object_list[c].boundingBox.y + 3 * object_list[c].boundingBox.height) >= img.rows ? img.rows - object_list[c].boundingBox.y - 1 : 4 * object_list[c].boundingBox.height;
-//		vector<float> descriptor;
-//		float MinDist = 10000;
+//		vector<double> descriptor;
+//		double MinDist = 10000;
 //		double Magnit_Thre = 50000;
 //		for (int y = search_area.y; y + object_list[c].boundingBox.height < search_area.y + search_area.height; y += 4){
 //			for (int x = search_area.x; x + object_list[c].boundingBox.width < search_area.x + search_area.width; x += 4){
@@ -177,7 +197,7 @@ private:
 //				double magnit = HOG->computeDescriptor(roi_img, descriptor);
 //				if (magnit < Magnit_Thre)
 //					continue;
-//				float dist = computeDistance(object_list[c].descriptor, descriptor);
+//				double dist = computeDistance(object_list[c].descriptor, descriptor);
 //				if (dist < MinDist){
 //					MinDist = dist;
 //					object_list[c].boundingBox = roi;
@@ -201,31 +221,33 @@ public:
 	void drawTrackBox(Mat &img, vector<Object2D> &object_list);
 	void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
 	int  track(Mat &img, vector<Object2D> &object_list);
-	//
-	void setRadius(int _r){ radius = _r; }
-	void setBinWidt(int _bin_width){ bin_width = _bin_width; }
 	int count;
-	const int Max_Iters;
-	const float Similar_Val_Threshold;
 private:
+	// del too small obj 
+	const int minObjArea = 1000;
+	const int minObjWidth = 20;
+	const int minObjHeight = 20;
 
+	const int Max_Mean_Shift_Iter = 8;
+	const double Similar_Val_Threshold = 0.165;
 	int  kernel_type;
-	int  radius;
 	int	 bin_width;
 	int  bins;
-	void getParzenWindow(Mat &kernel, const int R, const int func_type = 0);
-	void getDensityEstimate(const Mat &roiMat, const Mat &kernel, float hist[]);
-	double computeSimilarity(const Mat &roiMat, const Mat &kernel, const float target[], const float candidate[], Mat &weight);
-	//
+	const float scaleBetFrame = 0.1;
+	const double scaleLearningRate = 0.1; // scale change rate
+	const double epsilon = 1; // min shift in Mean-Shift iteration
+	void getKernel(Mat &kernel, const int func_type = 0);
+	void computeHist(const Mat &roiMat, const Mat &kernel, double hist[]);
+	int setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight);
 	bool testObjectIntersection(Object2D &obj1, Object2D &obj2);
 	bool testIntraObjectIntersection(vector<Object2D> &object_list, int cur_pos);
 };
 
 void CodeBookInit();
 void RunCodeBook(IplImage* &image, IplImage* &yuvImage, IplImage* &ImaskCodeBook, IplImage* &ImaskCodeBookCC, int &nframes);
-void find_connected_components(IplImage *mask, int poly1_hull0, float perimScale, int *num, CvRect *bbs, CvPoint *centers);
+void find_connected_components(IplImage *mask, int poly1_hull0, double perimScale, int *num, CvRect *bbs, CvPoint *centers);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
-int Overlap(Rect a, Rect b, float ration);
+int Overlap(Rect a, Rect b, double ration);
 void MorphologyProcess(IplImage* &fgmaskIpl);
 void BubbleSort(int* array, int size);
 void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &nframes, CvRect *bbs, int MaxObjNum);
