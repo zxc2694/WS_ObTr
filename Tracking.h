@@ -33,15 +33,15 @@ const short MaxHistBins = 4096;
 typedef struct
 {
 	//It decides whether rectangles is motionless or not.
-	int p1[10];  
-	int p2[10];
-	int p3[10];
-	int p4[10];
-	int p5[10];
-	int p6[10];
-	int p7[10];
-	int p8[10];
-	int p9[10];
+	int p1[DELE_RECT_FRAMENO];
+	int p2[DELE_RECT_FRAMENO];
+	int p3[DELE_RECT_FRAMENO];
+	int p4[DELE_RECT_FRAMENO];
+	int p5[DELE_RECT_FRAMENO];
+	int p6[DELE_RECT_FRAMENO];
+	int p7[DELE_RECT_FRAMENO];
+	int p8[DELE_RECT_FRAMENO];
+	int p9[DELE_RECT_FRAMENO];
 } ComparePoint;
 
 typedef struct
