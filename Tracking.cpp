@@ -244,6 +244,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 		ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
 
+		
 		/* Removing motionless tracking box  */
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
@@ -259,15 +260,35 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			// When its central point is all black in image of background subtracion.	
 			if (DELE_RECT_FRAMENO == black)
 			{
-				for (int iterColor = 0; iterColor < 10; iterColor++)
+				char bbsExistObj = false;
+				for (int i = 0; i < MaxObjNum; i++)
 				{
-					if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+					// To find internal bbs of the tracking box
+					if ((centers[i].x > object_list[obj_list_iter].boundingBox.x) && (centers[i].x < object_list[obj_list_iter].boundingBox.x + object_list[obj_list_iter].boundingBox.width) && (centers[i].y > object_list[obj_list_iter].boundingBox.y) &&( centers[i].y < object_list[obj_list_iter].boundingBox.y + object_list[obj_list_iter].boundingBox.height))
 					{
-						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+						//Reset the scale of the tracking box.
+						object_list[obj_list_iter].objScale = 1;
+						object_list[obj_list_iter].boundingBox = bbs[i];
+						object_list[obj_list_iter].initialBbsWidth = bbs[i].width;
+						object_list[obj_list_iter].initialBbsHeight = bbs[i].height;
+
+						bbsExistObj = true;
 						break;
 					}
 				}
-				object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
+				// If internal bbs of rectangle has existed, don't directly remove. 
+				if (bbsExistObj == false)
+				{
+					for (int iterColor = 0; iterColor < 10; iterColor++)
+					{
+						if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+						{
+							objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+							break;
+						}
+					}
+					object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
+				}
 			}
 			if (object_list.size() == 0)//Prevent out of vector range
 				break;
