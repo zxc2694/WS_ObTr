@@ -259,14 +259,14 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 				for (int i = 0; i < MaxObjNum; i++)
 				{
 					// To find internal bbs of the tracking box
-					if ((centers[i].x > object_list[obj_list_iter].boundingBox.x) && (centers[i].x < object_list[obj_list_iter].boundingBox.x + object_list[obj_list_iter].boundingBox.width) && (centers[i].y > object_list[obj_list_iter].boundingBox.y) &&( centers[i].y < object_list[obj_list_iter].boundingBox.y + object_list[obj_list_iter].boundingBox.height))
+					if (Overlap(bbs[i], object_list[obj_list_iter].boundingBox, 0.8f)) // Overlap > 0.5 --> replace the boundingBox
 					{
 						//Reset the scale of the tracking box.
 						object_list[obj_list_iter].objScale = 1;
 						object_list[obj_list_iter].boundingBox = bbs[i];
 						object_list[obj_list_iter].initialBbsWidth = bbs[i].width;
 						object_list[obj_list_iter].initialBbsHeight = bbs[i].height;
-
+						
 						bbsExistObj = true;
 						break;
 					}
@@ -288,6 +288,8 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			if (object_list.size() == 0)//Prevent out of vector range
 				break;
 		}
+
+		
 
 		/* plotting trajectory */
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)

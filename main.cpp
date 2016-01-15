@@ -36,8 +36,8 @@ int main(int argc, const char** argv)
 #if inputPath_Paul
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160111Image//R_one_man//Jan11163%d_R_Image.png", nframes + 332);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160111Image//R_two_man//Jan11164%d_R_Image.png", nframes + 513);
-		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
-		sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L//%d_L_Image.png", nframes + 194);
+		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L//%d_L_Image.png", nframes + 194);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L_1//%d_L_Image.png", nframes + 3424);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L_1//%d_L_Image.png", nframes + 4024);
 		img = cvLoadImage(link, 1);
