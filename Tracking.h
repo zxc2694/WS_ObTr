@@ -15,7 +15,7 @@ const short MaxHistBins = 4096;
 #define nframesToLearnBG  1  //if you use codebook, set 300. If you use MOG, set 1
 
 /* Set tracking line length, range: 20~100 */
-#define plotLineLength   30
+#define plotLineLength   100
 
 /* Setting 1 if you want to display it */
 #define display_bbsRectangle     0
@@ -28,7 +28,7 @@ const short MaxHistBins = 4096;
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 #define MAX_OBJ_LIST_SIZE            100
 #define PI       3.141592653589793238463
-#define DELE_RECT_FRAMENO             15
+#define DELE_RECT_FRAMENO              6
 
 typedef struct
 {
