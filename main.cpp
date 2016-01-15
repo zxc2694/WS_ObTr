@@ -30,12 +30,9 @@ int main(int argc, const char** argv)
 	Mat img, fgmask;
 	BackgroundSubtractorMOG2 bg_model;
 	CodeBookInit();
-		
-	IObjectTracker *ms_tracker = new MeanShiftTracker();
 
-
-while (1)
-{
+	while (1)
+	{
 #if inputPath_Paul
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160111Image//R_one_man//Jan11163%d_R_Image.png", nframes + 332);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160111Image//R_two_man//Jan11164%d_R_Image.png", nframes + 513);
@@ -49,11 +46,14 @@ while (1)
 #if inputPath_Hardy
 		//sprintf(link, "D://tracking data//3//%05d.png", nframes + 180);
 		sprintf(link, "D://tracking data//4//%05d.png", nframes + 1);
+		//sprintf(link, "D://tracking data//20160111Image//R_two_man//Jan%08d_R_Image.png", nframes + 11164513);
 		img = cvLoadImage(link, 1);
 #endif
 
 #if Use_MOG		
-		bg_model(img, fgmask, update_bg_model ? -1 : 0); //update the model
+		bg_model.operator()(img, fgmask, -1); //update the model
+		//bg_model(img, fgmask, update_bg_model ? -1 : 0); //update the model
+		//imshow("fg", fgmask);
 #endif
 
 #if Use_CodeBook
@@ -62,7 +62,8 @@ while (1)
 		fgmaskIpl = cvCloneImage(ImaskCodeBook);
 		fgmask = Mat(fgmaskIpl);
 #endif
-
+		static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows);
+		
 		if (img.empty()) break;
 
 		// Get executing time 
@@ -70,6 +71,7 @@ while (1)
 		QueryPerformanceFrequency(&m_liPerfFreq);	
 		LARGE_INTEGER m_liPerfStart = { 0 }; 
 		QueryPerformanceCounter(&m_liPerfStart);
+
 
 
 		/* Plot tracking rectangles and its trajectory */
@@ -89,4 +91,3 @@ while (1)
 	destroyAllWindows();
 	return 0;
 }
-

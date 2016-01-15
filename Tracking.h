@@ -1,6 +1,5 @@
 #ifndef MEANSHIFTTRACKER_H
 #define MEANSHIFTTRACKER_H
-#define MEANSHIFTTRACKER_H
 
 #include <memory>
 #include "opencv2/core/core.hpp"
@@ -23,12 +22,31 @@ const short MaxHistBins = 4096;
 
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
 
-#define CVCONTOUR_APPROX_LEVEL         2
-#define CVCLOSE_ITR                    1	
+#define CVCONTOUR_APPROX_LEVEL         2      
+#define CVCLOSE_ITR                    3	
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 #define MAX_OBJ_LIST_SIZE            100
 #define PI       3.141592653589793238463
-#define DELE_RECT_FRAMENO              6
+#define DELE_RECT_FRAMENO             10
+
+
+class FindConnectedComponents
+{
+public:
+	FindConnectedComponents(int imgWidth, int imgHeight)
+	{
+		method_Poly1_Hull0 = 1; // Use Polygon algorithm if method_Poly1_Hull0 = 1, and use Hull algorithm if method_Poly1_Hull0 = 0
+		minConnectedComponentPerimeter = (imgWidth + imgHeight) / 4.5f;		 
+	} 
+
+	~FindConnectedComponents(){}
+
+	void returnBbs(IplImage *mask, int *num, CvRect *bbs, CvPoint *centers);
+
+private:
+	int method_Poly1_Hull0;
+	int minConnectedComponentPerimeter; // ignores obj with too small perimeter 
+};
 
 typedef struct
 {
@@ -116,13 +134,13 @@ public:
 	//double getDistanceThreshold(){ return Dist_Threshold; }
 	//vector<double> track2(Mat &img, vector<Object2D> &object_list); // track multiple objects
 	int count;
+
 private:
 	/*DescriptorFactory *pDescriptorFac;
 	IObjectDescriptor *HOG;
 	const double	Dist_Threshold = 0.1f;*/
 
 	//double computeDistance(vector<double> &feature1, vector<double> &feature2);
-
 };
 
 //IObjectTracker::IObjectTracker()
@@ -210,7 +228,7 @@ private:
 class MeanShiftTracker : public IObjectTracker
 {
 public:
-	MeanShiftTracker();
+	MeanShiftTracker(int imgWidth, int imgHeight);
 	~MeanShiftTracker();
 
 	int DistBetObj(Rect a, Rect b);
@@ -222,11 +240,17 @@ public:
 	void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
 	int  track(Mat &img, vector<Object2D> &object_list);
 	int count;
+
 private:
+	// don't tracking too small obj 
+    int minObjWidth_Ini;
+    int minObjHeight_Ini;
+	//const int minObjArea_Ini = IMG_WIDTH*IMG_HEIGHT / 30;
+
 	// del too small obj 
-	const int minObjArea = 1000;
-	const int minObjWidth = 20;
-	const int minObjHeight = 20;
+    int minObjWidth;
+    int minObjHeight;
+	//const int minObjArea = 1000;
 
 	const int Max_Mean_Shift_Iter = 8;
 	const double Similar_Val_Threshold = 0.165;
@@ -245,12 +269,10 @@ private:
 
 void CodeBookInit();
 void RunCodeBook(IplImage* &image, IplImage* &yuvImage, IplImage* &ImaskCodeBook, IplImage* &ImaskCodeBookCC, int &nframes);
-void find_connected_components(IplImage *mask, int poly1_hull0, double perimScale, int *num, CvRect *bbs, CvPoint *centers);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
 void MorphologyProcess(IplImage* &fgmaskIpl);
 void BubbleSort(int* array, int size);
 void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &nframes, CvRect *bbs, int MaxObjNum);
 void KF_init(cv::KalmanFilter *kf);
-
 #endif

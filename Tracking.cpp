@@ -42,7 +42,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 	static int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };  //for tracking line
 	static Mat background_BBS(img.rows, img.cols, CV_8UC1);
 	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
-	
+	static FindConnectedComponents bbsFinder(img.cols, img.rows);
 	// >>>> Kalman Filter
 	vector<vector<cv::Point> > balls;
 	vector<cv::Rect> ballsBox;
@@ -85,14 +85,12 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 	else if (nframes == nframesToLearnBG)
 	{
 		/* find components ,and compute bbs information  */
-		MaxObjNum = 10;                                                         // less than 10 objects  
-		find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
+		MaxObjNum = 10; // bbsFinder don't find more than MaxObjNum objects  
+		bbsFinder.returnBbs(fgmaskIpl, &MaxObjNum, bbs, centers);
 
 		for (int iter = 0; iter < MaxObjNum; ++iter)
-		{
-			// don't track when obj just emerge at img edge			
-			if (!(bbs[iter].x < 3 || bbs[iter].y < 3 || bbs[iter].x + bbs[iter].width > img.cols - 1 || bbs[iter].y + bbs[iter].height > img.rows - 1))
-				ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
+		{			
+			ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
 		}
 	}
 	else // case of nframes < nframesToLearnBG
@@ -100,8 +98,8 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 		if (ObjNum == NULL)                                                      //If ObjNum is NULL, we need to find all ROIs.
 		{
 			/* find components ,and compute bbs information  */
-			MaxObjNum = 10;                                                      // less than 10 objects  
-			find_connected_components(fgmaskIpl, 1, 4, &MaxObjNum, bbs, centers);
+			MaxObjNum = 10; // bbsFinder don't find more than MaxObjNum objects  
+			bbsFinder.returnBbs(fgmaskIpl, &MaxObjNum, bbs, centers);
 
 			Mat(fgmaskIpl).copyTo(background_BBS);                               // Copy fgmaskIpl to background_BBS
 			static Mat srcROI[10];                                               // for shadow rectangle
@@ -118,7 +116,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 			}
 
 			IplImage *BBSIpl = &IplImage(background_BBS);
-			find_connected_components(BBSIpl, 1, 4, &MaxObjNum, bbs, centers);  // Secondly, Run the function of searching components to get update of bbs
+			bbsFinder.returnBbs(BBSIpl, &MaxObjNum, bbs, centers);  // Secondly, Run the function of searching components to get update of bbs
 
 			for (iter = 0; iter < MaxObjNum; iter++)
 				bbs[iter].height = bbs[iter].height + bbsV2[iter].height;       // Merge bbs and bbsV2 to get final ROI
@@ -229,8 +227,6 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 			if (!Overlapping && addToList)
 			{
-				// don't track when obj just emerge at img edge
-				if (!(bbs[bbs_iter].x < 3 || bbs[bbs_iter].y < 3 || bbs[bbs_iter].x + bbs[bbs_iter].width > img.cols - 1 || bbs[bbs_iter].y + bbs[bbs_iter].height > img.rows - 1))
 				ms_tracker->addTrackedList(img, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
 			}
 
@@ -244,7 +240,6 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 		ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
 
-		
 		/* Removing motionless tracking box  */
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
@@ -421,8 +416,18 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 
 }
 
-MeanShiftTracker::MeanShiftTracker() :kernel_type(2), bin_width(16), count(0)
+MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight) :kernel_type(2), bin_width(16), count(0)
 {
+	// if obj bbs found by find_connected_components() is too small, then addTrackedList don't add it into object_list to track it
+    minObjWidth_Ini = (imgWidth + imgHeight) / 60;
+    minObjHeight_Ini = (imgWidth + imgHeight) / 14;
+	//const int minObjArea_Ini = IMG_WIDTH*IMG_HEIGHT / 30;
+
+	// del too small obj from object_list (ie give up tracking it)
+    minObjWidth = minObjWidth_Ini / 2;
+    minObjHeight = minObjHeight_Ini / 2;
+	//const int minObjArea = 1000;
+
 	bins = 256 / bin_width;
 	histSize = bins*bins*bins;
 
@@ -459,6 +464,13 @@ int MeanShiftTracker::DistBetObj(Rect a, Rect b)
 
 void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type)
 {
+	// don't tracking too small obj 
+	if (bbs.width < minObjWidth_Ini || bbs.height < minObjHeight_Ini)	return;
+
+	// don't track when obj just emerge at img edge
+	if (bbs.x < 3 || bbs.y < 3 || bbs.x + bbs.width > img.cols - 1 || bbs.y + bbs.height > img.rows - 1)		return;
+
+
 	++count;
 
 	if ((bbs.height & 1) == 0)    bbs.height -= 1; // bbs.height should be odd number
@@ -766,7 +778,7 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 				if ((CandBbs[scaleIter].height & 1) == 0)    CandBbs[scaleIter].height -= 1; // bbs.height should be odd number
 				if ((CandBbs[scaleIter].width & 1) == 0)    CandBbs[scaleIter].width -= 1; // bbs.width should be odd number
 			}
-			if (CandBbs[scaleIter].area() < minObjArea || CandBbs[scaleIter].width < minObjWidth || CandBbs[scaleIter].height < minObjHeight)   continue; // if bbs is too small after scale, don't scale bbs			
+			if (CandBbs[scaleIter].width < minObjWidth || CandBbs[scaleIter].height < minObjHeight)   continue; // if bbs is too small after scale, don't scale bbs			
 
 
 			CandCen = Point((CandBbs[scaleIter].width - 1) / 2, (CandBbs[scaleIter].height - 1) / 2); // let 
@@ -822,7 +834,7 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 
 					//break;
 
-					if (CandBbs[scaleIter].area() < minObjArea || CandBbs[scaleIter].width < minObjWidth || CandBbs[scaleIter].height < minObjHeight)
+					if (CandBbs[scaleIter].width < minObjWidth || CandBbs[scaleIter].height < minObjHeight)
 					{
 						delBbsOutImg = true;
 						break; // if the part of bbs inside img is too small after shift, stop shift 	
@@ -985,7 +997,7 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 
 				//break;
 
-				if (object_list[c].boundingBox.area() < minObjArea || object_list[c].boundingBox.width < minObjWidth || object_list[c].boundingBox.height < minObjHeight)
+				if (object_list[c].boundingBox.width < minObjWidth || object_list[c].boundingBox.height < minObjHeight)
 				{
 					delBbsOutImg = true;
 					break; // if the part of bbs inside img is too small after shift, stop shift 	
@@ -1207,66 +1219,7 @@ bool testBoxIntersection(int left1, int top1, int right1, int bottom1, int left2
 	return true;
 }
 
-bool MeanShiftTracker::testObjectIntersection(Object2D &obj1, Object2D &obj2)
-{
-	return testBoxIntersection(obj1.boundingBox.x, obj1.boundingBox.y, obj1.boundingBox.x + obj1.boundingBox.width - 1, obj1.boundingBox.y + obj1.boundingBox.height - 1,
-		obj2.boundingBox.x, obj2.boundingBox.y, obj2.boundingBox.x + obj2.boundingBox.width - 1, obj2.boundingBox.y + obj2.boundingBox.height - 1);
-}
-
-bool MeanShiftTracker::testIntraObjectIntersection(vector<Object2D> &object_list, int cur_pos)
-{
-	bool bSection = false;
-	for (size_t c = 0; c < object_list.size(); c++){
-		if (c == cur_pos) continue;
-		if (object_list[c].status == 3) continue; // avoid to delete two tracked objects
-		bSection = testBoxIntersection(object_list[cur_pos].boundingBox.x, object_list[cur_pos].boundingBox.y, object_list[cur_pos].boundingBox.x + object_list[cur_pos].boundingBox.width - 1, object_list[cur_pos].boundingBox.y + object_list[cur_pos].boundingBox.height - 1,
-			object_list[c].boundingBox.x, object_list[c].boundingBox.y, object_list[c].boundingBox.x + object_list[c].boundingBox.width - 1, object_list[c].boundingBox.y + object_list[c].boundingBox.height - 1);
-		if (bSection)	break;
-	}
-	return bSection;
-}
-
-void CodeBookInit()
-{
-	model = cvCreateBGCodeBookModel();
-	//Set color thresholds to default values
-	model->modMin[0] = 3;
-	model->modMin[1] = model->modMin[2] = 3;
-	model->modMax[0] = 10;
-	model->modMax[1] = model->modMax[2] = 10;
-	model->cbBounds[0] = model->cbBounds[1] = model->cbBounds[2] = 10;
-}
-
-void RunCodeBook(IplImage* &image, IplImage* &yuvImage, IplImage* &ImaskCodeBook, IplImage* &ImaskCodeBookCC, int &nframes)
-{
-	if (nframes == 0)
-	{
-		// CODEBOOK METHOD ALLOCATION
-		yuvImage = cvCloneImage(image);
-		ImaskCodeBook = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
-		ImaskCodeBookCC = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
-		cvSet(ImaskCodeBook, cvScalar(255));
-	}
-	cvCvtColor(image, yuvImage, CV_BGR2YCrCb);//YUV For codebook method
-	//This is where we build our background model
-	if (nframes < nframesToLearnBG)
-		cvBGCodeBookUpdate(model, yuvImage);
-
-	if (nframes == nframesToLearnBG)
-		cvBGCodeBookClearStale(model, model->t / 2);
-
-	//Find the foreground if any
-	if (nframes >= nframesToLearnBG)
-	{
-		// Find foreground by codebook method
-		cvBGCodeBookDiff(model, yuvImage, ImaskCodeBook);
-		// This part just to visualize bounding boxes and centers if desired
-		cvCopy(ImaskCodeBook, ImaskCodeBookCC);
-		cvSegmentFGMask(ImaskCodeBookCC);
-	}
-}
-
-void find_connected_components(IplImage *mask, int poly1_hull0, double perimScale, int *num, CvRect *bbs, CvPoint *centers)
+void FindConnectedComponents::returnBbs(IplImage *mask, int *num, CvRect *bbs, CvPoint *centers)
 {
 	static CvMemStorage* mem_storage = NULL;
 	static CvSeq* contours = NULL;
@@ -1279,8 +1232,7 @@ void find_connected_components(IplImage *mask, int poly1_hull0, double perimScal
 	{
 		mem_storage = cvCreateMemStorage(0);
 	}
-	else
-		cvClearMemStorage(mem_storage);
+	else	cvClearMemStorage(mem_storage);
 
 	CvContourScanner scanner = cvStartFindContours(mask, mem_storage, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 	CvSeq* c;
@@ -1289,17 +1241,19 @@ void find_connected_components(IplImage *mask, int poly1_hull0, double perimScal
 	while ((c = cvFindNextContour(scanner)) != NULL)
 	{
 		double len = cvContourPerimeter(c);
-		double q = (mask->height + mask->width) / perimScale; // calculate perimeter len threshold
+
+
 
 		/* Get rid of blob if its perimeter is too small: */
-		if (len < q)
-			cvSubstituteContour(scanner, NULL);
+		if (len < minConnectedComponentPerimeter)	cvSubstituteContour(scanner, NULL);
+
+
 
 		else
 		{
 			/* Smooth its edges if its large enough */
 			CvSeq* c_new;
-			if (poly1_hull0) {
+			if (method_Poly1_Hull0 == 1) {
 				c_new = cvApproxPoly(c, sizeof(CvContour), mem_storage, CV_POLY_APPROX_DP, CVCONTOUR_APPROX_LEVEL, 0); // Polygonal approximation
 			}
 			else {
@@ -1356,6 +1310,65 @@ void find_connected_components(IplImage *mask, int poly1_hull0, double perimScal
 		for (c = contours; c != NULL; c = c->h_next) {
 			cvDrawContours(mask, c, CVX_WHITE, CVX_BLACK, -1, CV_FILLED, 8);
 		}
+	}
+}
+
+bool MeanShiftTracker::testObjectIntersection(Object2D &obj1, Object2D &obj2)
+{
+	return testBoxIntersection(obj1.boundingBox.x, obj1.boundingBox.y, obj1.boundingBox.x + obj1.boundingBox.width - 1, obj1.boundingBox.y + obj1.boundingBox.height - 1,
+		obj2.boundingBox.x, obj2.boundingBox.y, obj2.boundingBox.x + obj2.boundingBox.width - 1, obj2.boundingBox.y + obj2.boundingBox.height - 1);
+}
+
+bool MeanShiftTracker::testIntraObjectIntersection(vector<Object2D> &object_list, int cur_pos)
+{
+	bool bSection = false;
+	for (size_t c = 0; c < object_list.size(); c++){
+		if (c == cur_pos) continue;
+		if (object_list[c].status == 3) continue; // avoid to delete two tracked objects
+		bSection = testBoxIntersection(object_list[cur_pos].boundingBox.x, object_list[cur_pos].boundingBox.y, object_list[cur_pos].boundingBox.x + object_list[cur_pos].boundingBox.width - 1, object_list[cur_pos].boundingBox.y + object_list[cur_pos].boundingBox.height - 1,
+			object_list[c].boundingBox.x, object_list[c].boundingBox.y, object_list[c].boundingBox.x + object_list[c].boundingBox.width - 1, object_list[c].boundingBox.y + object_list[c].boundingBox.height - 1);
+		if (bSection)	break;
+	}
+	return bSection;
+}
+
+void CodeBookInit()
+{
+	model = cvCreateBGCodeBookModel();
+	//Set color thresholds to default values
+	model->modMin[0] = 3;
+	model->modMin[1] = model->modMin[2] = 3;
+	model->modMax[0] = 10;
+	model->modMax[1] = model->modMax[2] = 10;
+	model->cbBounds[0] = model->cbBounds[1] = model->cbBounds[2] = 10;
+}
+
+void RunCodeBook(IplImage* &image, IplImage* &yuvImage, IplImage* &ImaskCodeBook, IplImage* &ImaskCodeBookCC, int &nframes)
+{
+	if (nframes == 0)
+	{
+		// CODEBOOK METHOD ALLOCATION
+		yuvImage = cvCloneImage(image);
+		ImaskCodeBook = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
+		ImaskCodeBookCC = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
+		cvSet(ImaskCodeBook, cvScalar(255));
+	}
+	cvCvtColor(image, yuvImage, CV_BGR2YCrCb);//YUV For codebook method
+	//This is where we build our background model
+	if (nframes < nframesToLearnBG)
+		cvBGCodeBookUpdate(model, yuvImage);
+
+	if (nframes == nframesToLearnBG)
+		cvBGCodeBookClearStale(model, model->t / 2);
+
+	//Find the foreground if any
+	if (nframes >= nframesToLearnBG)
+	{
+		// Find foreground by codebook method
+		cvBGCodeBookDiff(model, yuvImage, ImaskCodeBook);
+		// This part just to visualize bounding boxes and centers if desired
+		cvCopy(ImaskCodeBook, ImaskCodeBookCC);
+		cvSegmentFGMask(ImaskCodeBookCC);
 	}
 }
 
@@ -1519,6 +1532,5 @@ void KF_init(cv::KalmanFilter *kf)
 		// <<<< Kalman Filter
 	}	
 }
-
 
 
