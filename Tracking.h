@@ -16,7 +16,7 @@ const short MaxHistBins = 4096;
 #define nframesToLearnBG  1                         //if you use codebook, set 300. If you use MOG, set 1
 
 /* Set tracking line length, range: 20~100 */
-#define plotLineLength   100
+#define plotLineLength   99
 
 /* Setting 1 if you want to display it */
 #define display_bbsRectangle     0
@@ -48,11 +48,11 @@ public:
 	{
 		method_Poly1_Hull0 = 1; // Use Polygon algorithm if method_Poly1_Hull0 = 1, and use Hull algorithm if method_Poly1_Hull0 = 0
 		minConnectedComponentPerimeter = (imgWidth + imgHeight) / (ImgCompressionScale * ConnectedComponentPerimeterScale);
-	} 
+	}
 
 	~FindConnectedComponents(){}
 
-	void returnBbs(IplImage *mask, int *num, CvRect *bbs, CvPoint *centers);
+	void returnBbs(IplImage *mask, int *num, CvRect *bbs, CvPoint *centers, bool ignoreTooSmallPerimeter);
 
 private:
 	int method_Poly1_Hull0;
@@ -80,7 +80,6 @@ typedef struct
 	Size	objSize;
 	vector<double> descriptor;
 	Point point[100];           // trajectory points 
-	Point comparePoint[100];    //It decides whether rectangles is motionless or not. 
 	Scalar color;               // bbs color 
 	Mat kernelDownScale;        // kernel for the down-scaled bbs
 	Mat kernel;                 // kernel for the bbs

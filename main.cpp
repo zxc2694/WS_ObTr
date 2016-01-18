@@ -74,7 +74,6 @@ int main(int argc, const char** argv)
 		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
 		bgs->process(img_compress, fgmask, img_bgsModel);
 #endif
-
 		
 		if (img.empty()) break;
 
