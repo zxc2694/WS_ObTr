@@ -263,10 +263,6 @@ void DPEigenbackgroundBGS::process(const cv::Mat &img_input, cv::Mat &img_output
 	if (img_input.empty())
 		return;
 
-	loadConfig();
-
-	if (firstTime)
-		saveConfig();
 
 	frame = new IplImage(img_input);
 
@@ -311,28 +307,4 @@ void DPEigenbackgroundBGS::process(const cv::Mat &img_input, cv::Mat &img_output
 	delete frame;
 	firstTime = false;
 	frameNumber++;
-}
-
-void DPEigenbackgroundBGS::saveConfig()
-{
-	CvFileStorage* fs = cvOpenFileStorage("./config/DPEigenbackgroundBGS.xml", 0, CV_STORAGE_WRITE);
-
-	cvWriteInt(fs, "threshold", threshold);
-	cvWriteInt(fs, "historySize", historySize);
-	cvWriteInt(fs, "embeddedDim", embeddedDim);
-	cvWriteInt(fs, "showOutput", showOutput);
-
-	cvReleaseFileStorage(&fs);
-}
-
-void DPEigenbackgroundBGS::loadConfig()
-{
-	CvFileStorage* fs = cvOpenFileStorage("./config/DPEigenbackgroundBGS.xml", 0, CV_STORAGE_READ);
-
-	threshold = cvReadIntByName(fs, 0, "threshold", 225);
-	historySize = cvReadIntByName(fs, 0, "historySize", 20);
-	embeddedDim = cvReadIntByName(fs, 0, "embeddedDim", 10);
-	showOutput = cvReadIntByName(fs, 0, "showOutput", true);
-
-	cvReleaseFileStorage(&fs);
 }

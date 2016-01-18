@@ -425,8 +425,7 @@ public:
 	virtual ~IBGS(){}
 
 private:
-	virtual void saveConfig() = 0;
-	virtual void loadConfig() = 0;
+
 };
 
 namespace Algorithms
@@ -511,8 +510,7 @@ public:
 	void process(const cv::Mat &img_input, cv::Mat &img_output, cv::Mat &img_bgmodel);
 
 private:
-	void saveConfig();
-	void loadConfig();
+
 };
 
 
