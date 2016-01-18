@@ -62,7 +62,6 @@ int main(int argc, const char** argv)
 		fgmaskIpl = cvCloneImage(ImaskCodeBook);
 		fgmask = Mat(fgmaskIpl);
 #endif
-		static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows);
 		
 		if (img.empty()) break;
 
@@ -75,7 +74,7 @@ int main(int argc, const char** argv)
 
 
 		/* Plot tracking rectangles and its trajectory */
-		tracking_function(img, fgmask, ms_tracker, nframes, NULL, NULL);
+		tracking_function(img, fgmask, nframes, NULL, NULL);
 
 	
 		LARGE_INTEGER liPerfNow = { 0 }; 

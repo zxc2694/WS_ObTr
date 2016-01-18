@@ -19,7 +19,6 @@ Scalar *ColorPtr;
 /* Function: tracking_function
  * @param: img        - Image input(RGB)
  * @param: fgmask     - Image after processing of background subtraction
- * @param: ms_tracker - Builded track object list pointer
  * @param: nframes    - The number of executions 
  * @param: ROI        - Input all ROIs
  * @param: ObjNum     - The number of objects
@@ -27,7 +26,7 @@ Scalar *ColorPtr;
  * 1. Both ROI and ObjNum are NULL, the funciton will use fgmask to find all ROIs of objects.
  * 2. Both ROI and ObjNum are not NULL, the function will ignore fgmask image.
 */
-void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &nframes, CvRect *ROI, int ObjNum)
+void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int ObjNum)
 {
 	Mat show_img;
 	CvRect bbs[10], bbsV2[10];
@@ -43,6 +42,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 	static Mat background_BBS(img.rows, img.cols, CV_8UC1);
 	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
 	static FindConnectedComponents bbsFinder(img.cols, img.rows);
+	static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows);
 	// >>>> Kalman Filter
 	vector<vector<cv::Point> > balls;
 	vector<cv::Rect> ballsBox;
@@ -411,7 +411,7 @@ void tracking_function(Mat &img, Mat &fgmask, IObjectTracker *ms_tracker, int &n
 	/* Display image output */
 	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0)); // Merge 3-channel image and 4-channel image
 	imshow("Tracking_image", show_img);
-	//cvShowImage("foreground mask", fgmaskIpl);
+	cvShowImage("foreground mask", fgmaskIpl);
 
 	imwrite(outFilePath, show_img);
 	cvSaveImage(outFilePath2, fgmaskIpl);
@@ -1020,14 +1020,14 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 			// if too small bbs center shift, then stop iteration
 			if (pow(shift_x, 2) + pow(shift_y, 2) < epsilon)
 			{
-				cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
+				//cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
 				break;
 			}
 
 			// iterate at most Max_Mean_Shift_Iter times
 			if (Mean_Shift_Iter == Max_Mean_Shift_Iter)
 			{
-				cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
+				//cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
 				break;
 			}
 
