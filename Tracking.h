@@ -61,20 +61,6 @@ private:
 
 typedef struct
 {
-	//It decides whether rectangles is motionless or not.
-	int p1[DELE_RECT_FRAMENO];
-	int p2[DELE_RECT_FRAMENO];
-	int p3[DELE_RECT_FRAMENO];
-	int p4[DELE_RECT_FRAMENO];
-	int p5[DELE_RECT_FRAMENO];
-	int p6[DELE_RECT_FRAMENO];
-	int p7[DELE_RECT_FRAMENO];
-	int p8[DELE_RECT_FRAMENO];
-	int p9[DELE_RECT_FRAMENO];
-} ComparePoint;
-
-typedef struct
-{
 	int No;						// numbers of track boxes 
 	short	type;				// 1:vehicle , 2: pedestrian, 3: unknown
 	short	status;				// 1: detected, 2: tracked, 3: miss to detect, 4: loss to track
@@ -99,13 +85,12 @@ typedef struct
 	Mat kernelDownScale;        // kernel for the down-scaled bbs
 	Mat kernel;                 // kernel for the bbs
 	Mat kernelUpScale;          // kernel for the up-scaled bbs
-	ComparePoint CP;
 	float objScale;
 	int PtNumber;
 	int cPtNumber;
 	int PtCount;
-	int countDone;
-	int times;
+	int ComparePoint[10][DELE_RECT_FRAMENO]; //It decides whether rectangles is motionless or not.
+
 } Object2D;
 
 typedef struct
@@ -286,4 +271,5 @@ void MorphologyProcess(IplImage* &fgmaskIpl);
 void BubbleSort(int* array, int size);
 void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *bbs, int MaxObjNum);
 void KF_init(cv::KalmanFilter *kf);
+void ComparePoint_9(IplImage* &fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
 #endif

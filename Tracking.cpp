@@ -261,16 +261,19 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
 			int black = 0;
-			// Calculating how much black point in image of background subtracion.
-			for (int i = 0; i < DELE_RECT_FRAMENO; i++)
+			//Calculating how much black point in image of background subtracion.
+			for (int point = 0; point < 9; point++)
 			{
-				if (object_list[obj_list_iter].CP.p5[i] != 0)
-					break;
-				else
-					black++;
+			    for (int i = 0; i < DELE_RECT_FRAMENO; i++)
+			    {
+					if (object_list[obj_list_iter].ComparePoint[point][i] != 0)
+						break;
+					else
+						black++;
+				}
 			}
 			// When its central point is all black in image of background subtracion.	
-			if (DELE_RECT_FRAMENO == black)
+			if (DELE_RECT_FRAMENO * 9 == black)
 			{
 				char bbsExistObj = false;
 				for (int i = 0; i < MaxObjNum; i++)
@@ -328,9 +331,10 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
 				object_list[obj_list_iter].cPtNumber = 0;
 
-			// Get the color of central point from tracking box (white or black)
-			object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, (0.5f * object_list[obj_list_iter].boundingBox.height + object_list[obj_list_iter].boundingBox.y) / imgCompressionScale, (0.5*object_list[obj_list_iter].boundingBox.width + object_list[obj_list_iter].boundingBox.x) / imgCompressionScale).val[0]; // Note: cvGet2D(IplImage*, y, x)
-			
+			IplImage *cfgmaskIpl = fgmaskIpl;
+			// Get the color of nine points from tracking box (white or black)
+			ComparePoint_9(cfgmaskIpl, object_list, obj_list_iter,object_list[obj_list_iter].cPtNumber);
+		
 			object_list[obj_list_iter].PtNumber++;
 			object_list[obj_list_iter].cPtNumber++;
 			object_list[obj_list_iter].PtCount++;
@@ -507,12 +511,12 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	obj.PtNumber = 0;
 	obj.cPtNumber = 0;
 	obj.PtCount = 0;
-	obj.times = 1;
 	obj.objScale = 1;
 	obj.kernel.create(obj.boundingBox.height, obj.boundingBox.width, CV_64FC1);
 
-	  for (int i = 0; i < sizeof(obj.CP.p5); i++)
-		obj.CP.p5[i] = 255;
+	for (int j = 0; j < 9; j++)                     //Set nine point as 255 in bbs
+		for (int i = 0; i < DELE_RECT_FRAMENO; i++)
+		  obj.ComparePoint[j][i] = 255;
 
 	getKernel(obj.kernel, kernel_type);
 
@@ -1552,4 +1556,20 @@ void KF_init(cv::KalmanFilter *kf)
 	}	
 }
 
-
+void ComparePoint_9(IplImage* &fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN)
+{
+	int x = object_list[obj_list_iter].boundingBox.x;
+	int y = object_list[obj_list_iter].boundingBox.y;
+	int w = object_list[obj_list_iter].boundingBox.width;
+	int h =	object_list[obj_list_iter].boundingBox.height;
+	object_list[obj_list_iter].ComparePoint[0][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.2*w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[1][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.5*w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[2][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.8*w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[3][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.2*w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[4][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.5*w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[5][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.8*w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[6][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.2*w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[7][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.5*w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[8][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.8*w + x) / imgCompressionScale).val[0];
+	// Note: cvGet2D(IplImage*, y, x)
+}
