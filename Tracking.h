@@ -1,7 +1,9 @@
 #ifndef MEANSHIFTTRACKER_H
 #define MEANSHIFTTRACKER_H
 
+#include <iostream>
 #include <memory>
+#include <opencv2/opencv.hpp>
 #include "opencv2/core/core.hpp"
 #include "opencv2/video/tracking.hpp"
 
@@ -11,7 +13,7 @@ using namespace std;
 const short MaxHistBins = 4096;
 
 /* Update the initial frame number of codebook */
-#define nframesToLearnBG  1  //if you use codebook, set 300. If you use MOG, set 1
+#define nframesToLearnBG  1                         //if you use codebook, set 300. If you use MOG, set 1
 
 /* Set tracking line length, range: 20~100 */
 #define plotLineLength   100
@@ -20,8 +22,18 @@ const short MaxHistBins = 4096;
 #define display_bbsRectangle     0
 #define display_kalmanRectangle  0
 
-#define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
+/* BBS parameters */
+#define connectedComponentPerimeterScale 6.0f      // when compute obj bbs, ignore obj with perimeter < (imgWidth + imgHeight) / (imgCompressionScale * ConnectedComponentPerimeterScale)
+#define minObjWidth_Ini_Scale  60                  // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
+#define minObjHeight_Ini_Scale 14                  // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
 
+/* del too small obj from object_list (ie give up tracking it) */
+#define stopTrackingObjWithTooSmallWidth_Scale 120 // stop tracking obj when its width becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallWidth_Scale
+#define stopTrackingObjWithTooSmallHeight_Scale 28 // stop tracking obj when its height becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallHeight_Scale
+
+#define imgCompressionScale 2                      // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
+
+#define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
 #define CVCONTOUR_APPROX_LEVEL         2      
 #define CVCLOSE_ITR                    3	
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
@@ -29,14 +41,13 @@ const short MaxHistBins = 4096;
 #define PI       3.141592653589793238463
 #define DELE_RECT_FRAMENO             10
 
-
 class FindConnectedComponents
 {
 public:
-	FindConnectedComponents(int imgWidth, int imgHeight)
+	FindConnectedComponents(int imgWidth, int imgHeight, int ImgCompressionScale, float ConnectedComponentPerimeterScale)
 	{
 		method_Poly1_Hull0 = 1; // Use Polygon algorithm if method_Poly1_Hull0 = 1, and use Hull algorithm if method_Poly1_Hull0 = 0
-		minConnectedComponentPerimeter = (imgWidth + imgHeight) / 4.5f;		 
+		minConnectedComponentPerimeter = (imgWidth + imgHeight) / (ImgCompressionScale * ConnectedComponentPerimeterScale);
 	} 
 
 	~FindConnectedComponents(){}
@@ -228,7 +239,7 @@ private:
 class MeanShiftTracker : public IObjectTracker
 {
 public:
-	MeanShiftTracker(int imgWidth, int imgHeight);
+	MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale);
 	~MeanShiftTracker();
 
 	int DistBetObj(Rect a, Rect b);

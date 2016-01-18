@@ -5,6 +5,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/legacy/legacy.hpp"
 #include "Tracking.h"
+#include "BackGroundModel.h"
 #include "math.h"
 #include <stdio.h>
 #include <windows.h>
@@ -15,7 +16,8 @@
 
 /* Select background subtrction algorithm */
 #define Use_CodeBook  0
-#define Use_MOG       1
+#define Use_MOG       0
+#define Use_DPEigenbackgroundBGS 1
 
 int main(int argc, const char** argv)
 {
@@ -25,10 +27,12 @@ int main(int argc, const char** argv)
 	bool update_bg_model = true;
 	int nframes = 0;
 	IplImage *fgmaskIpl = 0;
-	IplImage* image = 0, *yuvImage = 0;                  
+	IplImage* image = 0, *yuvImage = 0;
 	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
-	Mat img, fgmask;
+	Mat img, img_compress;
+	Mat	img_bgsModel, fgmask;
 	BackgroundSubtractorMOG2 bg_model;
+	IBGS *bgs = new DPEigenbackgroundBGS;; // Background Subtraction class
 	CodeBookInit();
 
 	while (1)
@@ -51,17 +55,26 @@ int main(int argc, const char** argv)
 #endif
 
 #if Use_MOG		
-		bg_model.operator()(img, fgmask, -1); //update the model
+		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
+		bg_model.operator()(img_compress, fgmask, -1); //update the model
 		//bg_model(img, fgmask, update_bg_model ? -1 : 0); //update the model
-		//imshow("fg", fgmask);
+		imshow("fg", fgmask);
 #endif
 
 #if Use_CodeBook
 		image = &IplImage(img);
-		RunCodeBook(image, yuvImage, ImaskCodeBook, ImaskCodeBookCC, nframes);  //Run codebook function
+		resize(image, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
+		RunCodeBook(img_compress, yuvImage, ImaskCodeBook, ImaskCodeBookCC, nframes);  //Run codebook function
 		fgmaskIpl = cvCloneImage(ImaskCodeBook);
 		fgmask = Mat(fgmaskIpl);
 #endif
+
+#if Use_DPEigenbackgroundBGS
+		if (img.empty()) break;
+		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
+		bgs->process(img_compress, fgmask, img_bgsModel);
+#endif
+
 		
 		if (img.empty()) break;
 
@@ -72,21 +85,21 @@ int main(int argc, const char** argv)
 		QueryPerformanceCounter(&m_liPerfStart);
 
 
-
 		/* Plot tracking rectangles and its trajectory */
 		tracking_function(img, fgmask, nframes, NULL, NULL);
 
 	
 		LARGE_INTEGER liPerfNow = { 0 }; 
 		QueryPerformanceCounter(&liPerfNow);
-		long decodeDulation = (((liPerfNow.QuadPart - m_liPerfStart.QuadPart) * 1000) / m_liPerfFreq.QuadPart);// Compute total needed time (millisecond)
+		long decodeDulation = (((liPerfNow.QuadPart - m_liPerfStart.QuadPart) * 1000) / m_liPerfFreq.QuadPart); // Compute total needed time (millisecond)
 		cout << "tracking time = " << decodeDulation << "ms" << endl;
 
 		nframes++;	
 		char k = (char)waitKey(10);
 		if (k == 27) break;
-	
-	}
+	} // end of while
+
+	delete bgs;
 	destroyAllWindows();
 	return 0;
 }

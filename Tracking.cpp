@@ -6,7 +6,6 @@
 #include "opencv2/video/video.hpp"
 #include "opencv2/video/tracking.hpp"
 #include "Tracking.h"
-#include <iostream>
 #include <iomanip> 
 #include <windows.h>
 #include <math.h>
@@ -39,10 +38,10 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	//static vector<Object2D> prev_object_list;
 	static char prevData = false;
 	static int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };  //for tracking line
+	static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat background_BBS(img.rows, img.cols, CV_8UC1);
 	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
-	static FindConnectedComponents bbsFinder(img.cols, img.rows);
-	static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows);
+	static FindConnectedComponents bbsFinder(img.cols, img.rows, imgCompressionScale, connectedComponentPerimeterScale);
 	// >>>> Kalman Filter
 	vector<vector<cv::Point> > balls;
 	vector<cv::Rect> ballsBox;
@@ -89,7 +88,15 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		bbsFinder.returnBbs(fgmaskIpl, &MaxObjNum, bbs, centers);
 
 		for (int iter = 0; iter < MaxObjNum; ++iter)
-		{			
+		{
+			// decompression bbs and centers in fgmaskIpl
+			bbs[iter].x *= imgCompressionScale;
+			bbs[iter].y *= imgCompressionScale;
+			bbs[iter].width *= imgCompressionScale;
+			bbs[iter].height *= imgCompressionScale;
+			centers[iter].x *= imgCompressionScale;
+			centers[iter].y *= imgCompressionScale;
+
 			ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
 		}
 	}
@@ -114,12 +121,24 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 				srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
 				srcROI[iter] = Scalar::all(0);                                  // Set srcROI as showing black color
 			}
-
 			IplImage *BBSIpl = &IplImage(background_BBS);
 			bbsFinder.returnBbs(BBSIpl, &MaxObjNum, bbs, centers);  // Secondly, Run the function of searching components to get update of bbs
+	
 
 			for (iter = 0; iter < MaxObjNum; iter++)
 				bbs[iter].height = bbs[iter].height + bbsV2[iter].height;       // Merge bbs and bbsV2 to get final ROI
+
+			// decompression bbs and centers in fgmaskIpl
+			for (int iter = 0; iter < MaxObjNum; ++iter)
+			{
+				bbs[iter].x *= imgCompressionScale;
+				bbs[iter].y *= imgCompressionScale;
+				bbs[iter].width *= imgCompressionScale;
+				bbs[iter].height *= imgCompressionScale;
+
+				centers[iter].x *= imgCompressionScale;
+				centers[iter].y *= imgCompressionScale;
+			}
 
 			if (display_bbsRectangle == true)
 			{
@@ -132,13 +151,11 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		else   //If ObjNum is not NULL, we use existing ROIs.
 		{
 			MaxObjNum = ObjNum;
-			for (int iter = 0; iter < MaxObjNum; iter++)
+			int iter;
+			for (iter = 0; iter < MaxObjNum; iter++)
 				bbs[iter] = ROI[iter];
 		}
-
-
 		ms_tracker->track(img, object_list);
-
 
 		int bbs_iter;
 		size_t obj_list_iter;
@@ -259,14 +276,14 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 				for (int i = 0; i < MaxObjNum; i++)
 				{
 					// To find internal bbs of the tracking box
-					if (Overlap(bbs[i], object_list[obj_list_iter].boundingBox, 0.8f)) // Overlap > 0.5 --> replace the boundingBox
+					if ((centers[i].x > object_list[obj_list_iter].boundingBox.x) && (centers[i].x < object_list[obj_list_iter].boundingBox.x + object_list[obj_list_iter].boundingBox.width) && (centers[i].y > object_list[obj_list_iter].boundingBox.y) &&( centers[i].y < object_list[obj_list_iter].boundingBox.y + object_list[obj_list_iter].boundingBox.height))
 					{
 						//Reset the scale of the tracking box.
 						object_list[obj_list_iter].objScale = 1;
 						object_list[obj_list_iter].boundingBox = bbs[i];
 						object_list[obj_list_iter].initialBbsWidth = bbs[i].width;
 						object_list[obj_list_iter].initialBbsHeight = bbs[i].height;
-						
+
 						bbsExistObj = true;
 						break;
 					}
@@ -288,8 +305,6 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			if (object_list.size() == 0)//Prevent out of vector range
 				break;
 		}
-
-		
 
 		/* plotting trajectory */
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
@@ -314,7 +329,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 				object_list[obj_list_iter].cPtNumber = 0;
 
 			// Get the color of central point from tracking box (white or black)
-			object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, 0.5 * object_list[obj_list_iter].boundingBox.height + object_list[obj_list_iter].boundingBox.y, 0.5*object_list[obj_list_iter].boundingBox.width + object_list[obj_list_iter].boundingBox.x).val[0]; // Note: cvGet2D(IplImage*, y, x)
+			object_list[obj_list_iter].CP.p5[object_list[obj_list_iter].cPtNumber] = cvGet2D(fgmaskIpl, (0.5f * object_list[obj_list_iter].boundingBox.height + object_list[obj_list_iter].boundingBox.y) / imgCompressionScale, (0.5*object_list[obj_list_iter].boundingBox.width + object_list[obj_list_iter].boundingBox.x) / imgCompressionScale).val[0]; // Note: cvGet2D(IplImage*, y, x)
 			
 			object_list[obj_list_iter].PtNumber++;
 			object_list[obj_list_iter].cPtNumber++;
@@ -411,23 +426,23 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	/* Display image output */
 	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0)); // Merge 3-channel image and 4-channel image
 	imshow("Tracking_image", show_img);
-	cvShowImage("foreground mask", fgmaskIpl);
+	//cvShowImage("foreground mask", fgmaskIpl);
 
 	imwrite(outFilePath, show_img);
 	cvSaveImage(outFilePath2, fgmaskIpl);
 
 }
 
-MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight) :kernel_type(2), bin_width(16), count(0)
+MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
 {
-	// if obj bbs found by find_connected_components() is too small, then addTrackedList don't add it into object_list to track it
-    minObjWidth_Ini = (imgWidth + imgHeight) / 60;
-    minObjHeight_Ini = (imgWidth + imgHeight) / 14;
+	// if obj bbs found by bbsFinder is too small, then addTrackedList don't add it into object_list to track it
+	minObjWidth_Ini = (imgWidth + imgHeight) / MinObjWidth_Ini_Scale;
+	minObjHeight_Ini = (imgWidth + imgHeight) / MinObjHeight_Ini_Scale;
 	//const int minObjArea_Ini = IMG_WIDTH*IMG_HEIGHT / 30;
 
-	// del too small obj from object_list (ie give up tracking it)
-    minObjWidth = minObjWidth_Ini / 2;
-    minObjHeight = minObjHeight_Ini / 2;
+	// del too small obj from object_list (ie stop tracking it)
+	minObjWidth = (imgWidth + imgHeight) / StopTrackingObjWithTooSmallWidth_Scale;
+	minObjHeight = (imgWidth + imgHeight) / StopTrackingObjWithTooSmallHeight_Scale;
 	//const int minObjArea = 1000;
 
 	bins = 256 / bin_width;
@@ -1020,14 +1035,14 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 			// if too small bbs center shift, then stop iteration
 			if (pow(shift_x, 2) + pow(shift_y, 2) < epsilon)
 			{
-				//cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
+//				cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
 				break;
 			}
 
 			// iterate at most Max_Mean_Shift_Iter times
 			if (Mean_Shift_Iter == Max_Mean_Shift_Iter)
 			{
-				//cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
+//				cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
 				break;
 			}
 
@@ -1226,7 +1241,7 @@ void FindConnectedComponents::returnBbs(IplImage *mask, int *num, CvRect *bbs, C
 	static CvMemStorage* mem_storage = NULL;
 	static CvSeq* contours = NULL;
 
-	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, CVCLOSE_ITR);    //clear up raw mask
+	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, 1);    //clear up raw mask
 	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_CLOSE, CVCLOSE_ITR);
 
 	/* find contours around only bigger regions */
@@ -1313,6 +1328,8 @@ void FindConnectedComponents::returnBbs(IplImage *mask, int *num, CvRect *bbs, C
 			cvDrawContours(mask, c, CVX_WHITE, CVX_BLACK, -1, CV_FILLED, 8);
 		}
 	}
+
+	
 }
 
 bool MeanShiftTracker::testObjectIntersection(Object2D &obj1, Object2D &obj2)
