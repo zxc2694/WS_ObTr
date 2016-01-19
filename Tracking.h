@@ -262,6 +262,42 @@ private:
 	bool testIntraObjectIntersection(vector<Object2D> &object_list, int cur_pos);
 };
 
+class KalmanF
+{
+public:
+	KalmanF()
+	{
+		kf[0] = KalmanFilter(stateSize, measSize, contrSize, type); state[0] = Mat(stateSize, 1, type);	meas[0] = Mat(measSize, 1, type);
+		kf[1] = KalmanFilter(stateSize, measSize, contrSize, type);	state[1] = Mat(stateSize, 1, type);	meas[1] = Mat(measSize, 1, type);
+		kf[2] = KalmanFilter(stateSize, measSize, contrSize, type);	state[2] = Mat(stateSize, 1, type);	meas[2] = Mat(measSize, 1, type);
+		kf[3] = KalmanFilter(stateSize, measSize, contrSize, type);	state[3] = Mat(stateSize, 1, type);	meas[3] = Mat(measSize, 1, type);
+		kf[4] = KalmanFilter(stateSize, measSize, contrSize, type);	state[4] = Mat(stateSize, 1, type);	meas[4] = Mat(measSize, 1, type);
+		kf[5] = KalmanFilter(stateSize, measSize, contrSize, type);	state[5] = Mat(stateSize, 1, type);	meas[5] = Mat(measSize, 1, type);
+		kf[6] = KalmanFilter(stateSize, measSize, contrSize, type);	state[6] = Mat(stateSize, 1, type);	meas[6] = Mat(measSize, 1, type);
+		kf[7] = KalmanFilter(stateSize, measSize, contrSize, type);	state[7] = Mat(stateSize, 1, type);	meas[7] = Mat(measSize, 1, type);
+		kf[8] = KalmanFilter(stateSize, measSize, contrSize, type);	state[8] = Mat(stateSize, 1, type);	meas[8] = Mat(measSize, 1, type);
+		kf[9] = KalmanFilter(stateSize, measSize, contrSize, type);	state[9] = Mat(stateSize, 1, type);	meas[9] = Mat(measSize, 1, type);
+	}
+	~KalmanF(){}
+	void Init();
+	void Predict(Mat &img, vector<Object2D> &object_list, vector<cv::Rect> &ballsBox);
+	void Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox);
+	double ticks = 0;
+	bool found = false;
+	int notFoundCount = 0;
+	double precTick = ticks;
+	double dT;
+
+private:
+	int stateSize = 6;
+	int measSize = 4;
+	int contrSize = 0;
+	unsigned int type = CV_32F;
+	KalmanFilter kf[10];
+	Mat state[10];
+	Mat meas[10];
+};
+
 void CodeBookInit();
 void RunCodeBook(IplImage* &image, IplImage* &yuvImage, IplImage* &ImaskCodeBook, IplImage* &ImaskCodeBookCC, int &nframes);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);

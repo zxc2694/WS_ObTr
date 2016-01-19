@@ -35,30 +35,14 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	int c, n, iter, iter2, MaxObjNum;
 	int first_last_diff = 1;                                    //compare first number with last number 
 	static vector<Object2D> object_list;
-	//static vector<Object2D> prev_object_list;
 	static char prevData = false;
 	static int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };  //for tracking line
 	static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat background_BBS(img.rows, img.cols, CV_8UC1);
 	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
 	static FindConnectedComponents bbsFinder(img.cols, img.rows, imgCompressionScale, connectedComponentPerimeterScale);
-	// >>>> Kalman Filter
-	vector<vector<cv::Point> > balls;
-	vector<cv::Rect> ballsBox;
-	int stateSize = 6;
-	int measSize = 4;
-	int contrSize = 0;
-	unsigned int type = CV_32F;
-	static double ticks = 0;
-	static bool found = false;
-	static int notFoundCount = 0;
-	static KalmanFilter kf[5] = { KalmanFilter(stateSize, measSize, contrSize, type), KalmanFilter(stateSize, measSize, contrSize, type), KalmanFilter(stateSize, measSize, contrSize, type), KalmanFilter(stateSize, measSize, contrSize, type), KalmanFilter(stateSize, measSize, contrSize, type) };
-	static Mat state[5] = { Mat(stateSize, 1, type), Mat(stateSize, 1, type), Mat(stateSize, 1, type), Mat(stateSize, 1, type), Mat(stateSize, 1, type) };
-	static Mat meas[5] = { Mat(measSize, 1, type), Mat(measSize, 1, type), Mat(measSize, 1, type), Mat(measSize, 1, type), Mat(measSize, 1, type) };
-	double precTick = ticks;
-	ticks = (double)cv::getTickCount();
-	double dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
-	// <<<< Kalman Filter
+	static KalmanF KF;
+	vector<cv::Rect> KFBox;
 	
 	TrackingLine = Scalar::all(0);
 	IplImage *fgmaskIpl = &IplImage(fgmask);
@@ -75,7 +59,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			objNumArray[s] = 65535;                       // Set all values as max number for ordered arrangement
 			objNumArray_BS[s] = 65535;
 		}
-		KF_init(kf);
+		KF.Init();
 	}
 	else if (nframes < nframesToLearnBG)
 	{
@@ -362,83 +346,10 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		}// end of plotting trajectory
 		prevData = true;
 
-		// >>>>> Kalman Update
-		// >>>> Kalman Filter
-		//if (found)
-		//{
-		//	for (int i = 0; i < object_list.size(); i++)
-		//	{
-		//		// >>>> Matrix A
-		//		kf[i].transitionMatrix.at<float>(2) = dT;
-		//		kf[i].transitionMatrix.at<float>(9) = dT;
-		//		// <<<< Matrix A
+		/* Kalman Filter Function */
+		KF.Predict(img, object_list, KFBox);
+		KF.Update(object_list, KFBox);
 
-		//		//cout << "dT:" << endl << dT << endl;
-		//		state[i] = kf[i].predict();
-		//		//cout << "State post:" << endl << state[i] << endl;
-
-		//		cv::Rect predRect;
-		//		predRect.width = state[i].at<float>(4);
-		//		predRect.height = state[i].at<float>(5);
-		//		predRect.x = state[i].at<float>(0) - predRect.width / 2;
-		//		predRect.y = state[i].at<float>(1) - predRect.height / 2;
-
-		//		cv::Point center;
-		//		center.x = state[i].at<float>(0);
-		//		center.y = state[i].at<float>(1);
-		//		if ((predRect.x != 0) && (predRect.y != 0) && display_kalmanRectangle == true)
-		//		{
-		//			cv::circle(img, center, 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
-		//			cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
-		//		}
-		//	}
-		//}
-		//for (int iter = 0; iter < object_list.size(); iter++){
-		//	ballsBox.push_back(object_list[iter].boundingBox);
-		//}
-		//// <<<< Kalman Filter
-		//if (object_list.size() == 0)
-		//{
-		//	notFoundCount++;
-		//	if (notFoundCount >= 100)
-		//		found = false;
-		//}
-		//else
-		//{
-		//	notFoundCount = 0;
-		//	for (int i = 0; i < object_list.size(); i++)
-		//	{
-		//		meas[i].at<float>(0) = ballsBox[i].x + ballsBox[i].width / 2;
-		//		meas[i].at<float>(1) = ballsBox[i].y + ballsBox[i].height / 2;
-		//		meas[i].at<float>(2) = (float)ballsBox[i].width;
-		//		meas[i].at<float>(3) = (float)ballsBox[i].height;
-
-		//		if (!found) // First detection!
-		//		{
-		//			// >>>> Initialization
-		//			kf[i].errorCovPre.at<float>(0) = 1; // px
-		//			kf[i].errorCovPre.at<float>(7) = 1; // px
-		//			kf[i].errorCovPre.at<float>(14) = 1;
-		//			kf[i].errorCovPre.at<float>(21) = 1;
-		//			kf[i].errorCovPre.at<float>(28) = 1; // px
-		//			kf[i].errorCovPre.at<float>(35) = 1; // px
-
-		//			state[i].at<float>(0) = meas[i].at<float>(0);
-		//			state[i].at<float>(1) = meas[i].at<float>(1);
-		//			state[i].at<float>(2) = 0;
-		//			state[i].at<float>(3) = 0;
-		//			state[i].at<float>(4) = meas[i].at<float>(2);
-		//			state[i].at<float>(5) = meas[i].at<float>(3);
-		//			// <<<< Initialization
-
-		//			found = true;
-		//		}
-		//		else
-		//			kf[i].correct(meas[i]); // Kalman Correction
-		//		//cout << "Measure matrix:" << endl << meas[i] << endl;
-		//	}
-		//}
-		// <<<<< Kalman Update	
 	} // case of nframes < nframesToLearnBG
 
 
@@ -1526,12 +1437,26 @@ void BubbleSort(int* array, int size)
 	}
 }
 
-void KF_init(cv::KalmanFilter *kf)
+void ComparePoint_9(IplImage* &fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN)
 {
-	int stateSize = 6;
-	int measSize = 4;
-	int contrSize = 0;
-	unsigned int type = CV_32F;
+	int x = object_list[obj_list_iter].boundingBox.x;
+	int y = object_list[obj_list_iter].boundingBox.y;
+	int w = object_list[obj_list_iter].boundingBox.width;
+	int h =	object_list[obj_list_iter].boundingBox.height;
+	object_list[obj_list_iter].ComparePoint[0][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.2f * w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[1][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[2][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[3][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.2f * w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[4][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[5][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[6][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.2f * w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[7][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
+	object_list[obj_list_iter].ComparePoint[8][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
+	// Note: cvGet2D(IplImage*, y, x)
+}
+
+void KalmanF::Init()
+{
 	for (int i = 0; i < 5; i++)
 	{
 		// Transition State Matrix A
@@ -1573,23 +1498,89 @@ void KF_init(cv::KalmanFilter *kf)
 		// Measures Noise Covariance Matrix R
 		setIdentity(kf[i].measurementNoiseCov, Scalar(1e-1));
 		// <<<< Kalman Filter
-	}	
+	}
+
+	ticks = (double)cv::getTickCount();
+	dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
+
 }
 
-void ComparePoint_9(IplImage* &fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN)
+void KalmanF::Predict(Mat &img, vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 {
-	int x = object_list[obj_list_iter].boundingBox.x;
-	int y = object_list[obj_list_iter].boundingBox.y;
-	int w = object_list[obj_list_iter].boundingBox.width;
-	int h =	object_list[obj_list_iter].boundingBox.height;
-	object_list[obj_list_iter].ComparePoint[0][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.2f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[1][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[2][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[3][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.2f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[4][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[5][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[6][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.2f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[7][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[8][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
-	// Note: cvGet2D(IplImage*, y, x)
+	if (found)
+	{
+		for (int i = 0; i < object_list.size(); i++)
+		{
+			// >>>> Matrix A
+			kf[i].transitionMatrix.at<float>(2) = dT;
+			kf[i].transitionMatrix.at<float>(9) = dT;
+			// <<<< Matrix A
+
+			//cout << "dT:" << endl << dT << endl;
+			state[i] = kf[i].predict();
+			//cout << "State post:" << endl << state[i] << endl;
+
+			cv::Rect predRect;
+			predRect.width = state[i].at<float>(4);
+			predRect.height = state[i].at<float>(5);
+			predRect.x = state[i].at<float>(0) - predRect.width / 2;
+			predRect.y = state[i].at<float>(1) - predRect.height / 2;
+
+			cv::Point center;
+			center.x = state[i].at<float>(0);
+			center.y = state[i].at<float>(1);
+			if ((predRect.x != 0) && (predRect.y != 0) && display_kalmanRectangle == true)
+			{
+				cv::circle(img, center, 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
+				cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
+			}
+		}
+	}
+	for (int iter = 0; iter < object_list.size(); iter++)
+		ballsBox.push_back(object_list[iter].boundingBox);
+}
+
+void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
+{
+	if (object_list.size() == 0)
+	{
+		notFoundCount++;
+		if (notFoundCount >= 100)
+			found = false;
+	}
+	else
+	{
+		notFoundCount = 0;
+		for (int i = 0; i < object_list.size(); i++)
+		{
+			meas[i].at<float>(0) = ballsBox[i].x + ballsBox[i].width / 2;
+			meas[i].at<float>(1) = ballsBox[i].y + ballsBox[i].height / 2;
+			meas[i].at<float>(2) = (float)ballsBox[i].width;
+			meas[i].at<float>(3) = (float)ballsBox[i].height;
+
+			if (!found) // First detection!
+			{
+				// >>>> Initialization
+				kf[i].errorCovPre.at<float>(0) = 1; // px
+				kf[i].errorCovPre.at<float>(7) = 1; // px
+				kf[i].errorCovPre.at<float>(14) = 1;
+				kf[i].errorCovPre.at<float>(21) = 1;
+				kf[i].errorCovPre.at<float>(28) = 1; // px
+				kf[i].errorCovPre.at<float>(35) = 1; // px
+
+				state[i].at<float>(0) = meas[i].at<float>(0);
+				state[i].at<float>(1) = meas[i].at<float>(1);
+				state[i].at<float>(2) = 0;
+				state[i].at<float>(3) = 0;
+				state[i].at<float>(4) = meas[i].at<float>(2);
+				state[i].at<float>(5) = meas[i].at<float>(3);
+				// <<<< Initialization
+
+				found = true;
+			}
+			else
+				kf[i].correct(meas[i]); // Kalman Correction
+			//cout << "Measure matrix:" << endl << meas[i] << endl;
+		}
+	}
 }
