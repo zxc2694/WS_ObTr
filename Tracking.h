@@ -21,6 +21,7 @@ const short MaxHistBins = 4096;
 /* Setting 1 if you want to display it */
 #define display_bbsRectangle     0
 #define display_kalmanRectangle  0
+#define display_kalmanArrow      0
 
 /* BBS parameters */
 #define connectedComponentPerimeterScale 6.0f      // when compute obj bbs, ignore obj with perimeter < (imgWidth + imgHeight) / (imgCompressionScale * ConnectedComponentPerimeterScale)

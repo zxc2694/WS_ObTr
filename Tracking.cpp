@@ -1535,16 +1535,19 @@ void KalmanF::Predict(Mat &img, vector<Object2D> &object_list, vector<cv::Rect> 
 				cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
 			}
 
-			/*static bool plot_arrow = false;
-			if (plot_arrow == true)
+			if (display_kalmanArrow == true)
 			{
-				drawArrow(img, Point(center.x, center.y), Point(pred_x[i], pred_y[i]));
-				pred_x[i] = center.x;
-				pred_y[i] = center.y;
-				
+				static bool plot_arrow = false;
+				if (plot_arrow == true)
+				{
+					drawArrow(img, Point(pred_x[i], pred_y[i]), Point(center.x, center.y));
+					pred_x[i] = center.x;
+					pred_y[i] = center.y;
+					plot_arrow = false;
+				}
+				if ((predRect.x != 0) && (predRect.y != 0))
+					plot_arrow = true;
 			}
-			if ((predRect.x != 0) && (predRect.y != 0))
-				plot_arrow = true;*/
 		}
 	}
 	for (int iter = 0; iter < object_list.size(); iter++)
@@ -1598,21 +1601,24 @@ void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 
 void drawArrow(Mat img, CvPoint p, CvPoint q)
 {                  
-	double angle; angle = atan2((double)p.y - q.y, (double)p.x - q.x);                       //bevel angle of pq line
-	double hypotenuse; hypotenuse = sqrt((p.y - q.y)*(p.y - q.y) + (p.y - q.y)*(p.x - q.x)); //length of pq line
+	double angle; angle = atan2((double)p.y - q.y, (double)p.x - q.x);           //bevel angle of pq line
+	double hypotenuse = sqrt((p.y - q.y)*(p.y - q.y) + (p.x - q.x)*(p.x - q.x)); //length of pq line
 	
 	/*The length of the arrow becomes three times from the original length */
 	q.x = (int)(p.x - 3 * hypotenuse * cos(angle));
 	q.y = (int)(p.y - 3 * hypotenuse * sin(angle));
 	
-	/* Plot mainline */
-	line(img, p, q, Scalar(0,0,0), 3, 1, 0);
-	
-	/* Plot two short lines */
-	p.x = (int)(q.x + 9 * cos(angle + PI / 4));
-	p.y = (int)(q.y + 9 * sin(angle + PI / 4));
-	line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
-	p.x = (int)(q.x + 9 * cos(angle - PI / 4));
-	p.y = (int)(q.y + 9 * sin(angle - PI / 4));
-	line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
+	if (hypotenuse < 100.0f) // Prevent drawing line of error 
+	{
+		/* Plot mainline */
+		line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
+
+		/* Plot two short lines */
+		p.x = (int)(q.x + 9 * cos(angle + PI / 4));
+		p.y = (int)(q.y + 9 * sin(angle + PI / 4));
+		line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
+		p.x = (int)(q.x + 9 * cos(angle - PI / 4));
+		p.y = (int)(q.y + 9 * sin(angle - PI / 4));
+		line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
+	}
 }
