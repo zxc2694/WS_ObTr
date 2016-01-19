@@ -1534,6 +1534,17 @@ void KalmanF::Predict(Mat &img, vector<Object2D> &object_list, vector<cv::Rect> 
 				cv::circle(img, center, 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
 				cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
 			}
+
+			/*static bool plot_arrow = false;
+			if (plot_arrow == true)
+			{
+				drawArrow(img, Point(center.x, center.y), Point(pred_x[i], pred_y[i]));
+				pred_x[i] = center.x;
+				pred_y[i] = center.y;
+				
+			}
+			if ((predRect.x != 0) && (predRect.y != 0))
+				plot_arrow = true;*/
 		}
 	}
 	for (int iter = 0; iter < object_list.size(); iter++)

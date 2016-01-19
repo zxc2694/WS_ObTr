@@ -296,6 +296,8 @@ private:
 	KalmanFilter kf[10];
 	Mat state[10];
 	Mat meas[10];
+	int pred_x[10];
+	int pred_y[10];
 };
 
 void CodeBookInit();

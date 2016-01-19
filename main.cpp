@@ -53,6 +53,7 @@ int main(int argc, const char** argv)
 		//sprintf(link, "D://tracking data//20160111Image//R_two_man//Jan%08d_R_Image.png", nframes + 11164513);
 		img = cvLoadImage(link, 1);
 #endif
+		if (img.empty()) break;
 
 #if Use_MOG		
 		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
@@ -70,13 +71,9 @@ int main(int argc, const char** argv)
 #endif
 
 #if Use_DPEigenbackgroundBGS
-		if (img.empty()) break;
 		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
 		bgs->process(img_compress, fgmask, img_bgsModel);
 #endif
-		
-		if (img.empty()) break;
-
 		// Get executing time 
 		LARGE_INTEGER m_liPerfFreq = { 0 };
 		QueryPerformanceFrequency(&m_liPerfFreq);	
