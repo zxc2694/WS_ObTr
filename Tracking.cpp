@@ -1584,3 +1584,24 @@ void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 		}
 	}
 }
+
+void drawArrow(Mat img, CvPoint p, CvPoint q)
+{                  
+	double angle; angle = atan2((double)p.y - q.y, (double)p.x - q.x);                       //bevel angle of pq line
+	double hypotenuse; hypotenuse = sqrt((p.y - q.y)*(p.y - q.y) + (p.y - q.y)*(p.x - q.x)); //length of pq line
+	
+	/*The length of the arrow becomes three times from the original length */
+	q.x = (int)(p.x - 3 * hypotenuse * cos(angle));
+	q.y = (int)(p.y - 3 * hypotenuse * sin(angle));
+	
+	/* Plot mainline */
+	line(img, p, q, Scalar(0,0,0), 3, 1, 0);
+	
+	/* Plot two short lines */
+	p.x = (int)(q.x + 9 * cos(angle + PI / 4));
+	p.y = (int)(q.y + 9 * sin(angle + PI / 4));
+	line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
+	p.x = (int)(q.x + 9 * cos(angle - PI / 4));
+	p.y = (int)(q.y + 9 * sin(angle - PI / 4));
+	line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
+}

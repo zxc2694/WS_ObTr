@@ -307,4 +307,6 @@ void BubbleSort(int* array, int size);
 void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *bbs, int MaxObjNum);
 void KF_init(cv::KalmanFilter *kf);
 void ComparePoint_9(IplImage* &fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
+void drawArrow(Mat img, CvPoint p, CvPoint q);
+
 #endif
