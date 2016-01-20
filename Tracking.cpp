@@ -1507,6 +1507,9 @@ void KalmanF::Init()
 
 void KalmanF::Predict(Mat &img, vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 {
+	for (int iter = 0; iter < object_list.size(); iter++)
+		ballsBox.push_back(object_list[iter].boundingBox); 
+	
 	if (found)
 	{
 		for (int i = 0; i < object_list.size(); i++)
@@ -1537,21 +1540,19 @@ void KalmanF::Predict(Mat &img, vector<Object2D> &object_list, vector<cv::Rect> 
 
 			if (display_kalmanArrow == true)
 			{
-				static bool plot_arrow = false;
-				if (plot_arrow == true)
+				static int plot_arrow[10];
+				if (plot_arrow[i] == true)
 				{
 					drawArrow(img, Point(pred_x[i], pred_y[i]), Point(center.x, center.y));
 					pred_x[i] = center.x;
 					pred_y[i] = center.y;
-					plot_arrow = false;
+					plot_arrow[i] = false;
 				}
 				if ((predRect.x != 0) && (predRect.y != 0))
-					plot_arrow = true;
+					plot_arrow[i] = true;
 			}
 		}
-	}
-	for (int iter = 0; iter < object_list.size(); iter++)
-		ballsBox.push_back(object_list[iter].boundingBox);
+	}	
 }
 
 void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
@@ -1608,7 +1609,7 @@ void drawArrow(Mat img, CvPoint p, CvPoint q)
 	q.x = (int)(p.x - 3 * hypotenuse * cos(angle));
 	q.y = (int)(p.y - 3 * hypotenuse * sin(angle));
 	
-	if (hypotenuse < 100.0f) // Prevent drawing line of error 
+	if ((hypotenuse < 80.0f) && (hypotenuse > 5.0f)) // Prevent drawing line of error 
 	{
 		/* Plot mainline */
 		line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
