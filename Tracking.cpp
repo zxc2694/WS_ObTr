@@ -41,6 +41,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	static Mat background_BBS(img.rows, img.cols, CV_8UC1);
 	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
 	static FindConnectedComponents bbsFinder(img.cols, img.rows, imgCompressionScale, connectedComponentPerimeterScale);
+	IplImage *BBSIpl = 0;
 	static KalmanF KF;
 	vector<cv::Rect> KFBox;
 	
@@ -105,7 +106,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 				srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
 				srcROI[iter] = Scalar::all(0);                                  // Set srcROI as showing black color
 			}
-			IplImage *BBSIpl = &IplImage(background_BBS);
+			BBSIpl = &IplImage(background_BBS);
 			bbsFinder.returnBbs(BBSIpl, &MaxObjNum, bbs, centers, false);  // Secondly, Run the function of searching components to get update of bbs
 	
 
@@ -257,7 +258,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 				}
 			}
 			/* Modify the size of the tracking box  */
-			if (DELE_RECT_FRAMENO * 5 < black)
+			if (DELE_RECT_FRAMENO * 4 < black)
 			{
 				int bbsNumber = 0;
 				for (int i = 0; i < MaxObjNum; i++)
@@ -309,6 +310,8 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 					object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
 				}
 			}
+			black = 0;
+
 			if (object_list.size() == 0)//Prevent out of vector range
 				break;
 		}
@@ -335,7 +338,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
 				object_list[obj_list_iter].cPtNumber = 0;
 
-			IplImage *cfgmaskIpl = fgmaskIpl;
+			IplImage *cfgmaskIpl = BBSIpl;
 			// Get the color of nine points from tracking box (white or black)
 			ComparePoint_9(cfgmaskIpl, object_list, obj_list_iter,object_list[obj_list_iter].cPtNumber);
 		
@@ -843,6 +846,14 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 		// if the part of bbs inside img is too small for all scales after shifts, abandon tracking this obj, i.e. delete this obj from object_list 
 		if (exceedImgBoundary)
 		{
+			for (int iterColor = 0; iterColor < 10; iterColor++)
+			{
+				if (objNumArray_BS[c] == objNumArray[iterColor])
+				{
+					objNumArray[iterColor] = 1000;
+					break;
+				}
+			}
 			object_list.erase(object_list.begin() + c);
 			--c;
 			continue;
@@ -991,6 +1002,14 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 
 		if (delBbsOutImg)
 		{
+			for (int iterColor = 0; iterColor < 10; iterColor++)
+			{
+				if (objNumArray_BS[c] == objNumArray[iterColor])
+				{
+					objNumArray[iterColor] = 1000;
+					break;
+				}
+			}
 			object_list.erase(object_list.begin() + c);
 			--c;
 			continue; // if the part of bbs inside img is too small after scale and shift, abandon tracking this obj
