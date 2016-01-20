@@ -107,11 +107,15 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 				srcROI[iter] = Scalar::all(0);                                  // Set srcROI as showing black color
 			}
 			BBSIpl = &IplImage(background_BBS);
-			bbsFinder.returnBbs(BBSIpl, &MaxObjNum, bbs, centers, false);  // Secondly, Run the function of searching components to get update of bbs
+			int tempObjNum = 10;
+			bbsFinder.returnBbs(BBSIpl, &tempObjNum, bbs, centers, false);  // Secondly, Run the function of searching components to get update of bbs
 	
+			if (tempObjNum == MaxObjNum) // Prevent objects of bbs2 more than objects of bbs1 
+			{
+				for (iter = 0; iter < MaxObjNum; iter++)
+					bbs[iter].height = bbs[iter].height + bbsV2[iter].height;       // Merge bbs and bbsV2 to get final ROI
 
-			for (iter = 0; iter < MaxObjNum; iter++)
-				bbs[iter].height = bbs[iter].height + bbsV2[iter].height;       // Merge bbs and bbsV2 to get final ROI
+			}
 
 			// decompression bbs and centers in fgmaskIpl
 			for (int iter = 0; iter < MaxObjNum; ++iter)
@@ -258,7 +262,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 				}
 			}
 			/* Modify the size of the tracking box  */
-			if (DELE_RECT_FRAMENO * 4 < black)
+			if (DELE_RECT_FRAMENO * 1 < black)
 			{
 				int bbsNumber = 0;
 				for (int i = 0; i < MaxObjNum; i++)
