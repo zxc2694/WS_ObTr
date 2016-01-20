@@ -32,6 +32,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	CvPoint centers[10];
 	char outFilePath[100];
 	char outFilePath2[100];
+	char outFilePath3[100];
 	int c, n, iter, iter2, MaxObjNum;
 	int first_last_diff = 1;                                    //compare first number with last number 
 	static vector<Object2D> object_list;
@@ -50,6 +51,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 
 	sprintf(outFilePath, "video_output//%05d.png", nframes + 1);
 	sprintf(outFilePath2, "video_output//m%05d.png", nframes + 1);
+	sprintf(outFilePath3, "video_output3//m%05d.png", nframes + 1);
 	//sprintf(outFilePath, "video3_output//%05d.png", nframes + 180);
 	//sprintf(outFilePath2, "video3_output//m%05d.png", nframes + 180);
 
@@ -91,6 +93,8 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		{
 			/* find components ,and compute bbs information  */
 			MaxObjNum = 10; // bbsFinder don't find more than MaxObjNum objects  
+
+			//cvSaveImage(outFilePath3, fgmaskIpl);
 			bbsFinder.returnBbs(fgmaskIpl, &MaxObjNum, bbs, centers, true);
 
 			Mat(fgmaskIpl).copyTo(background_BBS);                               // Copy fgmaskIpl to background_BBS
@@ -246,42 +250,31 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 
 		ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
 
+		/* Modify the size of the tracking box  */
+		int bbsNumber = 0;
+		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		{
+			for (int i = 0; i < MaxObjNum; i++)
+			{
+				// Find how many bbs in the tracking box
+				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
+					bbsNumber++;
+			}
+			// When the width of tracking box has 1.5 times more bigger than the width of bbs:
+			for (int i = 0; i < MaxObjNum; i++)
+			{
+				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && (object_list[obj_list_iter].boundingBox.width > 1.5 * bbs[i].width) && (bbsNumber == 1))			    
+					ms_tracker->updateObjBbs(img, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
+			}
+		}
+
 		/* Removing motionless tracking box  */
 		int black = 0;
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
-			//Calculating how much black point in image of background subtracion.
-			for (int point = 0; point < 9; point++)
-			{
-			    for (int i = 0; i < DELE_RECT_FRAMENO; i++)
-			    {
-					if (object_list[obj_list_iter].ComparePoint[point][i] != 0)
-						break;
-					else
-						black++;
-				}
-			}
-			/* Modify the size of the tracking box  */
-			if (DELE_RECT_FRAMENO * 1 < black)
-			{
-				int bbsNumber = 0;
-				for (int i = 0; i < MaxObjNum; i++)
-				{
-					if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
-					{
-						bbsNumber++;
-					}
-				}
-				for (int i = 0; i < MaxObjNum; i++)
-				{
-					if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && (object_list[obj_list_iter].boundingBox.width > 1.5 * bbs[i].width) && (bbsNumber == 1))
-					{
-						//Reset the scale of the tracking box.
-						ms_tracker->updateObjBbs(img, object_list, bbs[i], obj_list_iter);
-					}
-				}
-			}
-			// When its central point is all black in image of background subtracion.	
+			black = FindObjBlackPoints(object_list, obj_list_iter); // Get black points from tracking box
+					
+			// When points are all black in image of background subtracion.	
 			if (DELE_RECT_FRAMENO * 9 == black)
 			{
 				char bbsExistObj = false;
@@ -1476,6 +1469,21 @@ void ComparePoint_9(IplImage* &fgmaskIpl, vector<Object2D> &object_list, int obj
 	object_list[obj_list_iter].ComparePoint[7][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
 	object_list[obj_list_iter].ComparePoint[8][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
 	// Note: cvGet2D(IplImage*, y, x)
+}
+
+int FindObjBlackPoints(vector<Object2D> &object_list, int obj_list_iter)
+{
+	//Calculating how much black point in image of background subtracion.
+	int black_points = 0;
+	for (int point = 0; point < 9; point++)
+	{
+		for (int i = 0; i < DELE_RECT_FRAMENO; i++)
+		{
+			if (object_list[obj_list_iter].ComparePoint[point][i] == 0)
+				black_points++;
+		}
+	}
+	return black_points; //Output range: 0 ~ 9 (black points)
 }
 
 void KalmanF::Init()
