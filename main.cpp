@@ -62,10 +62,10 @@ int main(int argc, const char** argv)
 		imshow("fg", fgmask);
 #endif
 
-#if Use_CodeBook
-		image = &IplImage(img);
-		resize(image, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
-		RunCodeBook(img_compress, yuvImage, ImaskCodeBook, ImaskCodeBookCC, nframes);  //Run codebook function
+#if Use_CodeBook	
+		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
+		image = &IplImage(img_compress);
+		RunCodeBook(image, yuvImage, ImaskCodeBook, ImaskCodeBookCC, nframes);  //Run codebook function
 		fgmaskIpl = cvCloneImage(ImaskCodeBook);
 		fgmask = Mat(fgmaskIpl);
 #endif
