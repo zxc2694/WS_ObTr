@@ -1486,6 +1486,7 @@ int FindObjBlackPoints(vector<Object2D> &object_list, int obj_list_iter)
 	return black_points; //Output range: 0 ~ 9 (black points)
 }
 
+//Refer to https://github.com/Myzhar/simple-opencv-kalman-tracker 
 void KalmanF::Init()
 {
 	for (int i = 0; i < 5; i++)
