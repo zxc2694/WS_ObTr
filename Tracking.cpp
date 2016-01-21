@@ -7,7 +7,6 @@
 #include "opencv2/video/tracking.hpp"
 #include "Tracking.h"
 #include <iomanip> 
-#include <windows.h>
 #include <math.h>
 
 int objNumArray[10];
