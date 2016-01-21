@@ -43,6 +43,7 @@ void CodeBook::DefaultPostProcess(Mat &Mat_FG)
 }
 
 /* BGS Algorithms */
+//Refer to https://github.com/andrewssobral/bgslibrary
 using namespace Algorithms::BackgroundSubtraction;
 
 ImageBase::~ImageBase()
