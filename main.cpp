@@ -9,10 +9,12 @@
 #include "math.h"
 #include <stdio.h>
 #include <windows.h>
+//#include "WiCameraFactory.h"  //for Etron camera
 
 /* Select images input */
 #define inputPath_Paul   1
 #define inputPath_Hardy  0
+#define EtronCamera      0
 
 /* Select background subtrction algorithm */
 #define Use_CodeBook  0
@@ -35,6 +37,22 @@ int main(int argc, const char** argv)
 	IBGS *bgs = new DPEigenbackgroundBGS;; // Background Subtraction class
 	CodeBookInit();
 
+#if EtronCamera
+	// Set the parameter for EStereo
+	static int img_width = 1280;
+	static int img_height = 480;
+	static string camera_type = "EStereoCamera";
+
+	// Initial EStereo
+	auto cam = WiCameraFactory::create(camera_type, img_width, img_height);
+	char *camera_name = cam->get_camera_name();
+	printf("camera name: %s\n", camera_name);
+	int ckey;
+	Mat frame(img_height, img_width, CV_8UC3);
+	Mat L_SrcImg, R_SrcImg, L_GrayImg, R_GrayImg;
+	Mat DisparityMap;
+#endif
+
 	while (1)
 	{
 #if inputPath_Paul
@@ -53,6 +71,14 @@ int main(int argc, const char** argv)
 		//sprintf(link, "D://tracking data//20160111Image//R_two_man//Jan%08d_R_Image.png", nframes + 11164513);
 		img = cvLoadImage(link, 1);
 #endif
+
+#if EtronCamera	
+		cam->getFrame((uchar*)frame.data);             // Capture the image from EStereo
+		frame(Rect(0, 30, 640, 360)).copyTo(L_SrcImg);
+		frame(Rect(640, 30, 640, 360)).copyTo(R_SrcImg);
+		L_SrcImg.copyTo(img);	
+#endif
+
 		if (img.empty()) break;
 
 #if Use_MOG		
@@ -74,6 +100,7 @@ int main(int argc, const char** argv)
 		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
 		bgs->process(img_compress, fgmask, img_bgsModel);
 #endif
+
 		// Get executing time 
 		LARGE_INTEGER m_liPerfFreq = { 0 };
 		QueryPerformanceFrequency(&m_liPerfFreq);	
