@@ -48,11 +48,10 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	TrackingLine = Scalar::all(0);
 	IplImage *fgmaskIpl = &IplImage(fgmask);
 
-	sprintf(outFilePath, "video_output//%05d.png", nframes + 1);
-	sprintf(outFilePath2, "video_output//m%05d.png", nframes + 1);
-	sprintf(outFilePath3, "video_output3//m%05d.png", nframes + 1);
-	//sprintf(outFilePath, "video3_output//%05d.png", nframes + 180);
-	//sprintf(outFilePath2, "video3_output//m%05d.png", nframes + 180);
+	sprintf(outFilePath, "video_output_tracking//%05d.png", nframes + 1);
+	sprintf(outFilePath2, "video_output_BS//%05d.png", nframes + 1);
+	sprintf(outFilePath3, "video_output_original//%05d.png", nframes + 1);
+	//imwrite(outFilePath3, img);
 
 	KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
 
