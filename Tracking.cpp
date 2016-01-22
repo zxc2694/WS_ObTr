@@ -54,6 +54,8 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	//sprintf(outFilePath, "video3_output//%05d.png", nframes + 180);
 	//sprintf(outFilePath2, "video3_output//m%05d.png", nframes + 180);
 
+	KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
+
 	if (nframes == 0)
 	{
 		for (unsigned int s = 0; s < 10; s++)
@@ -345,9 +347,8 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		}// end of plotting trajectory
 		prevData = true;
 
-		/* Kalman Filter Function */
-		KF.Predict(img, object_list, KFBox);
-		KF.Update(object_list, KFBox);
+		KF.drawPredBox(img);             // Draw predict bounding boxes
+		KF.Update(object_list, KFBox);   // Update of Kalman filter
 
 	} // case of nframes < nframesToLearnBG
 
@@ -1530,20 +1531,17 @@ void KalmanF::Init()
 		setIdentity(kf[i].measurementNoiseCov, Scalar(1e-1));
 		// <<<< Kalman Filter
 	}
+}
 
+void KalmanF::Predict(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
+{
 	ticks = (double)cv::getTickCount();
 	dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
 
-}
-
-void KalmanF::Predict(Mat &img, vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
-{
-	for (int iter = 0; iter < object_list.size(); iter++)
-		ballsBox.push_back(object_list[iter].boundingBox); 
-	
 	if (found)
 	{
-		for (int i = 0; i < object_list.size(); i++)
+		//for (int i = 0; i < object_list.size(); i++)
+	    for (int i = 0; i < 10; i++)
 		{
 			// >>>> Matrix A
 			kf[i].transitionMatrix.at<float>(2) = dT;
@@ -1554,40 +1552,22 @@ void KalmanF::Predict(Mat &img, vector<Object2D> &object_list, vector<cv::Rect> 
 			state[i] = kf[i].predict();
 			//cout << "State post:" << endl << state[i] << endl;
 
-			cv::Rect predRect;
-			predRect.width = state[i].at<float>(4);
-			predRect.height = state[i].at<float>(5);
-			predRect.x = state[i].at<float>(0) - predRect.width / 2;
-			predRect.y = state[i].at<float>(1) - predRect.height / 2;
+			predRect[i].width = state[i].at<float>(4);
+			predRect[i].height = state[i].at<float>(5);
+			predRect[i].x = state[i].at<float>(0) - predRect[i].width / 2;
+			predRect[i].y = state[i].at<float>(1) - predRect[i].height / 2;
 
-			cv::Point center;
-			center.x = state[i].at<float>(0);
-			center.y = state[i].at<float>(1);
-			if ((predRect.x != 0) && (predRect.y != 0) && display_kalmanRectangle == true)
-			{
-				cv::circle(img, center, 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
-				cv::rectangle(img, predRect, CV_RGB(255, 0, 0), 2); //red rectangle --> predict
-			}
-
-			if (display_kalmanArrow == true)
-			{
-				static int plot_arrow[10];
-				if (plot_arrow[i] == true)
-				{
-					drawArrow(img, Point(pred_x[i], pred_y[i]), Point(center.x, center.y));
-					pred_x[i] = center.x;
-					pred_y[i] = center.y;
-					plot_arrow[i] = false;
-				}
-				if ((predRect.x != 0) && (predRect.y != 0))
-					plot_arrow[i] = true;
-			}
+			center[i].x = state[i].at<float>(0);
+			center[i].y = state[i].at<float>(1);
 		}
 	}	
 }
 
 void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 {
+	for (int iter = 0; iter < object_list.size(); iter++)
+		ballsBox.push_back(object_list[iter].boundingBox);
+
 	if (object_list.size() == 0)
 	{
 		notFoundCount++;
@@ -1629,8 +1609,34 @@ void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 			//cout << "Measure matrix:" << endl << meas[i] << endl;
 		}
 	}
+	
 }
+void KalmanF::drawPredBox(Mat &img)
+{
+	int i = 0;
+	for (i = 0; i < 10; i ++)
+	{
+		if ((predRect[i].x != 0) && (predRect[i].y != 0) && display_kalmanRectangle == true)
+		{
+			cv::circle(img, center[i], 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
+			cv::rectangle(img, predRect[i], CV_RGB(255, 0, 0), 2); //red rectangle --> predict
+		}
 
+		if (display_kalmanArrow == true)
+		{
+			static int plot_arrow[10];
+			if (plot_arrow[i] == true)
+			{
+				drawArrow(img, Point(pred_x[i], pred_y[i]), Point(center[i].x, center[i].y));
+				pred_x[i] = center[i].x;
+				pred_y[i] = center[i].y;
+				plot_arrow[i] = false;
+			}
+			if ((predRect[i].x != 0) && (predRect[i].y != 0))
+				plot_arrow[i] = true;
+		}
+	}
+}
 void drawArrow(Mat img, CvPoint p, CvPoint q)
 {                  
 	double angle; angle = atan2((double)p.y - q.y, (double)p.x - q.x);           //bevel angle of pq line

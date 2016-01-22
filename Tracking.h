@@ -281,8 +281,9 @@ public:
 	}
 	~KalmanF(){}
 	void Init();
-	void Predict(Mat &img, vector<Object2D> &object_list, vector<cv::Rect> &ballsBox);
+	void Predict(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox);
 	void Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox);
+	void drawPredBox(Mat &img);
 	double ticks = 0;
 	bool found = false;
 	int notFoundCount = 0;
@@ -297,6 +298,8 @@ private:
 	KalmanFilter kf[10];
 	Mat state[10];
 	Mat meas[10];
+	Rect predRect[10];
+	Point center[10];
 	int pred_x[10];
 	int pred_y[10];
 };
