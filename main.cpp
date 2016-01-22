@@ -9,7 +9,6 @@
 #include "math.h"
 #include <stdio.h>
 #include <windows.h>
-//#include "WiCameraFactory.h"  //for Etron camera
 
 /* Select images input */
 #define inputPath_Paul   1
@@ -20,6 +19,10 @@
 #define Use_CodeBook  0
 #define Use_MOG       0
 #define Use_DPEigenbackgroundBGS 1
+
+#if EtronCamera
+#include "WiCameraFactory.h"  //for Etron camera
+#endif
 
 int main(int argc, const char** argv)
 {
