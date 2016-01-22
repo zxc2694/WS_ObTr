@@ -347,9 +347,29 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		}// end of plotting trajectory
 		prevData = true;
 
-		KF.drawPredBox(img);             // Draw predict bounding boxes
-		KF.Update(object_list, KFBox);   // Update of Kalman filter
+		/*Kalman Filter Function */
+		if ((display_kalmanArrow == true) || (display_kalmanRectangle == true))
+		{
+			int UpateKF = true;
+			KF.drawPredBox(img);             // Draw predict bounding boxes	
+			if (object_list.size() == 2)
+			{
+				for (obj_list_iter = 0; obj_list_iter < object_list.size() - 1; obj_list_iter++)
+				{
+					int p_x = object_list[obj_list_iter].boundingBox.x;
+					int p_y = object_list[obj_list_iter].boundingBox.y;
+					int q_x = object_list[obj_list_iter + 1].boundingBox.x;
+					int q_y = object_list[obj_list_iter + 1].boundingBox.y;
+					double hypotenuse = sqrt((p_y - q_y)*(p_y - q_y) + (p_x - q_x)*(p_x - q_x)); //length of pq line
+					int intHY = (int)hypotenuse;
+					//cout << "hypotenuse" << hypotenuse << endl;
 
+					if (intHY == 64)//if (Overlap(object_list[obj_list_iter].boundingBox, object_list[obj_list_iter + 1].boundingBox, 0.001f))			
+						UpateKF = false;
+				}
+			}
+			KF.Update(object_list, KFBox, UpateKF);   // Update of Kalman filter
+		}
 	} // case of nframes < nframesToLearnBG
 
 
@@ -1537,6 +1557,7 @@ void KalmanF::Predict(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 {
 	ticks = (double)cv::getTickCount();
 	dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
+	//cout << "dT: " << dT << endl;
 
 	if (found)
 	{
@@ -1563,7 +1584,7 @@ void KalmanF::Predict(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 	}	
 }
 
-void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
+void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox, int Upate)
 {
 	for (int iter = 0; iter < object_list.size(); iter++)
 		ballsBox.push_back(object_list[iter].boundingBox);
@@ -1577,36 +1598,47 @@ void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 	else
 	{
 		notFoundCount = 0;
-		for (int i = 0; i < object_list.size(); i++)
+		static int stopFrame = 0;
+
+		if ((Upate == 1) && (stopFrame == 0))
 		{
-			meas[i].at<float>(0) = ballsBox[i].x + ballsBox[i].width / 2;
-			meas[i].at<float>(1) = ballsBox[i].y + ballsBox[i].height / 2;
-			meas[i].at<float>(2) = (float)ballsBox[i].width;
-			meas[i].at<float>(3) = (float)ballsBox[i].height;
-
-			if (!found) // First detection!
+			for (int i = 0; i < object_list.size(); i++)
 			{
-				// >>>> Initialization
-				kf[i].errorCovPre.at<float>(0) = 1; // px
-				kf[i].errorCovPre.at<float>(7) = 1; // px
-				kf[i].errorCovPre.at<float>(14) = 1;
-				kf[i].errorCovPre.at<float>(21) = 1;
-				kf[i].errorCovPre.at<float>(28) = 1; // px
-				kf[i].errorCovPre.at<float>(35) = 1; // px
+				meas[i].at<float>(0) = ballsBox[i].x + ballsBox[i].width / 2;
+				meas[i].at<float>(1) = ballsBox[i].y + ballsBox[i].height / 2;
+				meas[i].at<float>(2) = (float)ballsBox[i].width;
+				meas[i].at<float>(3) = (float)ballsBox[i].height;
 
-				state[i].at<float>(0) = meas[i].at<float>(0);
-				state[i].at<float>(1) = meas[i].at<float>(1);
-				state[i].at<float>(2) = 0;
-				state[i].at<float>(3) = 0;
-				state[i].at<float>(4) = meas[i].at<float>(2);
-				state[i].at<float>(5) = meas[i].at<float>(3);
-				// <<<< Initialization
+				if (!found) // First detection!
+				{
+					// >>>> Initialization
+					kf[i].errorCovPre.at<float>(0) = 1; // px
+					kf[i].errorCovPre.at<float>(7) = 1; // px
+					kf[i].errorCovPre.at<float>(14) = 1;
+					kf[i].errorCovPre.at<float>(21) = 1;
+					kf[i].errorCovPre.at<float>(28) = 1; // px
+					kf[i].errorCovPre.at<float>(35) = 1; // px
 
-				found = true;
+					state[i].at<float>(0) = meas[i].at<float>(0);
+					state[i].at<float>(1) = meas[i].at<float>(1);
+					state[i].at<float>(2) = 0;
+					state[i].at<float>(3) = 0;
+					state[i].at<float>(4) = meas[i].at<float>(2);
+					state[i].at<float>(5) = meas[i].at<float>(3);
+					// <<<< Initialization
+
+					found = true;
+				}
+				else
+					kf[i].correct(meas[i]); // Kalman Correction
+				//cout << "Measure matrix:" << endl << meas[i] << endl;
 			}
-			else
-				kf[i].correct(meas[i]); // Kalman Correction
-			//cout << "Measure matrix:" << endl << meas[i] << endl;
+		}
+		else
+		{
+			stopFrame++;
+			if (stopFrame == 50)
+				stopFrame = 0;
 		}
 	}
 	

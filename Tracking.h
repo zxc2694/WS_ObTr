@@ -282,7 +282,7 @@ public:
 	~KalmanF(){}
 	void Init();
 	void Predict(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox);
-	void Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox);
+	void Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox, int Upate);
 	void drawPredBox(Mat &img);
 	double ticks = 0;
 	bool found = false;
