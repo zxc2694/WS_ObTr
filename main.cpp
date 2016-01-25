@@ -8,7 +8,6 @@
 #include "BackGroundModel.h"
 #include "math.h"
 #include <stdio.h>
-#include <windows.h>
 
 /* Select images input */
 #define inputPath_Paul   1
@@ -31,6 +30,7 @@ int main(int argc, const char** argv)
 	char outFilePath2[100];
 	bool update_bg_model = true;
 	int nframes = 0;
+	double t = 0;
 	IplImage *fgmaskIpl = 0;
 	IplImage* image = 0, *yuvImage = 0;
 	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
@@ -103,22 +103,14 @@ int main(int argc, const char** argv)
 		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
 		bgs->process(img_compress, fgmask, img_bgsModel);
 #endif
-
-		// Get executing time 
-		LARGE_INTEGER m_liPerfFreq = { 0 };
-		QueryPerformanceFrequency(&m_liPerfFreq);	
-		LARGE_INTEGER m_liPerfStart = { 0 }; 
-		QueryPerformanceCounter(&m_liPerfStart);
-
+	
+		t = (double)cvGetTickCount(); // Get executing time 
 
 		/* Plot tracking rectangles and its trajectory */
 		tracking_function(img, fgmask, nframes, NULL, NULL);
 
-	
-		LARGE_INTEGER liPerfNow = { 0 }; 
-		QueryPerformanceCounter(&liPerfNow);
-		long decodeDulation = (((liPerfNow.QuadPart - m_liPerfStart.QuadPart) * 1000) / m_liPerfFreq.QuadPart); // Compute total needed time (millisecond)
-		cout << "tracking time = " << decodeDulation << "ms" << endl;
+		t = (double)cvGetTickCount() - t;
+		cout << "tracking time = " << t /((double)cvGetTickFrequency() *1000.) << "ms" << endl;
 
 		nframes++;	
 		char k = (char)waitKey(10);
