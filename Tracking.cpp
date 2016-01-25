@@ -50,7 +50,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 
 	sprintf(outFilePath, "video_output_tracking//%05d.png", nframes + 1);
 	sprintf(outFilePath2, "video_output_BS//%05d.png", nframes + 1);
-	sprintf(outFilePath3, "video_output_original//%05d.png", nframes + 1);
+	//sprintf(outFilePath3, "video_output_original//%05d.png", nframes + 1);
 	//imwrite(outFilePath3, img);
 
 	KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
@@ -235,7 +235,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 				}
 			}
 
-			if (!Overlapping && addToList)
+			if ((!Overlapping && addToList) && (MaxObjNum > object_list.size()))
 			{
 				ms_tracker->addTrackedList(img, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
 			}
@@ -275,7 +275,8 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			black = FindObjBlackPoints(object_list, obj_list_iter); // Get black points from tracking box
 					
 			// When points are all black in image of background subtracion.	
-			if (DELE_RECT_FRAMENO * 9 == black)
+			//if (DELE_RECT_FRAMENO * 9 == black)
+			if (DELE_RECT_FRAMENO * 3 == black)
 			{
 				char bbsExistObj = false;
 				for (int i = 0; i < MaxObjNum; i++)
@@ -312,7 +313,37 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			if (object_list.size() == 0)//Prevent out of vector range
 				break;
 		}
-
+		/* Removing one of overlapping tracking box */
+		if (object_list.size() == 2)
+		{
+			if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.9f))
+			{
+				if (object_list[0].boundingBox.height > object_list[1].boundingBox.height)
+				{
+					for (int iterColor = 0; iterColor < 10; iterColor++)
+					{
+						if (objNumArray_BS[1] == objNumArray[iterColor])
+						{
+							objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+							break;
+						}
+					}
+					object_list.erase(object_list.begin() + 1); // Remove the tracking box
+				}
+				else
+				{
+					for (int iterColor = 0; iterColor < 10; iterColor++)
+					{
+						if (objNumArray_BS[0] == objNumArray[iterColor])
+						{
+							objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+							break;
+						}
+					}
+					object_list.erase(object_list.begin()); // Remove the tracking box
+				}
+			}
+		}
 		/* plotting trajectory */
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
@@ -646,7 +677,7 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 				//ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
 				//ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
 				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);		
-/*				for (iter = 0; iter < 10; iter++)
+				for (iter = 0; iter < 10; iter++)
 				{
 					if (objNumArray_BS[c] == objNumArray[iter])
 					{
@@ -655,8 +686,8 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 					}
 				}
 				object_list[c].color = *(ColorPtr + iter);
-*/
-                ss3 << object_list[c].No;
+
+//                ss3 << object_list[c].No;
 				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 
@@ -1494,13 +1525,22 @@ int FindObjBlackPoints(vector<Object2D> &object_list, int obj_list_iter)
 {
 	//Calculating how much black point in image of background subtracion.
 	int black_points = 0;
-	for (int point = 0; point < 9; point++)
+	//for (int point = 0; point < 9; point++)
+	//{
+	//	for (int i = 0; i < DELE_RECT_FRAMENO; i++)
+	//	{
+	//		if (object_list[obj_list_iter].ComparePoint[point][i] == 0)
+	//			black_points++;
+	//	}
+	//}
+	for (int i = 0; i < DELE_RECT_FRAMENO; i++)
 	{
-		for (int i = 0; i < DELE_RECT_FRAMENO; i++)
-		{
-			if (object_list[obj_list_iter].ComparePoint[point][i] == 0)
-				black_points++;
-		}
+		if (object_list[obj_list_iter].ComparePoint[4][i] == 0)
+			black_points++;
+		if (object_list[obj_list_iter].ComparePoint[1][i] == 0)
+			black_points++;
+		if (object_list[obj_list_iter].ComparePoint[7][i] == 0)
+			black_points++;
 	}
 	return black_points; //Output range: 0 ~ 9 (black points)
 }
