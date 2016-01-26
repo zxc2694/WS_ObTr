@@ -37,7 +37,7 @@ CMotionDetection::CMotionDetection(int nType)
 	// 2 means DPEigen
 	else if (nBackGroudModel == 2)
 	{
-		bgs = new DPEigenbackgroundBGS();
+//		*bgs = new DPEigenbackgroundBGS();
 	}
 }
 
@@ -121,7 +121,7 @@ void CMotionDetection::RunMOG(Mat InputImage)
 
 void CMotionDetection::RunDPEigen(Mat InputImage)
 {
-	bgs->process(InputImage, FMask, img_bgsModel);
+//	bgs->process(InputImage, FMask, img_bgsModel);
 }
 
 /* BGS Algorithms */

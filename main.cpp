@@ -36,7 +36,7 @@ int main(int argc, const char** argv)
 	Mat	img_bgsModel, EXEFMask;
 
 	/* Select BS algorithm */
-	CMotionDetection BS(3);    //Parameter 1: CodeBook, 2: MOG, 3: DPEigenBGS
+	CMotionDetection BS(1);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS
 
 #if EtronCamera
 	// Set the parameter for EStereo

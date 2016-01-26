@@ -43,7 +43,7 @@ private:
 	BackgroundSubtractorMOG2 bg_model;
 
 	// DPEigenBGS parameter
-	IBGS *bgs;
+//	IBGS *bgs;
 	Mat	img_bgsModel;
 };
 
