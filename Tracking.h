@@ -12,8 +12,8 @@ using namespace std;
 
 const short MaxHistBins = 4096;
 
-/* Update the initial frame number of codebook */
-#define nframesToLearnBG  300                        //if you use codebook, set 300. If you use MOG, set 1
+/* Update the initial frame number */
+#define nframesToLearnBG  1                        //if you use codebook, set 300. If you use MOG, set 1
 
 /* Set tracking line length, range: 20~100 */
 #define plotLineLength   99
@@ -31,8 +31,6 @@ const short MaxHistBins = 4096;
 /* del too small obj from object_list (ie give up tracking it) */
 #define stopTrackingObjWithTooSmallWidth_Scale 120 // stop tracking obj when its width becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallWidth_Scale
 #define stopTrackingObjWithTooSmallHeight_Scale 28 // stop tracking obj when its height becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallHeight_Scale
-
-#define imgCompressionScale 2                      // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
 
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
 #define CVCONTOUR_APPROX_LEVEL         2      
@@ -304,8 +302,6 @@ private:
 	int pred_y[10];
 };
 
-void CodeBookInit();
-void RunCodeBook(IplImage* &image, IplImage* &yuvImage, IplImage* &ImaskCodeBook, IplImage* &ImaskCodeBookCC, int &nframes);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
 void MorphologyProcess(IplImage* &fgmaskIpl);

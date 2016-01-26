@@ -5,7 +5,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/legacy/legacy.hpp"
 #include "Tracking.h"
-#include "BackGroundModel.h"
+#include "MotionDetection.h"
 #include "math.h"
 #include <stdio.h>
 
@@ -15,7 +15,7 @@
 #define EtronCamera      0
 
 /* Select background subtrction algorithm */
-#define Use_CodeBook  1
+#define Use_CodeBook  0
 #define Use_MOG       0
 #define Use_DPEigenbackgroundBGS 0
 
@@ -31,14 +31,12 @@ int main(int argc, const char** argv)
 	bool update_bg_model = true;
 	int nframes = 0;
 	double t = 0;
-	IplImage *fgmaskIpl = 0;
-	IplImage* image = 0, *yuvImage = 0;
-	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
 	Mat img, img_compress;
-	Mat	img_bgsModel, fgmask;
-	BackgroundSubtractorMOG2 bg_model;
-	IBGS *bgs = new DPEigenbackgroundBGS;; // Background Subtraction class
-	CodeBookInit();
+	IplImage *image;
+	Mat	img_bgsModel, EXEFMask;
+
+	/* Select BS algorithm */
+	CMotionDetection BS(3);    //Parameter 1: CodeBook, 2: MOG, 3: DPEigenBGS
 
 #if EtronCamera
 	// Set the parameter for EStereo
@@ -59,10 +57,10 @@ int main(int argc, const char** argv)
 	while (1)
 	{
 #if inputPath_Paul
-		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
+		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L//%d_L_Image.png", nframes + 194);
-		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L_1//%d_L_Image.png", nframes + 3424); //4024
-		sprintf(link, "D://Myproject//VS_Project//TestedVideo//CodeBook_videoOutput//video_output_original//%05d.png", nframes + 1);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L_1//%d_L_Image.png", nframes + 3135); //3424 //4024
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//CodeBook_videoOutput//video_output_original//%05d.png", nframes + 1);
 		img = cvLoadImage(link, 1);
 #endif
 
@@ -91,31 +89,37 @@ int main(int argc, const char** argv)
 
 #if Use_CodeBook	
 		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
-		image = &IplImage(img_compress);
-		RunCodeBook(image, yuvImage, ImaskCodeBook, ImaskCodeBookCC, nframes);  //Run codebook function
-		fgmaskIpl = cvCloneImage(ImaskCodeBook);
-		fgmask = Mat(fgmaskIpl);
+		//image = &IplImage(img_compress);
+		//RunCodeBook(image, yuvImage, ImaskCodeBook, ImaskCodeBookCC, nframes);  //Run codebook function
+		//fgmaskIpl = cvCloneImage(ImaskCodeBook);
+		//fgmask = Mat(fgmaskIpl);
+
 #endif
 
 #if Use_DPEigenbackgroundBGS
 		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
 		bgs->process(img_compress, fgmask, img_bgsModel);
 #endif
-	
+		
+		if (BS.MotionDetectionProcessing(img) != true) // Background model is finished while MotionDetectionProcessing() is true
+			continue;
+		
+		EXEFMask = BS.OutputFMask();
+
 		t = (double)cvGetTickCount(); // Get executing time 
 
 		/* Plot tracking rectangles and its trajectory */
-		tracking_function(img, fgmask, nframes, NULL, NULL);
+		tracking_function(img, EXEFMask, nframes, NULL, NULL);
 
 		t = (double)cvGetTickCount() - t;
-		cout << "tracking time = " << t /((double)cvGetTickFrequency() *1000.) << "ms" << endl;
+		cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms" << endl;
 
 		nframes++;	
 		char k = (char)waitKey(10);
 		if (k == 27) break;
 	} // end of while
 
-	delete bgs;
+//	delete bgs;
 	destroyAllWindows();
 	return 0;
 }
