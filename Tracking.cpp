@@ -50,11 +50,13 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	TrackingLine = Scalar::all(0);
 	IplImage *fgmaskIpl = &IplImage(fgmask);
 
-	sprintf(outFilePath, "video_output_tracking//%05d.png", nframes + 1);
-	sprintf(outFilePath2, "video_output_BS//%05d.png", nframes + 1);
-	//sprintf(outFilePath3, "video_output_original//%05d.png", nframes + 1);
-	//imwrite(outFilePath3, img);
-
+	if (demoMode != true)
+	{
+		sprintf(outFilePath, "video_output_tracking//%05d.png", nframes + 1);
+		sprintf(outFilePath2, "video_output_BS//%05d.png", nframes + 1);
+		//sprintf(outFilePath3, "video_output_original//%05d.png", nframes + 1);
+		//imwrite(outFilePath3, img);
+	}
 	KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
 
 	if (runFirst)
@@ -409,11 +411,13 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	/* Display image output */
 	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0)); // Merge 3-channel image and 4-channel image
 	imshow("Tracking_image", show_img);
-	//cvShowImage("foreground mask", fgmaskIpl);
-
-	imwrite(outFilePath, show_img);
-	cvSaveImage(outFilePath2, fgmaskIpl);
-
+	
+	if (demoMode != true)
+	{
+		cvShowImage("foreground mask", fgmaskIpl);
+		imwrite(outFilePath, show_img);
+		cvSaveImage(outFilePath2, fgmaskIpl);
+	}
 }
 
 MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
@@ -670,25 +674,27 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 			if (object_list[c].type == 2){ //pedestrian
 				std::stringstream ss, ss1, ss2, ss3;
 
-				//ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;
-				//cv::putText(img, "car:" + ss.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y - 8), 1, 1, ColorMatrix[c]); //object_list[c].color
-				//ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
-				//ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
-				//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);		
-				for (iter = 0; iter < 10; iter++)
+				if (demoMode == true)
 				{
-					if (objNumArray_BS[c] == objNumArray[iter])
+					for (iter = 0; iter < 10; iter++)
 					{
-						ss3 << iter + 1;
-						break;
+						if (objNumArray_BS[c] == objNumArray[iter])
+						{
+							ss3 << iter + 1;
+							break;
+						}
 					}
+					object_list[c].color = *(ColorPtr + iter);
+					cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				}
-				object_list[c].color = *(ColorPtr + iter);
+				else
+				{
+					ss3 << object_list[c].No;
+					cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
+					cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 
-//                ss3 << object_list[c].No;
-				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
-				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
-
+				}
+				
 			}
 		//}
 	}

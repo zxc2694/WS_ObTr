@@ -38,6 +38,10 @@ const short MaxHistBins = 4096;
 #define PI       3.141592653589793238463
 #define DELE_RECT_FRAMENO              1
 
+/* Debug or demo */
+#define demoMode  1 // Without accumulating number and saving images output (0:debug, 1:demo) 
+
+
 class FindConnectedComponents
 {
 public:
