@@ -6,14 +6,12 @@
 #include <opencv2/opencv.hpp>
 #include "opencv2/core/core.hpp"
 #include "opencv2/video/tracking.hpp"
+//#include "MotionDetection.h"
 
 using namespace cv;
 using namespace std;
 
 const short MaxHistBins = 4096;
-
-/* Update the initial frame number */
-#define nframesToLearnBG  1                        //if you use codebook, set 300. If you use MOG, set 1
 
 /* Set tracking line length, range: 20~100 */
 #define plotLineLength   99

@@ -14,11 +14,6 @@
 #define inputPath_Hardy  0
 #define EtronCamera      0
 
-/* Select background subtrction algorithm */
-#define Use_CodeBook  0
-#define Use_MOG       0
-#define Use_DPEigenbackgroundBGS 0
-
 #if EtronCamera
 #include "WiCameraFactory.h"  //for Etron camera
 #endif
@@ -26,17 +21,13 @@
 int main(int argc, const char** argv)
 {
 	char link[512];
-	char outFilePath[100];
-	char outFilePath2[100];
-	bool update_bg_model = true;
 	int nframes = 0;
 	double t = 0;
-	Mat img, img_compress;
-	IplImage *image;
-	Mat	img_bgsModel, EXEFMask;
+	Mat img;
+	Mat	EXEFMask;
 
 	/* Select BS algorithm */
-	CMotionDetection BS(1);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS
+	CMotionDetection BS(0);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS
 
 #if EtronCamera
 	// Set the parameter for EStereo
@@ -57,10 +48,10 @@ int main(int argc, const char** argv)
 	while (1)
 	{
 #if inputPath_Paul
-		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L//%d_L_Image.png", nframes + 194);
-		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L_1//%d_L_Image.png", nframes + 3135); //3424 //4024
-		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//CodeBook_videoOutput//video_output_original//%05d.png", nframes + 1);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L_1//%d_L_Image.png", nframes + 3424); //3424 //4024
+		sprintf(link, "D://Myproject//VS_Project//TestedVideo//CodeBook_videoOutput//video_output_original//%05d.png", nframes + 1);
 		img = cvLoadImage(link, 1);
 #endif
 
@@ -80,46 +71,26 @@ int main(int argc, const char** argv)
 
 		if (img.empty()) break;
 
-#if Use_MOG		
-		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
-		bg_model.operator()(img_compress, fgmask, -1); //update the model
-		//bg_model(img, fgmask, update_bg_model ? -1 : 0); //update the model
-		imshow("fg", fgmask);
-#endif
-
-#if Use_CodeBook	
-		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
-		//image = &IplImage(img_compress);
-		//RunCodeBook(image, yuvImage, ImaskCodeBook, ImaskCodeBookCC, nframes);  //Run codebook function
-		//fgmaskIpl = cvCloneImage(ImaskCodeBook);
-		//fgmask = Mat(fgmaskIpl);
-
-#endif
-
-#if Use_DPEigenbackgroundBGS
-		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
-		bgs->process(img_compress, fgmask, img_bgsModel);
-#endif
+		if (BS.MotionDetectionProcessing(img) != true){} // Background model is finished while MotionDetectionProcessing() is true
 		
-		if (BS.MotionDetectionProcessing(img) != true) // Background model is finished while MotionDetectionProcessing() is true
-			continue;
-		
-		EXEFMask = BS.OutputFMask();
+		else
+		{
+			EXEFMask = BS.OutputFMask();
 
-		t = (double)cvGetTickCount(); // Get executing time 
+			t = (double)cvGetTickCount(); // Get executing time 
 
-		/* Plot tracking rectangles and its trajectory */
-		tracking_function(img, EXEFMask, nframes, NULL, NULL);
+			/* Plot tracking rectangles and its trajectory */
+			tracking_function(img, EXEFMask, nframes, NULL, NULL);
 
-		t = (double)cvGetTickCount() - t;
-		cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms" << endl;
+			t = (double)cvGetTickCount() - t;
+			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms" << endl;
+		}
 
 		nframes++;	
 		char k = (char)waitKey(10);
 		if (k == 27) break;
+
 	} // end of while
 
-//	delete bgs;
-	destroyAllWindows();
 	return 0;
 }

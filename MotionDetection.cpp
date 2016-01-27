@@ -32,12 +32,13 @@ CMotionDetection::CMotionDetection(int nType)
 	// 1 means MOG
 	else if (nBackGroudModel == 1)
 	{
+
 	}
 
 	// 2 means DPEigen
 	else if (nBackGroudModel == 2)
 	{
-//		*bgs = new DPEigenbackgroundBGS();
+
 	}
 }
 
@@ -90,13 +91,13 @@ void CMotionDetection::RunCodebook(Mat InputImage)
 	}
 	cvCvtColor(&image, yuvImage, CV_BGR2YCrCb);           //YUV For codebook method
 	
-	if (nFrameCntr < Threthold)                           //This is where we build our background model
+	if (nFrameCntr < nframesToLearnBG)                           //This is where we build our background model
 		cvBGCodeBookUpdate(model, yuvImage); 
 
-	if (nFrameCntr == Threthold)
+	if (nFrameCntr == nframesToLearnBG)
 		cvBGCodeBookClearStale(model, model->t / 2);
 	
-	if (nFrameCntr >= Threthold)                          //Find the foreground
+	if (nFrameCntr >= nframesToLearnBG)                          //Find the foreground
 	{
 		BGModelReady = true;	
 
@@ -115,17 +116,20 @@ void CMotionDetection::RunCodebook(Mat InputImage)
 void CMotionDetection::RunMOG(Mat InputImage)
 {
 	bg_model.operator()(InputImage, FMask, -1);
-	BGModelReady = true;
+	
+	if (nFrameCntr >= nframesToLearnBG)
+	{
+		BGModelReady = true;
+	}
 }
 
 
 void CMotionDetection::RunDPEigen(Mat InputImage)
 {
-//	bgs->process(InputImage, FMask, img_bgsModel);
+	bgs.process(InputImage, FMask);
+	BGModelReady = true;
 }
 
-/* BGS Algorithms */
-using namespace Algorithms::BackgroundSubtraction;
 
 ImageBase::~ImageBase()
 {
@@ -340,12 +344,8 @@ DPEigenbackgroundBGS::~DPEigenbackgroundBGS()
 	std::cout << "~DPEigenbackgroundBGS()" << std::endl;
 }
 
-void DPEigenbackgroundBGS::process(const cv::Mat &img_input, cv::Mat &img_output, cv::Mat &img_bgmodel)
+void DPEigenbackgroundBGS::process(const cv::Mat &img_input, cv::Mat &img_output)
 {
-	if (img_input.empty())
-		return;
-
-
 	frame = new IplImage(img_input);
 
 	if (firstTime)

@@ -45,6 +45,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	IplImage *BBSIpl = 0;
 	static KalmanF KF;
 	vector<cv::Rect> KFBox;
+	static char runFirst = true;
 	
 	TrackingLine = Scalar::all(0);
 	IplImage *fgmaskIpl = &IplImage(fgmask);
@@ -56,7 +57,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 
 	KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
 
-	if (nframes == 0)
+	if (runFirst)
 	{
 		for (unsigned int s = 0; s < 10; s++)
 		{
@@ -64,13 +65,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			objNumArray_BS[s] = 65535;
 		}
 		KF.Init();
-	}
-	else if (nframes < nframesToLearnBG)
-	{
 
-	}
-	else if (nframes == nframesToLearnBG)
-	{
 		/* find components ,and compute bbs information  */
 		MaxObjNum = 10; // bbsFinder don't find more than MaxObjNum objects  
 		bbsFinder.returnBbs(fgmaskIpl, &MaxObjNum, bbs, centers, true);
@@ -87,8 +82,10 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 
 			ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
 		}
+		runFirst = false;
 	}
-	else // case of nframes < nframesToLearnBG
+
+	else 
 	{
 		if (ObjNum == NULL)                                                      //If ObjNum is NULL, we need to find all ROIs.
 		{
