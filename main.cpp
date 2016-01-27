@@ -24,7 +24,7 @@ int main(int argc, const char** argv)
 	int nframes = 0;
 	double t = 0;
 	Mat img;
-	Mat	EXEFMask;
+	Mat	fgmask;
 
 	/* Select BS algorithm */
 	CMotionDetection BS(0);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS, 3: CodeBook+MOG
@@ -75,11 +75,11 @@ int main(int argc, const char** argv)
 		
 		else  // nframes > nframesToLearnBG
 		{
-			EXEFMask = BS.OutputFMask();  // Get image output of background subtraction
+			fgmask = BS.OutputFMask();    // Get image output of background subtraction
 			t = (double)cvGetTickCount(); // Get executing time 
 
 			/* Plot tracking rectangles and its trajectory */
-			tracking_function(img, EXEFMask, nframes, NULL, NULL);
+			tracking_function(img, fgmask, nframes, NULL, NULL);
 
 			t = (double)cvGetTickCount() - t;
 			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms" << endl;
