@@ -249,9 +249,10 @@ public:
 	Mat OutputFMask();
 
 	// Background subtraction class
-	void RunCodebook(Mat InputImage); // Codebook function
-	void RunMOG(Mat InputImage);      // MOG function
-	void RunDPEigen(Mat InputImage);  // DPEigenBGS function
+	void RunCodebook(Mat InputImage);     // Codebook function
+	void RunMOG(Mat InputImage);          // MOG function
+	void RunDPEigen(Mat InputImage);      // DPEigenBGS function
+	void RunCodeBook_MOG(Mat InputImage); // Codebook + MOG function for 3D disparity
 
 private:
 	int nBackGroudModel;

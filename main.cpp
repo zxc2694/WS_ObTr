@@ -27,7 +27,7 @@ int main(int argc, const char** argv)
 	Mat	EXEFMask;
 
 	/* Select BS algorithm */
-	CMotionDetection BS(0);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS
+	CMotionDetection BS(0);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS, 3: CodeBook+MOG
 
 #if EtronCamera
 	// Set the parameter for EStereo
@@ -73,10 +73,9 @@ int main(int argc, const char** argv)
 
 		if (BS.MotionDetectionProcessing(img) != true){} // Background model is finished while MotionDetectionProcessing() is true
 		
-		else
+		else  // nframes > nframesToLearnBG
 		{
-			EXEFMask = BS.OutputFMask();
-
+			EXEFMask = BS.OutputFMask();  // Get image output of background subtraction
 			t = (double)cvGetTickCount(); // Get executing time 
 
 			/* Plot tracking rectangles and its trajectory */

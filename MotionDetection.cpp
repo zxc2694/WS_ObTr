@@ -16,8 +16,8 @@ CMotionDetection::CMotionDetection(int nType)
 	nFrameCntr = 0;
 	BGModelReady = false;
 
-	// 0 means Codebook
-	if(nBackGroudModel == 0)
+	// 0 means Codebook // 3 means Codebook + MOG
+	if ((nBackGroudModel == 0) || (nBackGroudModel == 3))
 	{
 		model = cvCreateBGCodeBookModel();
 		
@@ -70,6 +70,12 @@ bool CMotionDetection::MotionDetectionProcessing(Mat InputImage)
 		RunDPEigen(img_compress);
 	}
 
+	// 3 means Codebook + MOG
+	if (nBackGroudModel == 3)
+	{
+		RunCodebook(img_compress);
+	}
+
 	nFrameCntr++;
 	return BGModelReady;
 }
@@ -91,13 +97,13 @@ void CMotionDetection::RunCodebook(Mat InputImage)
 	}
 	cvCvtColor(&image, yuvImage, CV_BGR2YCrCb);           //YUV For codebook method
 	
-	if (nFrameCntr < nframesToLearnBG)                           //This is where we build our background model
+	if (nFrameCntr < nframesToLearnBG)                    //This is where we build our background model
 		cvBGCodeBookUpdate(model, yuvImage); 
 
 	if (nFrameCntr == nframesToLearnBG)
 		cvBGCodeBookClearStale(model, model->t / 2);
 	
-	if (nFrameCntr >= nframesToLearnBG)                          //Find the foreground
+	if (nFrameCntr >= nframesToLearnBG)                   //Find the foreground
 	{
 		BGModelReady = true;	
 
@@ -130,6 +136,42 @@ void CMotionDetection::RunDPEigen(Mat InputImage)
 	BGModelReady = true;
 }
 
+void CMotionDetection::RunCodeBook_MOG(Mat InputImage)
+{
+	Mat temp;
+	bg_model.operator()(InputImage, temp, -1);
+	
+	if (nFrameCntr == 0)                                 // Initialization of codeBook mask
+	{
+		image = temp;
+		yuvImage = cvCloneImage(&image);
+		ImaskCodeBook = cvCreateImage(cvGetSize(&image), IPL_DEPTH_8U, 1);
+		ImaskCodeBookCC = cvCreateImage(cvGetSize(&image), IPL_DEPTH_8U, 1);
+		cvSet(ImaskCodeBook, cvScalar(255));
+	}
+	cvCvtColor(&image, yuvImage, CV_BGR2YCrCb);           //YUV For codebook method
+
+	if (nFrameCntr < nframesToLearnBG)                    //This is where we build our background model
+		cvBGCodeBookUpdate(model, yuvImage);
+
+	if (nFrameCntr == nframesToLearnBG)
+		cvBGCodeBookClearStale(model, model->t / 2);
+
+	if (nFrameCntr >= nframesToLearnBG)                   //Find the foreground
+	{
+		BGModelReady = true;
+
+		cvBGCodeBookDiff(model, yuvImage, ImaskCodeBook); // Find foreground by codebook method
+		cvCopy(ImaskCodeBook, ImaskCodeBookCC);           // This part just to visualize bounding boxes and centers if desired
+		cvSegmentFGMask(ImaskCodeBookCC);
+	}
+
+	if (BGModelReady == true)
+	{
+		fgmaskIpl = cvCloneImage(ImaskCodeBook);
+		FMask = Mat(fgmaskIpl);
+	}
+}
 
 ImageBase::~ImageBase()
 {
