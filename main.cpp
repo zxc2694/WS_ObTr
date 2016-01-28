@@ -78,7 +78,7 @@ int main(int argc, const char** argv)
 			fgmask = BS.OutputFMask();    // Get image output of background subtraction
 			t = (double)cvGetTickCount(); // Get executing time 	
 
-			tracking_function(img, fgmask, nframes, NULL, NULL); // Plot tracking rectangles and their trajectories
+			tracking_function(img, fgmask, nframes, NULL, NULL, 0); // Plot tracking rectangles and their trajectories
 	
 			t = (double)cvGetTickCount() - t;
 			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms" << endl; // Show executing time 
