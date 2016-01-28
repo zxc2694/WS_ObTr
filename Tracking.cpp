@@ -400,24 +400,24 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			}
 			KF.Update(object_list, KFBox, UpateKF);   // Update of Kalman filter
 		}
-	} // case of nframes < nframesToLearnBG
+	}
 
-
-	/* Show the number of the frame on the image */
-	stringstream textFrameNo;
-	textFrameNo << nframes;
-	putText(img, "Frame=" + textFrameNo.str(), Point(10, img.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
-
-	/* Display image output */
-	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0)); // Merge 3-channel image and 4-channel image
-	imshow("Tracking_image", show_img);
+	// Merge 3-channel image and 4-channel image
+	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0));
 	
 	if (demoMode != true)
 	{
+		/* Show the number of the frame on the image */
+		stringstream textFrameNo;
+		textFrameNo << nframes;
+		putText(img, "Frame=" + textFrameNo.str(), Point(10, img.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
+
 		cvShowImage("foreground mask", fgmaskIpl);
 		imwrite(outFilePath, show_img);
 		cvSaveImage(outFilePath2, fgmaskIpl);
 	}
+
+	imshow("Tracking_image", show_img); // Display image output of tracking
 }
 
 MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
