@@ -201,8 +201,6 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 
 		BubbleSort(objNumArray_BS, 10);               // Let objNumArray_BS array execute bubble sort 
 
-		ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
-
 		/* Modify the size of the tracking box  */
 		int bbsNumber = 0;
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
@@ -300,12 +298,24 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 				}
 			}
 		}
+
+		ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
+
 		/* plotting trajectory */
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
 			if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
-			{			
-				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines			
+			{		
+				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
+				
+				if (demoMode == true) // Draw the arrow on the pedestrian's head
+				drawArrow(img,
+					Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+					 (object_list[obj_list_iter].boundingBox.y)-40)
+					, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+					 (object_list[obj_list_iter].boundingBox.y)-20)
+
+					);
 			}
 
 			// Get previous point in order to use line function. 
@@ -1662,10 +1672,10 @@ void drawArrow(Mat img, CvPoint p, CvPoint q)
 	double hypotenuse = sqrt((p.y - q.y)*(p.y - q.y) + (p.x - q.x)*(p.x - q.x)); //length of pq line
 	
 	/*The length of the arrow becomes three times from the original length */
-	q.x = (int)(p.x - 3 * hypotenuse * cos(angle));
-	q.y = (int)(p.y - 3 * hypotenuse * sin(angle));
+//	q.x = (int)(p.x - 3 * hypotenuse * cos(angle));
+//	q.y = (int)(p.y - 3 * hypotenuse * sin(angle));
 	
-	if ((hypotenuse < 80.0f) && (hypotenuse > 5.0f)) // Prevent drawing line of error 
+//	if ((hypotenuse < 80.0f) && (hypotenuse > 5.0f)) // Prevent drawing line of error 
 	{
 		/* Plot mainline */
 		line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
