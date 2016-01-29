@@ -27,20 +27,21 @@ Scalar *ColorPtr;
 void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int ObjNum, int Mode)
 {
 	Mat show_img;
-	CvRect bbs[10], bbsV2[10];
+	CvRect bbs[10];
 	CvPoint centers[10];
-	int c, n, iter, iter2, MaxObjNum, trackingMode = Mode;
-	static vector<Object2D> object_list;
+	int c, n, iter, iter2, MaxObjNum;
+	int trackingMode = Mode;
 	static char prevData = false, runFirst = true;;
-	static int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };  //for tracking line
-	static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
-	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
+	static int pre_data_X[10], pre_data_Y[10];              //for tracking line
+	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);   // Normal: cols = 640, rows = 480
 	static FindConnectedComponents bbsFinder(img.cols, img.rows, 1, connectedComponentPerimeterScale);
+	static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
+	static vector<Object2D> object_list;
 	static KalmanF KF;
 	vector<cv::Rect> KFBox;
-	
+
 	TrackingLine = Scalar::all(0);
-	
+
 	if (runFirst)
 	{
 		for (unsigned int s = 0; s < 10; s++)
@@ -49,6 +50,8 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			objNumArray_BS[s] = 65535;
 		}
 		memset(bbs, 0, sizeof(bbs));
+		memset(pre_data_X, 0, sizeof(pre_data_X));
+		memset(pre_data_Y, 0, sizeof(pre_data_Y));
 
 		if (trackingMode == 0) // Use fgmask to get ROI
 		{
