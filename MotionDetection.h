@@ -9,7 +9,6 @@
 #include "opencv2/video/tracking.hpp"
 
 #define nframesToLearnBG 300            // Update the initial frame number
-#define imgCompressionScale 2  // Compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
 
 class ImageBase
 {

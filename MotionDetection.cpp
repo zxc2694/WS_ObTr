@@ -50,7 +50,7 @@ CMotionDetection::~CMotionDetection()
 bool CMotionDetection::MotionDetectionProcessing(Mat InputImage)
 {
 	// Compresse image
-	resize(InputImage, img_compress, cv::Size(InputImage.cols / imgCompressionScale, InputImage.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
+	resize(InputImage, img_compress, cv::Size(InputImage.cols / 2, InputImage.rows / 2)); // Compress image into 1/2 times size
     
 	// 0 means Codebook
 	if(nBackGroudModel == 0)
@@ -82,6 +82,7 @@ bool CMotionDetection::MotionDetectionProcessing(Mat InputImage)
 
 Mat CMotionDetection::OutputFMask()
 {
+	resize(FMask, FMask, cv::Size(FMask.cols * 2, FMask.rows * 2)); // Revert original image size
 	return FMask;
 }
 
