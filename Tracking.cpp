@@ -144,8 +144,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 						/*cout << Pixel32S(ms_tracker->DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
 							MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;*/
 
-						if (Pixel32S(ms_tracker->DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
-							MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
+						if (Pixel32S(ms_tracker->DistMat, object_list[replaceList[iter1]].No,object_list[replaceList[iter2]].No) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
 						{
 							addToList = false;
 							goto end;
@@ -488,14 +487,10 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 
 	object_list.push_back(obj);
 
-	for (size_t iter = 0; iter < object_list.size(); ++iter)
+	for (size_t iter = 0; iter < object_list.size(); ++iter) // Compute distances from new object to the other objects.
 	{
-		if (obj.No < object_list[(int)iter].No)
-			Pixel32S(DistMat, obj.No, object_list[(int)iter].No) = DistBetObj(obj.boundingBox, object_list[(int)iter].boundingBox);
-		else if (obj.No > object_list[(int)iter].No)
-			Pixel32S(DistMat, object_list[(int)iter].No, obj.No) = DistBetObj(obj.boundingBox, object_list[(int)iter].boundingBox);
-		
-		//cout << Pixel32S(DistMat, object_list[(int)iter].No, obj.No);
+		Pixel32S(DistMat, obj.No, object_list[(int)iter].No) = DistBetObj(obj.boundingBox, object_list[(int)iter].boundingBox);
+		Pixel32S(DistMat, object_list[(int)iter].No, obj.No) = DistBetObj(obj.boundingBox, object_list[(int)iter].boundingBox);
 	}
 
 	static int countNo = 0;
