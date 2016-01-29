@@ -58,7 +58,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			for (int iter = 0; iter < MaxObjNum; ++iter)
 			{
 				ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
-//				runFirst = false;
+				runFirst = false;
 			}
 		}
 		if (trackingMode == 1)   // Ignore fgmask and use ROI of input
@@ -68,11 +68,10 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			{
 				bbs[iter] = ROI[iter];
 				ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
-//				runFirst = false;
+				runFirst = false;
 			}
 		}
 		KF.Init();
-		runFirst = false;
 	}
 
 	else 
@@ -81,7 +80,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		{		
 			MaxObjNum = 10; // bbsFinder don't find more than MaxObjNum objects  
 			bbsFinder.returnBbs(fgmask, &MaxObjNum, bbs, centers, true);    //find ROI components
-			bbsFinder.shadowRemove(fgmask, &MaxObjNum, bbs, centers); //find ROI components after finishing processing of shadow
+			bbsFinder.shadowRemove(fgmask, &MaxObjNum, bbs, centers);       //find final ROI components after finishing processing of shadow
 			
 			if (display_bbsRectangle == true)
 			{
