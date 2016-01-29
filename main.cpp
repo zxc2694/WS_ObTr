@@ -27,7 +27,7 @@ int main(int argc, const char** argv)
 	Mat	fgmask;
 
 	/* Select BS algorithm */
-	CMotionDetection BS(0);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS, 3: CodeBook+MOG
+	CMotionDetection BS(2);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS, 3: CodeBook+MOG
 
 #if EtronCamera
 	// Set the parameter for EStereo
@@ -48,10 +48,10 @@ int main(int argc, const char** argv)
 	while (1)
 	{
 #if inputPath_Paul
-		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
+		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L//%d_L_Image.png", nframes + 194);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L_1//%d_L_Image.png", nframes + 3424); //3424 //4024
-		sprintf(link, "D://Myproject//VS_Project//TestedVideo//CodeBook_videoOutput//video_output_original//%05d.png", nframes + 1);
+		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//CodeBook_videoOutput//video_output_original//%05d.png", nframes + 1);
 		img = cvLoadImage(link, 1);
 #endif
 
@@ -81,7 +81,7 @@ int main(int argc, const char** argv)
 			tracking_function(img, fgmask, nframes, NULL, NULL, 0); // Plot tracking rectangles and their trajectories
 	
 			t = (double)cvGetTickCount() - t;
-			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms" << endl; // Show executing time 
+			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 
 		}
 
 		nframes++;	
