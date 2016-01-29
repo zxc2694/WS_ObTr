@@ -307,11 +307,10 @@ private:
 
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
-void MorphologyProcess(IplImage* &fgmaskIpl);
 void BubbleSort(int* array, int size);
 void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *bbs, int MaxObjNum, int Mode);
 void KF_init(cv::KalmanFilter *kf);
-void ComparePoint_9(IplImage *fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
+void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
 int FindObjBlackPoints(vector<Object2D> &object_list, int obj_list_iter);
 
