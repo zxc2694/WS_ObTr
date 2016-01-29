@@ -134,7 +134,11 @@ void CMotionDetection::RunMOG(Mat InputImage)
 void CMotionDetection::RunDPEigen(Mat InputImage)
 {
 	bgs.process(InputImage, FMask);
-	BGModelReady = true;
+
+	if (nFrameCntr >= nframesToLearnBG)
+	{
+		BGModelReady = true;
+	}
 }
 
 void CMotionDetection::RunCodeBook_MOG(Mat InputImage)
