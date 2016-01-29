@@ -47,17 +47,18 @@ class FindConnectedComponents
 public:
 	FindConnectedComponents(int imgWidth, int imgHeight, int ImgCompressionScale, float ConnectedComponentPerimeterScale)
 	{
+		MaxObjNum = 10;         // bbsFinder don't find more than MaxObjNum objects  
 		method_Poly1_Hull0 = 1; // Use Polygon algorithm if method_Poly1_Hull0 = 1, and use Hull algorithm if method_Poly1_Hull0 = 0
 		minConnectedComponentPerimeter = (imgWidth + imgHeight) / (ImgCompressionScale * ConnectedComponentPerimeterScale);
 	}
-
 	~FindConnectedComponents(){}
 
-	void returnBbs(IplImage *mask, int *num, CvRect *bbs, CvPoint *centers, bool ignoreTooSmallPerimeter);
-
+	void returnBbs(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers, bool ignoreTooSmallPerimeter);
+	void shadowRemove(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers);
 private:
 	int method_Poly1_Hull0;
 	int minConnectedComponentPerimeter; // ignores obj with too small perimeter 
+	int MaxObjNum;
 };
 
 typedef struct
@@ -310,7 +311,7 @@ void MorphologyProcess(IplImage* &fgmaskIpl);
 void BubbleSort(int* array, int size);
 void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *bbs, int MaxObjNum, int Mode);
 void KF_init(cv::KalmanFilter *kf);
-void ComparePoint_9(IplImage* &fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
+void ComparePoint_9(IplImage *fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
 int FindObjBlackPoints(vector<Object2D> &object_list, int obj_list_iter);
 

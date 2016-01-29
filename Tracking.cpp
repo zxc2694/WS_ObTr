@@ -29,36 +29,18 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	Mat show_img;
 	CvRect bbs[10], bbsV2[10];
 	CvPoint centers[10];
-	char outFilePath[100];
-	char outFilePath2[100];
-	char outFilePath3[100];
-	int c, n, iter, iter2, MaxObjNum;
-	int first_last_diff = 1;                                    //compare first number with last number 
-	int trackingMode = Mode;
+	int c, n, iter, iter2, MaxObjNum, trackingMode = Mode;
 	static vector<Object2D> object_list;
-	static char prevData = false;
+	static char prevData = false, runFirst = true;;
 	static int pre_data_X[10] = { 0 }, pre_data_Y[10] = { 0 };  //for tracking line
 	static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
-	static Mat background_BBS(img.rows, img.cols, CV_8UC1);
 	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);       // Normal: cols = 640, rows = 480
-	static FindConnectedComponents bbsFinder(img.cols, img.rows, imgCompressionScale, connectedComponentPerimeterScale);
-	IplImage *BBSIpl = 0;
+	static FindConnectedComponents bbsFinder(img.cols, img.rows, 1, connectedComponentPerimeterScale);
 	static KalmanF KF;
 	vector<cv::Rect> KFBox;
-	static char runFirst = true;
 	
 	TrackingLine = Scalar::all(0);
-	IplImage *fgmaskIpl = &IplImage(fgmask);
-
-	if (demoMode != true)
-	{
-		sprintf(outFilePath, "video_output_tracking//%05d.png", nframes + 1);
-		sprintf(outFilePath2, "video_output_BS//%05d.png", nframes + 1);
-		//sprintf(outFilePath3, "video_output_original//%05d.png", nframes + 1);
-		//imwrite(outFilePath3, img);
-	}
-	KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
-
+	
 	if (runFirst)
 	{
 		for (unsigned int s = 0; s < 10; s++)
@@ -66,83 +48,41 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			objNumArray[s] = 65535;                       // Set all values as max number for ordered arrangement
 			objNumArray_BS[s] = 65535;
 		}
-		KF.Init();
+		memset(bbs, 0, sizeof(bbs));
 
-		if (trackingMode == 0)   // Use fgmask to get ROI
+		if (trackingMode == 0) // Use fgmask to get ROI
 		{
-			/* find components ,and compute bbs information  */
-			MaxObjNum = 10;      // bbsFinder don't find more than MaxObjNum objects  
-			bbsFinder.returnBbs(fgmaskIpl, &MaxObjNum, bbs, centers, true);
+			int MaxObjNum = 10; // bbsFinder don't find more than MaxObjNum objects  
+			bbsFinder.returnBbs(fgmask, &MaxObjNum, bbs, centers, true); //find ROI components
 
 			for (int iter = 0; iter < MaxObjNum; ++iter)
 			{
-				// decompression bbs and centers in fgmaskIpl
-				bbs[iter].x *= imgCompressionScale;
-				bbs[iter].y *= imgCompressionScale;
-				bbs[iter].width *= imgCompressionScale;
-				bbs[iter].height *= imgCompressionScale;
-				centers[iter].x *= imgCompressionScale;
-				centers[iter].y *= imgCompressionScale;			
-
 				ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
+//				runFirst = false;
 			}
 		}
 		if (trackingMode == 1)   // Ignore fgmask and use ROI of input
 		{
 			MaxObjNum = ObjNum;
-			int iter;
-			for (iter = 0; iter < MaxObjNum; iter++)
+			for (int iter = 0; iter < MaxObjNum; iter++)
+			{
 				bbs[iter] = ROI[iter];
-
-			ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
+				ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
+//				runFirst = false;
+			}
 		}
+		KF.Init();
 		runFirst = false;
 	}
 
 	else 
 	{
 		if (trackingMode == 0)  // Use fgmask to get ROI
-		{
-			/* find components ,and compute bbs information  */
+		{		
 			MaxObjNum = 10; // bbsFinder don't find more than MaxObjNum objects  
-			bbsFinder.returnBbs(fgmaskIpl, &MaxObjNum, bbs, centers, true);
-
-			Mat(fgmaskIpl).copyTo(background_BBS);                               // Copy fgmaskIpl to background_BBS
-			static Mat srcROI[10];                                               // for shadow rectangle
-
-			/* Eliminating people's shadow method */
-			for (iter = 0; iter < MaxObjNum; iter++)
-			{                            // Get all shadow rectangles named bbsV2
-				bbsV2[iter].x = bbs[iter].x;
-				bbsV2[iter].y = bbs[iter].y + bbs[iter].height * 0.75;
-				bbsV2[iter].width = bbs[iter].width;
-				bbsV2[iter].height = bbs[iter].height * 0.25;
-				srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
-				srcROI[iter] = Scalar::all(0);                                  // Set srcROI as showing black color
-			}
-			BBSIpl = &IplImage(background_BBS);
-			int tempObjNum = 10;
-			bbsFinder.returnBbs(BBSIpl, &tempObjNum, bbs, centers, false);  // Secondly, Run the function of searching components to get update of bbs
-	
-			if (tempObjNum == MaxObjNum) // Prevent objects of bbs2 more than objects of bbs1 
-			{
-				for (iter = 0; iter < MaxObjNum; iter++)
-					bbs[iter].height = bbs[iter].height + bbsV2[iter].height;       // Merge bbs and bbsV2 to get final ROI
-
-			}
-
-			// decompression bbs and centers in fgmaskIpl
-			for (int iter = 0; iter < MaxObjNum; ++iter)
-			{
-				bbs[iter].x *= imgCompressionScale;
-				bbs[iter].y *= imgCompressionScale;
-				bbs[iter].width *= imgCompressionScale;
-				bbs[iter].height *= imgCompressionScale;
-
-				centers[iter].x *= imgCompressionScale;
-				centers[iter].y *= imgCompressionScale;
-			}
-
+			bbsFinder.returnBbs(fgmask, &MaxObjNum, bbs, centers, true);    //find ROI components
+			bbsFinder.shadowRemove(fgmask, &MaxObjNum, bbs, centers); //find ROI components after finishing processing of shadow
+			
 			if (display_bbsRectangle == true)
 			{
 				/* Plot the rectangles background subtarction finds */
@@ -280,53 +220,53 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		}
 
 		/* Removing motionless tracking box  */
-		if (trackingMode == 0) // 0: use fgmask to get ROI
-		{
-			int black = 0;
-			for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-			{
-				black = FindObjBlackPoints(object_list, obj_list_iter); // Get black points from tracking box
+		//if (trackingMode == 0) // 0: use fgmask to get ROI
+		//{
+		//	int black = 0;
+		//	for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		//	{
+		//		black = FindObjBlackPoints(object_list, obj_list_iter); // Get black points from tracking box
 
-				// When points are all black in image of background subtracion.	
-				//if (DELE_RECT_FRAMENO * 9 == black)
-				if (DELE_RECT_FRAMENO * 3 == black)
-				{
-					char bbsExistObj = false;
-					for (int i = 0; i < MaxObjNum; i++)
-					{
-						// To find internal bbs of the tracking box
-						if ((centers[i].x > object_list[obj_list_iter].boundingBox.x) && (centers[i].x < object_list[obj_list_iter].boundingBox.x + object_list[obj_list_iter].boundingBox.width) && (centers[i].y > object_list[obj_list_iter].boundingBox.y) && (centers[i].y < object_list[obj_list_iter].boundingBox.y + object_list[obj_list_iter].boundingBox.height))
-						{
-							//Reset the scale of the tracking box.
-							object_list[obj_list_iter].objScale = 1;
-							object_list[obj_list_iter].boundingBox = bbs[i];
-							object_list[obj_list_iter].initialBbsWidth = bbs[i].width;
-							object_list[obj_list_iter].initialBbsHeight = bbs[i].height;
+		//		// When points are all black in image of background subtracion.	
+		//		//if (DELE_RECT_FRAMENO * 9 == black)
+		//		if (DELE_RECT_FRAMENO * 3 == black)
+		//		{
+		//			char bbsExistObj = false;
+		//			for (int i = 0; i < MaxObjNum; i++)
+		//			{
+		//				// To find internal bbs of the tracking box
+		//				if ((centers[i].x > object_list[obj_list_iter].boundingBox.x) && (centers[i].x < object_list[obj_list_iter].boundingBox.x + object_list[obj_list_iter].boundingBox.width) && (centers[i].y > object_list[obj_list_iter].boundingBox.y) && (centers[i].y < object_list[obj_list_iter].boundingBox.y + object_list[obj_list_iter].boundingBox.height))
+		//				{
+		//					//Reset the scale of the tracking box.
+		//					object_list[obj_list_iter].objScale = 1;
+		//					object_list[obj_list_iter].boundingBox = bbs[i];
+		//					object_list[obj_list_iter].initialBbsWidth = bbs[i].width;
+		//					object_list[obj_list_iter].initialBbsHeight = bbs[i].height;
 
-							bbsExistObj = true;
-							break;
-						}
-					}
-					// If internal bbs of rectangle has existed, don't directly remove. 
-					if (bbsExistObj == false)
-					{
-						for (int iterColor = 0; iterColor < 10; iterColor++)
-						{
-							if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
-							{
-								objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-								break;
-							}
-						}
-						object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
-					}
-				}
-				black = 0;
+		//					bbsExistObj = true;
+		//					break;
+		//				}
+		//			}
+		//			// If internal bbs of rectangle has existed, don't directly remove. 
+		//			if (bbsExistObj == false)
+		//			{
+		//				for (int iterColor = 0; iterColor < 10; iterColor++)
+		//				{
+		//					if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+		//					{
+		//						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+		//						break;
+		//					}
+		//				}
+		//				object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
+		//			}
+		//		}
+		//		black = 0;
 
-				if (object_list.size() == 0)//Prevent out of vector range
-					break;
-			}
-		}
+		//		if (object_list.size() == 0)//Prevent out of vector range
+		//			break;
+		//	}
+		//}
 		/* Removing one of overlapping tracking box */
 		if (object_list.size() == 2)
 		{
@@ -382,9 +322,9 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 
 			if (trackingMode == 0)
 			{
-				IplImage *cfgmaskIpl = BBSIpl;
-				// Get the color of nine points from tracking box (white or black)
-				ComparePoint_9(cfgmaskIpl, object_list, obj_list_iter, object_list[obj_list_iter].cPtNumber);
+//				IplImage *cfgmaskIpl = &(fgmask);
+//				// Get the color of nine points from tracking box (white or black)
+//				ComparePoint_9(cfgmaskIpl, object_list, obj_list_iter, object_list[obj_list_iter].cPtNumber);
 			}
 			object_list[obj_list_iter].PtNumber++;
 			object_list[obj_list_iter].cPtNumber++;
@@ -396,6 +336,8 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		/*Kalman Filter Function */
 		if ((display_kalmanArrow == true) || (display_kalmanRectangle == true))
 		{
+			KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
+
 			int UpateKF = true;
 			KF.drawPredBox(img);             // Draw predict bounding boxes	
 			if (object_list.size() == 2)
@@ -418,22 +360,32 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		}
 	}
 
-	// Merge 3-channel image and 4-channel image
-	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0));
-	
 	if (demoMode != true)
 	{
 		/* Show the number of the frame on the image */
 		stringstream textFrameNo;
 		textFrameNo << nframes;
 		putText(img, "Frame=" + textFrameNo.str(), Point(10, img.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
-
-		cvShowImage("foreground mask", fgmaskIpl);
-		imwrite(outFilePath, show_img);
-		cvSaveImage(outFilePath2, fgmaskIpl);
 	}
 
+	// Merge 3-channel image and 4-channel image
+	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0));
 	imshow("Tracking_image", show_img); // Display image output of tracking
+
+	if (demoMode != true)
+	{
+		char outFilePath[100];
+		char outFilePath2[100];
+		char outFilePath3[100];
+		sprintf(outFilePath, "video_output_tracking//%05d.png", nframes + 1);
+		sprintf(outFilePath2, "video_output_BS//%05d.png", nframes + 1);		
+		//sprintf(outFilePath3, "video_output_original//%05d.png", nframes + 1);
+
+		imshow("foreground mask", fgmask);
+		imwrite(outFilePath, show_img);
+		imwrite(outFilePath2, fgmask);
+		//imwrite(outFilePath3, img);
+	}
 }
 
 MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
@@ -489,7 +441,6 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 
 	// don't track when obj just emerge at img edge
 	if (bbs.x < 3 || bbs.y < 3 || bbs.x + bbs.width > img.cols - 1 || bbs.y + bbs.height > img.rows - 1)		return;
-
 
 	++count;
 
@@ -1257,10 +1208,11 @@ bool testBoxIntersection(int left1, int top1, int right1, int bottom1, int left2
 	return true;
 }
 
-void FindConnectedComponents::returnBbs(IplImage *mask, int *num, CvRect *bbs, CvPoint *centers, bool ignoreTooSmallPerimeter)
+void FindConnectedComponents::returnBbs(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers, bool ignoreTooSmallPerimeter)
 {
 	static CvMemStorage* mem_storage = NULL;
 	static CvSeq* contours = NULL;
+	IplImage *mask = &IplImage(BS_input);
 
 	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, 1);    //clear up raw mask
 	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_CLOSE, CVCLOSE_ITR);
@@ -1280,11 +1232,8 @@ void FindConnectedComponents::returnBbs(IplImage *mask, int *num, CvRect *bbs, C
 	{
 		double len = cvContourPerimeter(c);
 
-
-
 		/* Get rid of blob if its perimeter is too small: */
 		if (len < minConnectedComponentPerimeter && ignoreTooSmallPerimeter == true)	cvSubstituteContour(scanner, NULL);
-
 
 
 		else
@@ -1348,9 +1297,43 @@ void FindConnectedComponents::returnBbs(IplImage *mask, int *num, CvRect *bbs, C
 		for (c = contours; c != NULL; c = c->h_next) {
 			cvDrawContours(mask, c, CVX_WHITE, CVX_BLACK, -1, CV_FILLED, 8);
 		}
-	}
+	}	
+}
 
+void FindConnectedComponents::shadowRemove(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers)
+{
+	int iter = 0;
+	CvRect bbsV2[10];
+	IplImage ipltemp1 = BS_input;
+	IplImage * fgmaskIpl = &ipltemp1;
+	Mat background_BBS(BS_input.rows, BS_input.cols, CV_8UC1);
+	IplImage *BBSIpl = 0;
+	int MaxObjNum = *num;
 	
+	Mat(fgmaskIpl).copyTo(background_BBS);   // Copy fgmaskIpl to background_BBS
+	static Mat srcROI[10];                   // for shadow rectangle
+
+	/* Eliminating people's shadow method */
+	for (iter = 0; iter < MaxObjNum; iter++)
+	{   
+		// Get all shadow rectangles named bbsV2
+		bbsV2[iter].x = bbs[iter].x;
+		bbsV2[iter].y = bbs[iter].y + bbs[iter].height * 0.75;
+		bbsV2[iter].width = bbs[iter].width;
+		bbsV2[iter].height = bbs[iter].height * 0.25;
+		srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
+		srcROI[iter] = Scalar::all(0);                     // Set srcROI as showing black color
+	}
+	BBSIpl = &IplImage(background_BBS);
+	int tempObjNum = 10;
+
+	returnBbs(BBSIpl, &tempObjNum, bbs, centers, false);   // Secondly, Run the function of searching components to get update of bbs
+
+	if (tempObjNum == MaxObjNum)                           // Prevent objects of bbs2 more than objects of bbs1 
+	{
+		for (iter = 0; iter < MaxObjNum; iter++)
+			bbs[iter].height = bbs[iter].height + bbsV2[iter].height; // Merge bbs and bbsV2 to get final ROI
+	}
 }
 
 bool MeanShiftTracker::testObjectIntersection(Object2D &obj1, Object2D &obj2)
@@ -1483,24 +1466,24 @@ void BubbleSort(int* array, int size)
 	}
 }
 
-void ComparePoint_9(IplImage* &fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN)
-{
-	int x = object_list[obj_list_iter].boundingBox.x;
-	int y = object_list[obj_list_iter].boundingBox.y;
-	int w = object_list[obj_list_iter].boundingBox.width;
-	int h =	object_list[obj_list_iter].boundingBox.height;
-
-	object_list[obj_list_iter].ComparePoint[0][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.2f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[1][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[2][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[3][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.2f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[4][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[5][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[6][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.2f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[7][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.5f * w + x) / imgCompressionScale).val[0];
-	object_list[obj_list_iter].ComparePoint[8][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / imgCompressionScale, (0.8f * w + x) / imgCompressionScale).val[0];
-	// Note: cvGet2D(IplImage*, y, x)
-}
+//void ComparePoint_9(IplImage *fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN)
+//{
+//	int x = object_list[obj_list_iter].boundingBox.x;
+//	int y = object_list[obj_list_iter].boundingBox.y;
+//	int w = object_list[obj_list_iter].boundingBox.width;
+//	int h =	object_list[obj_list_iter].boundingBox.height;
+//
+//	object_list[obj_list_iter].ComparePoint[0][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / 1, (0.2f * w + x) / 1).val[0];
+//	object_list[obj_list_iter].ComparePoint[1][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / 1, (0.5f * w + x) / 1).val[0];
+//	object_list[obj_list_iter].ComparePoint[2][PtN] = cvGet2D(fgmaskIpl, (0.2f * h + y) / 1, (0.8f * w + x) / 1).val[0];
+//	object_list[obj_list_iter].ComparePoint[3][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / 1, (0.2f * w + x) / 1).val[0];
+//	object_list[obj_list_iter].ComparePoint[4][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / 1, (0.5f * w + x) / 1).val[0];
+//	object_list[obj_list_iter].ComparePoint[5][PtN] = cvGet2D(fgmaskIpl, (0.5f * h + y) / 1, (0.8f * w + x) / 1).val[0];
+//	object_list[obj_list_iter].ComparePoint[6][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / 1, (0.2f * w + x) / 1).val[0];
+//	object_list[obj_list_iter].ComparePoint[7][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / 1, (0.5f * w + x) / 1).val[0];
+//	object_list[obj_list_iter].ComparePoint[8][PtN] = cvGet2D(fgmaskIpl, (0.8f * h + y) / 1, (0.8f * w + x) / 1).val[0];
+//	// Note: cvGet2D(IplImage*, y, x)
+//}
 
 int FindObjBlackPoints(vector<Object2D> &object_list, int obj_list_iter)
 {
@@ -1712,3 +1695,4 @@ void drawArrow(Mat img, CvPoint p, CvPoint q)
 		line(img, p, q, Scalar(0, 0, 0), 3, 1, 0);
 	}
 }
+
