@@ -6,41 +6,36 @@
 #include <opencv2/opencv.hpp>
 #include "opencv2/core/core.hpp"
 #include "opencv2/video/tracking.hpp"
-//#include "MotionDetection.h"
 
 using namespace cv;
 using namespace std;
 
-const short MaxHistBins = 4096;
-
-/* Set tracking line length, range: 20~100 */
-#define plotLineLength   99
-
-/* Setting 1 if you want to display it */
-#define display_bbsRectangle     0
-#define display_kalmanRectangle  0
-#define display_kalmanArrow      0
-
 /* BBS parameters */
-#define connectedComponentPerimeterScale 6.0f      // when compute obj bbs, ignore obj with perimeter < (imgWidth + imgHeight) / (imgCompressionScale * ConnectedComponentPerimeterScale)
-#define minObjWidth_Ini_Scale  60                  // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
-#define minObjHeight_Ini_Scale 14                  // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
+#define connectedComponentPerimeterScale 6.0f // when compute obj bbs, ignore obj with perimeter < (imgWidth + imgHeight) / (imgCompressionScale * ConnectedComponentPerimeterScale)
+#define minObjWidth_Ini_Scale  60             // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
+#define minObjHeight_Ini_Scale 14             // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
+#define CVCONTOUR_APPROX_LEVEL  2             // bbs parameter   
+#define CVCLOSE_ITR             3             // number of Recursive times for computing bbs
 
-/* del too small obj from object_list (ie give up tracking it) */
-#define stopTrackingObjWithTooSmallWidth_Scale 120 // stop tracking obj when its width becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallWidth_Scale
-#define stopTrackingObjWithTooSmallHeight_Scale 28 // stop tracking obj when its height becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallHeight_Scale
+/* Tracking parameters */
+#define stopTrackingObjWithTooSmallWidth_Scale 120 // Delete too small tracking obj when its width becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallWidth_Scale
+#define stopTrackingObjWithTooSmallHeight_Scale 28 // Delete too small tracking obj when its height becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallHeight_Scale
+#define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38           // Allowed max distance between the box and other tracking boxes
+#define MAX_OBJ_LIST_SIZE            100           // Allowed max number of objects 
+#define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)] // Get two original tracking boxes'distance
 
-#define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)]
-#define CVCONTOUR_APPROX_LEVEL         2      
-#define CVCLOSE_ITR                    3	
-#define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
-#define MAX_OBJ_LIST_SIZE            100
-#define PI       3.141592653589793238463
-#define DELE_RECT_FRAMENO              1
+/* Display */
+#define plotLineLength          99  // Set tracking line length, (allowed range: 0~99)
+#define DELE_RECT_FRAMENO        3  // Allowed frames for boxes of loiter (suggest range: 5~15)
+#define display_bbsRectangle     0  // 0: Not show bbs rectangles, 1: Show bbs rectangles
+#define display_kalmanRectangle  0  // 0: Not show KF rectangles, 1: Show KF rectangles
+#define display_kalmanArrow      0  // 0: Not show KF arrows, 1: Show KF arrows 
+#define demoMode                 0  // Without accumulating number and saving images output (0:debug mode, 1:demo mode) 
 
-/* Debug or demo */
-#define demoMode  1 // Without accumulating number and saving images output (0:debug, 1:demo) 
+/* Math */
+#define PI 3.141592653589793238463 
 
+const short MaxHistBins = 4096;
 
 class FindConnectedComponents
 {
