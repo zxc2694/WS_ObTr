@@ -82,7 +82,7 @@ bool CMotionDetection::MotionDetectionProcessing(Mat InputImage)
 
 Mat CMotionDetection::OutputFMask()
 {
-	resize(FMask, FMask, cv::Size(FMask.cols * 2, FMask.rows * 2)); // Revert original image size
+//	resize(FMask, FMask, cv::Size(FMask.cols * 2, FMask.rows * 2)); // Revert original image size
 	return FMask;
 }
 

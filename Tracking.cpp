@@ -34,7 +34,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 	static char prevData = false, runFirst = true;;
 	static int pre_data_X[10], pre_data_Y[10];              //for tracking line
 	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);   // Normal: cols = 640, rows = 480
-	static FindConnectedComponents bbsFinder(img.cols, img.rows, 1, connectedComponentPerimeterScale);
+	static FindConnectedComponents bbsFinder(img.cols, img.rows, 2, connectedComponentPerimeterScale);
 	static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static vector<Object2D> object_list;
 	static KalmanF KF;
@@ -57,6 +57,17 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 		{
 			int MaxObjNum = 10; // bbsFinder don't find more than MaxObjNum objects  
 			bbsFinder.returnBbs(fgmask, &MaxObjNum, bbs, centers, true); //find ROI components
+
+			// decompression bbs and centers in fgmaskIpl
+			for (int iter = 0; iter < MaxObjNum; ++iter)
+			{
+				bbs[iter].x *= 2;
+				bbs[iter].y *= 2;
+				bbs[iter].width *= 2;
+				bbs[iter].height *= 2;
+				centers[iter].x *= 2;
+				centers[iter].y *= 2;
+			}
 
 			for (int iter = 0; iter < MaxObjNum; ++iter)
 			{
@@ -92,6 +103,16 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 					rectangle(img, bbs[iter], Scalar(0, 255, 255), 2);
 				}
 			}
+			// decompression bbs and centers in fgmaskIpl
+			for (int iter = 0; iter < MaxObjNum; ++iter)
+			{
+				bbs[iter].x *= 2;
+				bbs[iter].y *= 2;
+				bbs[iter].width *= 2;
+				bbs[iter].height *= 2;
+				centers[iter].x *= 2;
+				centers[iter].y *= 2;
+			}
 		}
 		if (trackingMode == 1)   // Ignore fgmask and use ROI of input
 		{
@@ -100,6 +121,7 @@ void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *ROI, int Obj
 			for (iter = 0; iter < MaxObjNum; iter++)
 				bbs[iter] = ROI[iter];
 		}
+		
 
 		ms_tracker->track(img, object_list);
 
@@ -872,17 +894,17 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 		// if the part of bbs inside img is too small for all scales after shifts, abandon tracking this obj, i.e. delete this obj from object_list 
 		if (exceedImgBoundary)
 		{
-			for (int iterColor = 0; iterColor < 10; iterColor++)
-			{
-				if (objNumArray_BS[c] == objNumArray[iterColor])
-				{
-					objNumArray[iterColor] = 1000;
-					break;
-				}
-			}
-			object_list.erase(object_list.begin() + c);
-			--c;
-			continue;
+			//for (int iterColor = 0; iterColor < 10; iterColor++)
+			//{
+			//	if (objNumArray_BS[c] == objNumArray[iterColor])
+			//	{
+			//		objNumArray[iterColor] = 1000;
+			//		break;
+			//	}
+			//}
+			//object_list.erase(object_list.begin() + c);
+			//--c;
+			//continue;
 		}
 
 
@@ -1462,15 +1484,15 @@ void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_l
 	int w = object_list[obj_list_iter].boundingBox.width;
 	int h =	object_list[obj_list_iter].boundingBox.height;
 
-	object_list[obj_list_iter].ComparePoint[0][PtN] = cvGet2D(&fgmaskIpl, (0.2f * h + y) / 1, (0.2f * w + x) / 1).val[0];
-	object_list[obj_list_iter].ComparePoint[1][PtN] = cvGet2D(&fgmaskIpl, (0.2f * h + y) / 1, (0.5f * w + x) / 1).val[0];
-	object_list[obj_list_iter].ComparePoint[2][PtN] = cvGet2D(&fgmaskIpl, (0.2f * h + y) / 1, (0.8f * w + x) / 1).val[0];
-	object_list[obj_list_iter].ComparePoint[3][PtN] = cvGet2D(&fgmaskIpl, (0.5f * h + y) / 1, (0.2f * w + x) / 1).val[0];
-	object_list[obj_list_iter].ComparePoint[4][PtN] = cvGet2D(&fgmaskIpl, (0.5f * h + y) / 1, (0.5f * w + x) / 1).val[0];
-	object_list[obj_list_iter].ComparePoint[5][PtN] = cvGet2D(&fgmaskIpl, (0.5f * h + y) / 1, (0.8f * w + x) / 1).val[0];
-	object_list[obj_list_iter].ComparePoint[6][PtN] = cvGet2D(&fgmaskIpl, (0.8f * h + y) / 1, (0.2f * w + x) / 1).val[0];
-	object_list[obj_list_iter].ComparePoint[7][PtN] = cvGet2D(&fgmaskIpl, (0.8f * h + y) / 1, (0.5f * w + x) / 1).val[0];
-	object_list[obj_list_iter].ComparePoint[8][PtN] = cvGet2D(&fgmaskIpl, (0.8f * h + y) / 1, (0.8f * w + x) / 1).val[0];
+	object_list[obj_list_iter].ComparePoint[0][PtN] = cvGet2D(&fgmaskIpl, (0.2f * h + y) / 2, (0.2f * w + x) / 2).val[0];
+	object_list[obj_list_iter].ComparePoint[1][PtN] = cvGet2D(&fgmaskIpl, (0.2f * h + y) / 2, (0.5f * w + x) / 2).val[0];
+	object_list[obj_list_iter].ComparePoint[2][PtN] = cvGet2D(&fgmaskIpl, (0.2f * h + y) / 2, (0.8f * w + x) / 2).val[0];
+	object_list[obj_list_iter].ComparePoint[3][PtN] = cvGet2D(&fgmaskIpl, (0.5f * h + y) / 2, (0.2f * w + x) / 2).val[0];
+	object_list[obj_list_iter].ComparePoint[4][PtN] = cvGet2D(&fgmaskIpl, (0.5f * h + y) / 2, (0.5f * w + x) / 2).val[0];
+	object_list[obj_list_iter].ComparePoint[5][PtN] = cvGet2D(&fgmaskIpl, (0.5f * h + y) / 2, (0.8f * w + x) / 2).val[0];
+	object_list[obj_list_iter].ComparePoint[6][PtN] = cvGet2D(&fgmaskIpl, (0.8f * h + y) / 2, (0.2f * w + x) / 2).val[0];
+	object_list[obj_list_iter].ComparePoint[7][PtN] = cvGet2D(&fgmaskIpl, (0.8f * h + y) / 2, (0.5f * w + x) / 2).val[0];
+	object_list[obj_list_iter].ComparePoint[8][PtN] = cvGet2D(&fgmaskIpl, (0.8f * h + y) / 2, (0.8f * w + x) / 2).val[0];
 	// Note: cvGet2D(IplImage*, y, x)
 }
 
