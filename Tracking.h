@@ -151,14 +151,14 @@ private:
     int minObjHeight;
 	//const int minObjArea = 1000;
 
-	const int Max_Mean_Shift_Iter = 8;
-	const double Similar_Val_Threshold = 0.165;
+	int Max_Mean_Shift_Iter;
+	double Similar_Val_Threshold;
 	int  kernel_type;
 	int	 bin_width;
 	int  bins;
-	const float scaleBetFrame = 0.1;
-	const double scaleLearningRate = 0.1; // scale change rate
-	const double epsilon = 1; // min shift in Mean-Shift iteration
+	float scaleBetFrame;
+	double scaleLearningRate; // scale change rate
+	double epsilon;           // min shift in Mean-Shift iteration
 	void getKernel(Mat &kernel, const int func_type = 0);
 	void computeHist(const Mat &roiMat, const Mat &kernel, double hist[]);
 	int setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight);
