@@ -10,19 +10,14 @@
 using namespace cv;
 using namespace std;
 
-/* BBS parameters */
-#define connectedComponentPerimeterScale 6.0f // when compute obj bbs, ignore obj with perimeter < (imgWidth + imgHeight) / (imgCompressionScale * ConnectedComponentPerimeterScale)
-#define minObjWidth_Ini_Scale  60             // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
-#define minObjHeight_Ini_Scale 14             // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
-#define CVCONTOUR_APPROX_LEVEL  2             // bbs parameter   
-#define CVCLOSE_ITR             3             // number of Recursive times for computing bbs
-
 /* Tracking parameters */
 #define stopTrackingObjWithTooSmallWidth_Scale 120 // Delete too small tracking obj when its width becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallWidth_Scale
 #define stopTrackingObjWithTooSmallHeight_Scale 28 // Delete too small tracking obj when its height becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallHeight_Scale
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38           // Allowed max distance between the box and other tracking boxes
 #define MAX_OBJ_LIST_SIZE            100           // Allowed max number of objects 
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)] // Get two original tracking boxes'distance
+#define minObjWidth_Ini_Scale  60                  // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
+#define minObjHeight_Ini_Scale 14                  // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
 
 /* Display */
 #define plotLineLength          99  // Set tracking line length, (allowed range: 0~99)
@@ -37,31 +32,11 @@ using namespace std;
 
 const short MaxHistBins = 4096;
 
-class FindConnectedComponents
-{
-public:
-	FindConnectedComponents(int imgWidth, int imgHeight, int ImgCompressionScale, float ConnectedComponentPerimeterScale)
-	{
-		MaxObjNum = 10;         // bbsFinder don't find more than MaxObjNum objects  
-		method_Poly1_Hull0 = 1; // Use Polygon algorithm if method_Poly1_Hull0 = 1, and use Hull algorithm if method_Poly1_Hull0 = 0
-		minConnectedComponentPerimeter = (imgWidth + imgHeight) / (ImgCompressionScale * ConnectedComponentPerimeterScale);
-	}
-	~FindConnectedComponents(){}
-
-	void returnBbs(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers, bool ignoreTooSmallPerimeter);
-	void shadowRemove(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers);
-private:
-	int method_Poly1_Hull0;
-	int minConnectedComponentPerimeter; // ignores obj with too small perimeter 
-	int MaxObjNum;
-};
-
 typedef struct
 {
 	int No;						// numbers of track boxes 
 	short	type;				// 1:vehicle , 2: pedestrian, 3: unknown
 	short	status;				// 1: detected, 2: tracked, 3: miss to detect, 4: loss to track
-	//Point   bbsCen;             // tracked obj's bbs's center   
 	Rect	boundingBox;		// in pixels
 	int     initialBbsWidth;    // in pixels
 	int     initialBbsHeight;   // in pixels
@@ -210,7 +185,7 @@ private:
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
 void BubbleSort(int* array, int size);
-void tracking_function(Mat &img, Mat &fgmask, int &nframes, CvRect *bbs, int MaxObjNum, int Mode);
+void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum);
 void KF_init(cv::KalmanFilter *kf);
 void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
 void drawArrow(Mat img, CvPoint p, CvPoint q);

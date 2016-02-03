@@ -22,9 +22,10 @@ int main(int argc, const char** argv)
 {
 	char link[512];
 	int nframes = 0;
+	int ObjNum;
 	double t = 0;
-	Mat img;
-	Mat	fgmask;
+	Mat img, fgmask;
+	CvRect ROI[10];	
 
 	/* Select BS algorithm */
 	CMotionDetection BS(2);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS, 3: CodeBook+MOG
@@ -73,12 +74,13 @@ int main(int argc, const char** argv)
 
 		if (BS.MotionDetectionProcessing(img) != true){} // Build background model		
 		
-		else
+		else  // Initial background model has finished	
 		{
-			fgmask = BS.OutputFMask();    // Get image output of background subtraction
-			t = (double)cvGetTickCount(); // Get executing time 	
+			fgmask = BS.OutputFMask();            // Get image output of background subtraction			
+			BS.Output2dROI(fgmask, ROI, &ObjNum); // Get ROI detection	
+			t = (double)cvGetTickCount();         // Get executing time 	
 
-			tracking_function(img, fgmask, nframes, NULL, NULL, 0); // Plot tracking rectangles and their trajectories
+			tracking_function(img, fgmask, ROI, ObjNum); // Plot tracking rectangles and their trajectories
 	
 			t = (double)cvGetTickCount() - t;
 			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 

@@ -40,6 +40,12 @@ CMotionDetection::CMotionDetection(int nType)
 	{
 
 	}
+
+	// Find connected components
+	method_Poly1_Hull0 = 1;                 // Use Polygon algorithm if method_Poly1_Hull0 = 1, and use Hull algorithm if method_Poly1_Hull0 = 0
+	connectedComponentPerimeterScale = 6.0; // when compute obj bbs, ignore obj with perimeter < (imgWidth + imgHeight) / (imgCompressionScale * ConnectedComponentPerimeterScale)
+	CVCONTOUR_APPROX_LEVEL = 2;             // bbs parameter   
+	CVCLOSE_ITR = 3;                        // number of Recursive times for computing bbs
 }
 
 CMotionDetection::~CMotionDetection()
@@ -78,12 +84,6 @@ bool CMotionDetection::MotionDetectionProcessing(Mat InputImage)
 
 	nFrameCntr++;
 	return BGModelReady;
-}
-
-Mat CMotionDetection::OutputFMask()
-{
-//	resize(FMask, FMask, cv::Size(FMask.cols * 2, FMask.rows * 2)); // Revert original image size
-	return FMask;
 }
 
 void CMotionDetection::RunCodebook(Mat InputImage)
@@ -176,6 +176,161 @@ void CMotionDetection::RunCodeBook_MOG(Mat InputImage)
 		fgmaskIpl = cvCloneImage(ImaskCodeBook);
 		FMask = Mat(fgmaskIpl);
 	}
+}
+
+Mat CMotionDetection::OutputFMask()
+{
+	//resize(FMask, FMask, cv::Size(FMask.cols * 2, FMask.rows * 2)); // Revert original image size
+
+	return FMask;
+}
+
+void CMotionDetection::Output2dROI(Mat BS_input, CvRect *bbs, int *num)
+{
+	*num = 10;
+	returnBbs(BS_input, num, bbs, centers, true);      //find ROI components
+	returnBbs_delShadow(BS_input, num, bbs, centers);  //find final ROI components after finishing processing of shadow
+
+	// decompression bbs and centers in fgmaskIpl
+	for (int iter = 0; iter < *num; ++iter)
+	{
+		bbs[iter].x *= 2;
+		bbs[iter].y *= 2;
+		bbs[iter].width *= 2;
+		bbs[iter].height *= 2;
+		centers[iter].x *= 2;
+		centers[iter].y *= 2;
+	}
+}
+
+void CMotionDetection::Output3dROI()
+{
+
+}
+
+void CMotionDetection::returnBbs(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers, bool ignoreTooSmallPerimeter)
+{
+	static CvMemStorage* mem_storage = NULL;
+	static CvSeq* contours = NULL;
+	IplImage mask = BS_input;
+
+	cvMorphologyEx(&mask, &mask, 0, 0, CV_MOP_OPEN, 1);    //clear up raw mask
+	cvMorphologyEx(&mask, &mask, 0, 0, CV_MOP_CLOSE, CVCLOSE_ITR);
+
+	/* find contours around only bigger regions */
+	if (mem_storage == NULL)
+	{
+		mem_storage = cvCreateMemStorage(0);
+	}
+	else	cvClearMemStorage(mem_storage);
+
+	CvContourScanner scanner = cvStartFindContours(&mask, mem_storage, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+	CvSeq* c;
+	int numCont = 0;
+
+	while ((c = cvFindNextContour(scanner)) != NULL)
+	{
+		double len = cvContourPerimeter(c);
+
+		/* Get rid of blob if its perimeter is too small: */
+		if (len < minConnectedComponentPerimeter && ignoreTooSmallPerimeter == true)	cvSubstituteContour(scanner, NULL);
+
+
+		else
+		{
+			/* Smooth its edges if its large enough */
+			CvSeq* c_new;
+			if (method_Poly1_Hull0 == 1) {
+				c_new = cvApproxPoly(c, sizeof(CvContour), mem_storage, CV_POLY_APPROX_DP, CVCONTOUR_APPROX_LEVEL, 0); // Polygonal approximation
+			}
+			else {
+				c_new = cvConvexHull2(c, mem_storage, CV_CLOCKWISE, 1); // Convex Hull of the segmentation
+			}
+			cvSubstituteContour(scanner, c_new);
+			numCont++;
+		}
+	}
+	contours = cvEndFindContours(&scanner);
+	const CvScalar CVX_WHITE = CV_RGB(0xff, 0xff, 0xff);
+	const CvScalar CVX_BLACK = CV_RGB(0x00, 0x00, 0x00);
+
+	/* Paint the found regions back into image */
+	cvZero(&mask);
+	IplImage *maskTemp;
+
+	/* Calc center of mass AND/OR bounding rectangles*/
+	if (num != NULL) {
+		int N = *num, numFilled = 0, i = 0;
+		CvMoments moments;
+		double M00, M01, M10;
+		maskTemp = cvCloneImage(&mask);
+		for (i = 0, c = contours; c != NULL; c = c->h_next, i++) //User wants to collect statistics
+		{
+			if (i < N)
+			{
+				cvDrawContours(maskTemp, c, CVX_WHITE, CVX_WHITE, -1, CV_FILLED, 8); // Only process up to *num of them
+
+				if (centers != NULL) {				// Find the center of each contour
+					cvMoments(maskTemp, &moments, 1);
+					M00 = cvGetSpatialMoment(&moments, 0, 0);
+					M10 = cvGetSpatialMoment(&moments, 1, 0);
+					M01 = cvGetSpatialMoment(&moments, 0, 1);
+					centers[i].x = (int)(M10 / M00);
+					centers[i].y = (int)(M01 / M00);
+				}
+				if (bbs != NULL) {					//Bounding rectangles around blobs
+					bbs[i] = cvBoundingRect(c);
+				}
+				cvZero(maskTemp);
+				numFilled++;
+			}
+
+			cvDrawContours(&mask, c, CVX_WHITE, CVX_WHITE, -1, CV_FILLED, 8); // Draw filled contours into mask
+		} //end looping over contours
+
+		*num = numFilled;
+		cvReleaseImage(&maskTemp);
+	}
+	/* Else just draw processed contours into the mask */
+	else {
+		// The user doesn!|t want statistics, just draw the contours
+		for (c = contours; c != NULL; c = c->h_next) {
+			cvDrawContours(&mask, c, CVX_WHITE, CVX_BLACK, -1, CV_FILLED, 8);
+		}
+	}
+}
+
+void CMotionDetection::returnBbs_delShadow(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers)
+{
+	int iter = 0;
+	CvRect bbsV2[10];
+	IplImage fgmaskIpl = BS_input;
+	Mat background_BBS((BS_input.rows >> 1), (BS_input.cols >> 1), CV_8UC1);
+	Mat(&fgmaskIpl).copyTo(background_BBS);
+	static Mat srcROI[10];                                 // for rectangles of shadows
+
+	/* Eliminating people's shadow method */
+	for (iter = 0; iter < *num; iter++)
+	{
+		// Get all shadow rectangles named bbsV2
+		bbsV2[iter].x = bbs[iter].x;
+		bbsV2[iter].y = (int)(bbs[iter].y + bbs[iter].height * 0.75);
+		bbsV2[iter].width = (int)(bbs[iter].width);
+		bbsV2[iter].height = (int)(bbs[iter].height * 0.25);
+		srcROI[iter] = background_BBS(Rect(bbsV2[iter].x, bbsV2[iter].y, bbsV2[iter].width, bbsV2[iter].height)); // srcROI is depended on the image of background_BBS
+		srcROI[iter] = Scalar::all(0);                      // Set srcROI as showing black color
+	}
+	IplImage BBSIpl = background_BBS;
+	int tempObjNum = 10;
+
+	returnBbs(&BBSIpl, &tempObjNum, bbs, centers, false);  // Secondly, Run the function of searching components to get update of bbs
+
+	if (tempObjNum == *num)                           // Prevent objects of bbs2 more than objects of bbs1 
+	{
+		for (iter = 0; iter < *num; iter++)
+			bbs[iter].height = bbs[iter].height + bbsV2[iter].height; // Merge bbs and bbsV2 to get final ROI
+	}
+	//cvShowImage("123", &BBSIpl);  // Show BS image with finished shadow processing 
 }
 
 ImageBase::~ImageBase()

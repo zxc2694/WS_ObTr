@@ -245,20 +245,26 @@ public:
 	CMotionDetection(int nType);
 	~CMotionDetection();
 	bool MotionDetectionProcessing(Mat InputImage);
-	Mat OutputFMask();
-
+	Mat OutputFMask();   // Foreground image output
+	
 	// Background subtraction class
 	void RunCodebook(Mat InputImage);     // Codebook function
 	void RunMOG(Mat InputImage);          // MOG function
 	void RunDPEigen(Mat InputImage);      // DPEigenBGS function
 	void RunCodeBook_MOG(Mat InputImage); // Codebook + MOG function for 3D disparity
 
+	// Find connected components
+	void returnBbs(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers, bool ignoreTooSmallPerimeter);
+	void returnBbs_delShadow(Mat BS_input, int *num, CvRect *bbs, CvPoint *centers);
+	void Output2dROI(Mat BS_input, CvRect *bbs, int *num); // 2D ROI output
+	void Output3dROI();
+
 private:
 	int nBackGroudModel;
 	int nFrameCntr;
 	bool BGModelReady;
-	Mat img_compress;           // Image input After it is Compressd
-	Mat FMask;                  // Image output
+	Mat img_compress;   // Image input After it is Compressd
+	Mat FMask;          // Image output
 
 	// Codebook parameter
 	CvBGCodeBookModel* model;
@@ -273,6 +279,14 @@ private:
 
 	// DPEigenBGS parameter
 	DPEigenbackgroundBGS bgs;
+
+	// Find connected components
+	CvPoint centers[10];
+	int method_Poly1_Hull0;
+	int minConnectedComponentPerimeter;     // ignores obj with too small perimeter 
+	float connectedComponentPerimeterScale; // when compute obj bbs, ignore obj with perimeter < (imgWidth + imgHeight) / (imgCompressionScale * ConnectedComponentPerimeterScale)
+	int CVCONTOUR_APPROX_LEVEL;             // bbs parameter   
+	int CVCLOSE_ITR;
 };
 
 void DensityFilter(BwImage& image, BwImage& filtered, int minDensity, unsigned char fgValue);
