@@ -60,7 +60,7 @@ typedef struct
 	int PtNumber;
 	int cPtNumber;
 	int PtCount;
-	int ComparePoint[10][DELE_RECT_FRAMENO]; //It decides whether rectangles is motionless or not.
+	int findBbs[DELE_RECT_FRAMENO]; //It decides whether rectangles is motionless or not.
 
 } Object2D;
 

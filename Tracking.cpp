@@ -179,48 +179,55 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 		}
 
 		/* Removing motionless tracking box  */
-		//int black = 0;
-		//for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		//{
-		//	black = FindObjBlackPoints(object_list, obj_list_iter); // Get black points from tracking box
+		int black = 0, times = 0;
+		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		{
+			for (int i = 0; i < MaxObjNum; i++)
+			{
+				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.01f))
+					break;
+				else
+					black++; 
+			}
+			// Restarting count when count > DELE_RECT_FRAMENO number
+			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
+				object_list[obj_list_iter].cPtNumber = 0;
 
-		//	// When points are all black in image of background subtracion.	
-		//	//if (DELE_RECT_FRAMENO * 9 == black)
-		//	if (DELE_RECT_FRAMENO * 3 == black)
-		//	{
-		//		char bbsExistObj = false;
-		//		for (int i = 0; i < MaxObjNum; i++)
-		//		{
-		//			// To find internal bbs of the tracking box
-		//			if ((centers[i].x > object_list[obj_list_iter].boundingBox.x) && (centers[i].x < object_list[obj_list_iter].boundingBox.x + object_list[obj_list_iter].boundingBox.width) && (centers[i].y > object_list[obj_list_iter].boundingBox.y) && (centers[i].y < object_list[obj_list_iter].boundingBox.y + object_list[obj_list_iter].boundingBox.height))
-		//			{
-		//				//Reset the scale of the tracking box.
-		//				for (int i = 0; i < MaxObjNum; i++)
-		//					ms_tracker->updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
+			// findBbs[i] = 0 -> no object; findBbs[i] = 1 -> has object
+			if (black == MaxObjNum)
+				object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 0;		
+			else
+				object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 1;
 
-		//				bbsExistObj = true;
-		//				break;
-		//			}
-		//		}
-		//		// If internal bbs of rectangle has existed, don't directly remove. 
-		//		if (bbsExistObj == false)
-		//		{
-		//			for (int iterColor = 0; iterColor < 10; iterColor++)
-		//			{
-		//				if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
-		//				{
-		//					objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-		//					break;
-		//				}
-		//			}
-		//			object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
-		//		}
-		//	}
-		//	black = 0;
+			object_list[obj_list_iter].cPtNumber++;
 
-		//	if (object_list.size() == 0)//Prevent out of vector range
-		//		break;
-		//}
+			// To determine whether it continuously keep no object 
+			for (int i = 0; i < DELE_RECT_FRAMENO; i++) 
+			{
+				if (object_list[obj_list_iter].findBbs[i] == 0)
+				{
+					times++;
+				}
+			}
+			if (DELE_RECT_FRAMENO == times) 
+			{
+				for (int iterColor = 0; iterColor < 10; iterColor++)
+				{
+					if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+					{
+						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+						break;
+					}
+				}
+				object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box	
+
+				if (object_list.size() == 0)//Prevent out of vector range
+					break;
+				
+			}
+			black = 0;
+			times = 0;		
+		}
 
 		/* Removing one of overlapping tracking box */
 		//if (object_list.size() == 2)
@@ -283,17 +290,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 
 			object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
 
-			// Restarting count when count > DELE_RECT_FRAMENO number
-			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
-				object_list[obj_list_iter].cPtNumber = 0;
-
-			//IplImage ipltemp1 = fgmask;
-
-			//// Get the color of nine points from tracking box (white or black)
-			//ComparePoint_9(ipltemp1, object_list, obj_list_iter, object_list[obj_list_iter].cPtNumber);
-
 			object_list[obj_list_iter].PtNumber++;
-			object_list[obj_list_iter].cPtNumber++;
 			object_list[obj_list_iter].PtCount++;
 
 		}// end of plotting trajectory
@@ -429,9 +426,8 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	obj.objScale = 1;
 	obj.kernel.create(obj.boundingBox.height, obj.boundingBox.width, CV_64FC1);
 
-	for (int j = 0; j < 10; j++)                     //Set nine point as 255 in bbs
-		for (int i = 0; i < DELE_RECT_FRAMENO; i++)
-			obj.ComparePoint[j][i] = 255;
+	for (int i = 0; i < DELE_RECT_FRAMENO; i++)
+		obj.findBbs[i] = 1; // 1: has object; 0: no object -> default: has object
 
 	getKernel(obj.kernel, kernel_type);
 
@@ -1280,49 +1276,6 @@ void BubbleSort(int* array, int size)
 			}
 		}
 	}
-}
-
-void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN)
-{
-	int x = object_list[obj_list_iter].boundingBox.x;
-	int y = object_list[obj_list_iter].boundingBox.y;
-	int w = object_list[obj_list_iter].boundingBox.width;
-	int h = object_list[obj_list_iter].boundingBox.height;
-
-	object_list[obj_list_iter].ComparePoint[0][PtN] = cvGet2D(&fgmaskIpl, (0.2f * h + y) / 2, (0.2f * w + x) / 2).val[0];
-	object_list[obj_list_iter].ComparePoint[1][PtN] = cvGet2D(&fgmaskIpl, (0.2f * h + y) / 2, (0.5f * w + x) / 2).val[0];
-	object_list[obj_list_iter].ComparePoint[2][PtN] = cvGet2D(&fgmaskIpl, (0.2f * h + y) / 2, (0.8f * w + x) / 2).val[0];
-	object_list[obj_list_iter].ComparePoint[3][PtN] = cvGet2D(&fgmaskIpl, (0.5f * h + y) / 2, (0.2f * w + x) / 2).val[0];
-	object_list[obj_list_iter].ComparePoint[4][PtN] = cvGet2D(&fgmaskIpl, (0.5f * h + y) / 2, (0.5f * w + x) / 2).val[0];
-	object_list[obj_list_iter].ComparePoint[5][PtN] = cvGet2D(&fgmaskIpl, (0.5f * h + y) / 2, (0.8f * w + x) / 2).val[0];
-	object_list[obj_list_iter].ComparePoint[6][PtN] = cvGet2D(&fgmaskIpl, (0.8f * h + y) / 2, (0.2f * w + x) / 2).val[0];
-	object_list[obj_list_iter].ComparePoint[7][PtN] = cvGet2D(&fgmaskIpl, (0.8f * h + y) / 2, (0.5f * w + x) / 2).val[0];
-	object_list[obj_list_iter].ComparePoint[8][PtN] = cvGet2D(&fgmaskIpl, (0.8f * h + y) / 2, (0.8f * w + x) / 2).val[0];
-	// Note: cvGet2D(IplImage*, y, x)
-}
-
-int FindObjBlackPoints(vector<Object2D> &object_list, int obj_list_iter)
-{
-	//Calculating how much black point in image of background subtracion.
-	int black_points = 0;
-	//for (int point = 0; point < 9; point++)
-	//{
-	//	for (int i = 0; i < DELE_RECT_FRAMENO; i++)
-	//	{
-	//		if (object_list[obj_list_iter].ComparePoint[point][i] == 0)
-	//			black_points++;
-	//	}
-	//}
-	for (int i = 0; i < DELE_RECT_FRAMENO; i++)
-	{
-		if (object_list[obj_list_iter].ComparePoint[4][i] == 0)
-			black_points++;
-		if (object_list[obj_list_iter].ComparePoint[1][i] == 0)
-			black_points++;
-		if (object_list[obj_list_iter].ComparePoint[7][i] == 0)
-			black_points++;
-	}
-	return black_points; //Output range: 0 ~ 9 (black points)
 }
 
 //Refer to https://github.com/Myzhar/simple-opencv-kalman-tracker 
