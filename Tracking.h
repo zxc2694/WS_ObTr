@@ -182,6 +182,7 @@ private:
 	int pred_y[10];
 };
 
+void getNewObject(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
 void BubbleSort(int* array, int size);

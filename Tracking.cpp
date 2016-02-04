@@ -26,8 +26,6 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	static KalmanF KF;
 	vector<cv::Rect> KFBox;
 	static IObjectTracker *ms_tracker = new MeanShiftTracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
-
-	//resize(img_input, img_input, cv::Size(img_input.cols * 2, img_input.rows * 2));
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);   // Normal: cols = 640, rows = 480
 	TrackingLine = Scalar::all(0);
 
@@ -48,8 +46,6 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 			objNumArray[s] = 65535;                       // Set all values as max number for ordered arrangement
 			objNumArray_BS[s] = 65535;
 		}
-		memset(pre_data_X, 0, sizeof(pre_data_X));
-		memset(pre_data_Y, 0, sizeof(pre_data_Y));
 		
 		for (int iter = 0; iter < MaxObjNum; iter++)
 		{
@@ -63,97 +59,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	{		
 		ms_tracker->track(img_input, object_list);
 
-		int bbs_iter;
-		size_t obj_list_iter;
-		for (bbs_iter = 0; bbs_iter < MaxObjNum; ++bbs_iter)
-		{
-			bool Overlapping = false, addToList = true;
-			vector<int> replaceList;
-
-			for (obj_list_iter = 0; obj_list_iter < object_list.size(); ++obj_list_iter)
-			{
-				if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
-					// && (bbs[bbs_iter].width*bbs[bbs_iter].height < 4.0f*object_list[obj_list_iter].boundingBox.width*object_list[obj_list_iter].boundingBox.height)
-				{
-					if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.5f)) // Overlap > 0.5 --> replace the boundingBox
-					{
-						replaceList.push_back((int)obj_list_iter);
-					}
-				}
-				else
-				{
-					if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.3f))		addToList = false; // If the size of overlap is small, don't add to object list. (no replace)
-				}
-			} // end of 2nd for 
-
-			int iter1 = 0, iter2 = 0;
-
-			if ((int)replaceList.size() != 0)
-			{
-
-				for (unsigned int iter = 0; iter < object_list.size(); ++iter)
-				{
-					if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above judgement
-						&& Overlap(bbs[bbs_iter], object_list[iter].boundingBox, 0.5f))		replaceList.push_back(iter);
-				}
-
-				for (iter1 = 0; iter1 < (int)replaceList.size(); ++iter1)
-				{
-					for (iter2 = iter1 + 1; iter2 < (int)replaceList.size(); ++iter2)
-					{
-						/*cout << Pixel32S(ms_tracker->DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
-						MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;*/
-
-						if (Pixel32S(ms_tracker->DistMat, object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
-						{
-							addToList = false;
-							goto end;
-						}
-					}
-				}
-			}
-		end: // break for loop
-
-
-			if ((int)replaceList.size() != 0 && iter1 == (int)replaceList.size())
-			{
-				Overlapping = true;
-
-				// choose obj with longest duration from replaceList to update it by new bbs found by codebook
-				int  objWithLongestDuration = 0;
-				for (int iter = 0; iter < (int)replaceList.size(); ++iter)
-				{
-					if (object_list[replaceList[iter]].PtCount > object_list[replaceList[objWithLongestDuration]].PtCount)		objWithLongestDuration = iter;
-				}
-
-				ms_tracker->updateObjBbs(img_input, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
-
-				replaceList.erase(replaceList.begin() + objWithLongestDuration); // reserve the obj with longest duration in replaceList (exclude it from replaceList)
-
-				if ((int)replaceList.size() > 1)	BubbleSort(&replaceList[0], (int)replaceList.size());
-
-				//for (int iter = 0; iter < (int)replaceList.size(); ++iter)
-				for (int iter = (int)replaceList.size() - 1; iter >= 0; --iter)
-				{
-					for (int iterColor = 0; iterColor < 10; iterColor++)
-					{
-						if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
-						{
-							objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-							break;
-						}
-					}
-					object_list.erase(object_list.begin() + replaceList[iter]);
-				}
-			}
-
-			if ((!Overlapping && addToList) && ((unsigned int)MaxObjNum > object_list.size()))
-			{
-				ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
-			}
-
-			vector<int>().swap(replaceList);
-		}  // end of 1st for 
+		getNewObject(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
 		for (iter = 0; iter < 10; iter++)
 			objNumArray_BS[iter] = objNumArray[iter]; // Copy array from objNumArray to objNumArray_BS
@@ -162,7 +68,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 
 		/* Modify the size of the tracking box  */
 		int bbsNumber = 0;
-		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
 			for (int i = 0; i < MaxObjNum; i++)
 			{
@@ -180,7 +86,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 
 		/* Removing motionless tracking box  */
 		int black = 0, times = 0;
-		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
 			for (int i = 0; i < MaxObjNum; i++)
 			{
@@ -264,7 +170,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 		ms_tracker->drawTrackBox(img_input, object_list);   // Draw all the track boxes and their numbers 
 
 		/* plotting trajectory */
-		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
 			if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
 			{
@@ -305,7 +211,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 			KF.drawPredBox(img_input);             // Draw predict bounding boxes	
 			if (object_list.size() == 2)
 			{
-				for (obj_list_iter = 0; obj_list_iter < object_list.size() - 1; obj_list_iter++)
+				for (size_t obj_list_iter = 0; obj_list_iter < object_list.size() - 1; obj_list_iter++)
 				{
 					int p_x = object_list[obj_list_iter].boundingBox.x;
 					int p_y = object_list[obj_list_iter].boundingBox.y;
@@ -342,6 +248,101 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0));
 
 	nframes++;
+}
+
+void getNewObject(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
+{
+	int bbs_iter;
+	size_t obj_list_iter;
+	for (bbs_iter = 0; bbs_iter < MaxObjNum; ++bbs_iter)
+	{
+		bool Overlapping = false, addToList = true;
+		vector<int> replaceList;
+
+		for (obj_list_iter = 0; obj_list_iter < object_list.size(); ++obj_list_iter)
+		{
+			if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
+				// && (bbs[bbs_iter].width*bbs[bbs_iter].height < 4.0f*object_list[obj_list_iter].boundingBox.width*object_list[obj_list_iter].boundingBox.height)
+			{
+				if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.5f)) // Overlap > 0.5 --> replace the boundingBox
+				{
+					replaceList.push_back((int)obj_list_iter);
+				}
+			}
+			else
+			{
+				if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.3f))		addToList = false; // If the size of overlap is small, don't add to object list. (no replace)
+			}
+		} // end of 2nd for 
+
+		int iter1 = 0, iter2 = 0;
+
+		if ((int)replaceList.size() != 0)
+		{
+
+			for (unsigned int iter = 0; iter < object_list.size(); ++iter)
+			{
+				if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above judgement
+					&& Overlap(bbs[bbs_iter], object_list[iter].boundingBox, 0.5f))		replaceList.push_back(iter);
+			}
+
+			for (iter1 = 0; iter1 < (int)replaceList.size(); ++iter1)
+			{
+				for (iter2 = iter1 + 1; iter2 < (int)replaceList.size(); ++iter2)
+				{
+					/*cout << Pixel32S(ms_tracker->DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
+					MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;*/
+
+					if (Pixel32S(ms_tracker->DistMat, object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
+					{
+						addToList = false;
+						goto end;
+					}
+				}
+			}
+		}
+	end: // break for loop
+
+
+		if ((int)replaceList.size() != 0 && iter1 == (int)replaceList.size())
+		{
+			Overlapping = true;
+
+			// choose obj with longest duration from replaceList to update it by new bbs found by codebook
+			int  objWithLongestDuration = 0;
+			for (int iter = 0; iter < (int)replaceList.size(); ++iter)
+			{
+				if (object_list[replaceList[iter]].PtCount > object_list[replaceList[objWithLongestDuration]].PtCount)		objWithLongestDuration = iter;
+			}
+
+			ms_tracker->updateObjBbs(img_input, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
+
+			replaceList.erase(replaceList.begin() + objWithLongestDuration); // reserve the obj with longest duration in replaceList (exclude it from replaceList)
+
+			if ((int)replaceList.size() > 1)	BubbleSort(&replaceList[0], (int)replaceList.size());
+
+			//for (int iter = 0; iter < (int)replaceList.size(); ++iter)
+			for (int iter = (int)replaceList.size() - 1; iter >= 0; --iter)
+			{
+				for (int iterColor = 0; iterColor < 10; iterColor++)
+				{
+					if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+					{
+						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+						break;
+					}
+				}
+				object_list.erase(object_list.begin() + replaceList[iter]);
+			}
+		}
+
+		if ((!Overlapping && addToList) && ((unsigned int)MaxObjNum > object_list.size()))
+		{
+			ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
+		}
+
+		vector<int>().swap(replaceList);
+	}  // end of 1st for 
 }
 
 MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
