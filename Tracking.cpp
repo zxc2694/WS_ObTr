@@ -15,28 +15,32 @@ int objNumArray[10];
 int objNumArray_BS[10];
 Scalar *ColorPtr;
 
-/* Function: tracking_function
-* @param: img     - Image input(RGB)
-* @param: fgmask  - Image after processing of background subtraction
-* @param: ROI     - Input all ROIs
-* @param: ObjNum  - The number of objects
-*/
-void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
+void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum)
 {
-	Mat show_img;
 	CvPoint centers[10];
 	int c, n, iter, iter2;
 	static int nframes = 0;
 	static char prevData = false, runFirst = true;;
 	static int pre_data_X[10], pre_data_Y[10];              //for tracking line
-	static Mat TrackingLine(img.rows, img.cols, CV_8UC4);   // Normal: cols = 640, rows = 480
-	static IObjectTracker *ms_tracker = new MeanShiftTracker(img.cols, img.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static vector<Object2D> object_list;
 	static KalmanF KF;
 	vector<cv::Rect> KFBox;
+	static IObjectTracker *ms_tracker = new MeanShiftTracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 
+	//resize(img_input, img_input, cv::Size(img_input.cols * 2, img_input.rows * 2));
+	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);   // Normal: cols = 640, rows = 480
 	TrackingLine = Scalar::all(0);
 
+	for (int iter = 0; iter < MaxObjNum; ++iter)
+	{
+		bbs[iter].x *= 2;
+		bbs[iter].y *= 2;
+		bbs[iter].width *= 2;
+		bbs[iter].height *= 2;
+		centers[iter].x *= 2;
+		centers[iter].y *= 2;
+	}
+	
 	if (runFirst)
 	{
 		for (unsigned int s = 0; s < 10; s++)
@@ -49,7 +53,7 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 		
 		for (int iter = 0; iter < MaxObjNum; iter++)
 		{
-			ms_tracker->addTrackedList(img, object_list, bbs[iter], 2);
+			ms_tracker->addTrackedList(img_input, object_list, bbs[iter], 2);
 			runFirst = false;
 		}
 		KF.Init();
@@ -57,7 +61,7 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 
 	else
 	{		
-		ms_tracker->track(img, object_list);
+		ms_tracker->track(img_input, object_list);
 
 		int bbs_iter;
 		size_t obj_list_iter;
@@ -122,7 +126,7 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 					if (object_list[replaceList[iter]].PtCount > object_list[replaceList[objWithLongestDuration]].PtCount)		objWithLongestDuration = iter;
 				}
 
-				ms_tracker->updateObjBbs(img, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
+				ms_tracker->updateObjBbs(img_input, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
 
 				replaceList.erase(replaceList.begin() + objWithLongestDuration); // reserve the obj with longest duration in replaceList (exclude it from replaceList)
 
@@ -145,7 +149,7 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 
 			if ((!Overlapping && addToList) && ((unsigned int)MaxObjNum > object_list.size()))
 			{
-				ms_tracker->addTrackedList(img, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
+				ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
 			}
 
 			vector<int>().swap(replaceList);
@@ -170,53 +174,53 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 			for (int i = 0; i < MaxObjNum; i++)
 			{
 				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && (object_list[obj_list_iter].boundingBox.width > 1.5 * bbs[i].width) && (bbsNumber == 1))
-					ms_tracker->updateObjBbs(img, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
+					ms_tracker->updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
 			}
 		}
 
 		/* Removing motionless tracking box  */
-		int black = 0;
-		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		{
-			black = FindObjBlackPoints(object_list, obj_list_iter); // Get black points from tracking box
+		//int black = 0;
+		//for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		//{
+		//	black = FindObjBlackPoints(object_list, obj_list_iter); // Get black points from tracking box
 
-			// When points are all black in image of background subtracion.	
-			//if (DELE_RECT_FRAMENO * 9 == black)
-			if (DELE_RECT_FRAMENO * 3 == black)
-			{
-				char bbsExistObj = false;
-				for (int i = 0; i < MaxObjNum; i++)
-				{
-					// To find internal bbs of the tracking box
-					if ((centers[i].x > object_list[obj_list_iter].boundingBox.x) && (centers[i].x < object_list[obj_list_iter].boundingBox.x + object_list[obj_list_iter].boundingBox.width) && (centers[i].y > object_list[obj_list_iter].boundingBox.y) && (centers[i].y < object_list[obj_list_iter].boundingBox.y + object_list[obj_list_iter].boundingBox.height))
-					{
-						//Reset the scale of the tracking box.
-						for (int i = 0; i < MaxObjNum; i++)
-							ms_tracker->updateObjBbs(img, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
+		//	// When points are all black in image of background subtracion.	
+		//	//if (DELE_RECT_FRAMENO * 9 == black)
+		//	if (DELE_RECT_FRAMENO * 3 == black)
+		//	{
+		//		char bbsExistObj = false;
+		//		for (int i = 0; i < MaxObjNum; i++)
+		//		{
+		//			// To find internal bbs of the tracking box
+		//			if ((centers[i].x > object_list[obj_list_iter].boundingBox.x) && (centers[i].x < object_list[obj_list_iter].boundingBox.x + object_list[obj_list_iter].boundingBox.width) && (centers[i].y > object_list[obj_list_iter].boundingBox.y) && (centers[i].y < object_list[obj_list_iter].boundingBox.y + object_list[obj_list_iter].boundingBox.height))
+		//			{
+		//				//Reset the scale of the tracking box.
+		//				for (int i = 0; i < MaxObjNum; i++)
+		//					ms_tracker->updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
 
-						bbsExistObj = true;
-						break;
-					}
-				}
-				// If internal bbs of rectangle has existed, don't directly remove. 
-				if (bbsExistObj == false)
-				{
-					for (int iterColor = 0; iterColor < 10; iterColor++)
-					{
-						if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
-						{
-							objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-							break;
-						}
-					}
-					object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
-				}
-			}
-			black = 0;
+		//				bbsExistObj = true;
+		//				break;
+		//			}
+		//		}
+		//		// If internal bbs of rectangle has existed, don't directly remove. 
+		//		if (bbsExistObj == false)
+		//		{
+		//			for (int iterColor = 0; iterColor < 10; iterColor++)
+		//			{
+		//				if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+		//				{
+		//					objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+		//					break;
+		//				}
+		//			}
+		//			object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box
+		//		}
+		//	}
+		//	black = 0;
 
-			if (object_list.size() == 0)//Prevent out of vector range
-				break;
-		}
+		//	if (object_list.size() == 0)//Prevent out of vector range
+		//		break;
+		//}
 
 		/* Removing one of overlapping tracking box */
 		//if (object_list.size() == 2)
@@ -250,7 +254,7 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 		//	}
 		//}
 
-		ms_tracker->drawTrackBox(img, object_list);   // Draw all the track boxes and their numbers 
+		ms_tracker->drawTrackBox(img_input, object_list);   // Draw all the track boxes and their numbers 
 
 		/* plotting trajectory */
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
@@ -260,7 +264,7 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
 
 				if (demoMode == true) // Draw the arrow on the pedestrian's head
-					drawArrow(img,
+					drawArrow(img_input,
 					Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
 					(object_list[obj_list_iter].boundingBox.y) - 40)
 					, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
@@ -283,10 +287,10 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
 				object_list[obj_list_iter].cPtNumber = 0;
 
-			IplImage ipltemp1 = fgmask;
+			//IplImage ipltemp1 = fgmask;
 
-			// Get the color of nine points from tracking box (white or black)
-			ComparePoint_9(ipltemp1, object_list, obj_list_iter, object_list[obj_list_iter].cPtNumber);
+			//// Get the color of nine points from tracking box (white or black)
+			//ComparePoint_9(ipltemp1, object_list, obj_list_iter, object_list[obj_list_iter].cPtNumber);
 
 			object_list[obj_list_iter].PtNumber++;
 			object_list[obj_list_iter].cPtNumber++;
@@ -301,7 +305,7 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 			KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
 
 			int UpateKF = true;
-			KF.drawPredBox(img);             // Draw predict bounding boxes	
+			KF.drawPredBox(img_input);             // Draw predict bounding boxes	
 			if (object_list.size() == 2)
 			{
 				for (obj_list_iter = 0; obj_list_iter < object_list.size() - 1; obj_list_iter++)
@@ -328,33 +332,18 @@ void tracking_function(Mat &img, Mat &fgmask, CvRect *bbs, int MaxObjNum)
 		{
 			/* Plot the rectangles background subtarction finds */
 			for (iter = 0; iter < MaxObjNum; iter++){
-				rectangle(img, bbs[iter], Scalar(0, 255, 255), 2);
+				rectangle(img_input, bbs[iter], Scalar(0, 255, 255), 2);
 			}
 		}
 		/* Show the number of the frame on the image */
 		stringstream textFrameNo;
 		textFrameNo << nframes;
-		putText(img, "Frame=" + textFrameNo.str(), Point(10, img.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
+		putText(img_input, "Frame=" + textFrameNo.str(), Point(10, img_input.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
 	}
 
 	// Merge 3-channel image and 4-channel image
-	overlayImage(img, TrackingLine, show_img, cv::Point(0, 0));
-	imshow("Tracking_image", show_img); // Display image output of tracking
+	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0));
 
-	if (demoMode != true)
-	{
-		char outFilePath[100];
-		char outFilePath2[100];
-		char outFilePath3[100];
-		sprintf(outFilePath, "video_output_tracking//%05d.png", nframes + 1);
-		sprintf(outFilePath2, "video_output_BS//%05d.png", nframes + 1);
-		//sprintf(outFilePath3, "video_output_original//%05d.png", nframes + 1);
-
-		imshow("foreground mask", fgmask);
-		imwrite(outFilePath, show_img);
-		imwrite(outFilePath2, fgmask);
-		//imwrite(outFilePath3, img);
-	}
 	nframes++;
 }
 

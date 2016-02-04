@@ -54,32 +54,29 @@ CMotionDetection::~CMotionDetection()
 }
 
 bool CMotionDetection::MotionDetectionProcessing(Mat InputImage)
-{
-	// Compresse image
-	resize(InputImage, img_compress, cv::Size(InputImage.cols / 2, InputImage.rows / 2)); // Compress image into 1/2 times size
-    
+{ 
 	// 0 means Codebook
 	if(nBackGroudModel == 0)
 	{
-		RunCodebook(img_compress);		
+		RunCodebook(InputImage);
 	}
 
 	// 1 means MOG
 	if (nBackGroudModel == 1)
 	{
-		RunMOG(img_compress);
+		RunMOG(InputImage);
 	}
 
 	// 2 means MOG
 	if (nBackGroudModel == 2)
 	{
-		RunDPEigen(img_compress);
+		RunDPEigen(InputImage);
 	}
 
 	// 3 means Codebook + MOG
 	if (nBackGroudModel == 3)
 	{
-		RunCodebook(img_compress);
+		RunCodebook(InputImage);
 	}
 
 	nFrameCntr++;
@@ -180,8 +177,6 @@ void CMotionDetection::RunCodeBook_MOG(Mat InputImage)
 
 Mat CMotionDetection::OutputFMask()
 {
-	//resize(FMask, FMask, cv::Size(FMask.cols * 2, FMask.rows * 2)); // Revert original image size
-
 	return FMask;
 }
 
@@ -190,17 +185,6 @@ void CMotionDetection::Output2dROI(Mat BS_input, CvRect *bbs, int *num)
 	*num = 10;
 	returnBbs(BS_input, num, bbs, centers, true);      //find ROI components
 	returnBbs_delShadow(BS_input, num, bbs, centers);  //find final ROI components after finishing processing of shadow
-
-	// decompression bbs and centers in fgmaskIpl
-	for (int iter = 0; iter < *num; ++iter)
-	{
-		bbs[iter].x *= 2;
-		bbs[iter].y *= 2;
-		bbs[iter].width *= 2;
-		bbs[iter].height *= 2;
-		centers[iter].x *= 2;
-		centers[iter].y *= 2;
-	}
 }
 
 void CMotionDetection::Output3dROI()

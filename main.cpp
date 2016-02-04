@@ -20,11 +20,11 @@
 
 int main(int argc, const char** argv)
 {
-	char link[512];
-	int nframes = 0;
-	int ObjNum;
+	char inputPath[100];
+	char outputPath[100], outputPath2[100];
+	int nframes = 0, ObjNum;
 	double t = 0;
-	Mat img, fgmask;
+	Mat img, imgCompress, fgmask, imgTracking;
 	CvRect ROI[10];	
 
 	/* Select BS algorithm */
@@ -49,11 +49,11 @@ int main(int argc, const char** argv)
 	while (1)
 	{
 #if inputPath_Paul
-		sprintf(link, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes+1);
+		sprintf(inputPath, "D://Myproject//VS_Project//TestedVideo//video_output_1216//%05d.png", nframes + 1);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L//%d_L_Image.png", nframes + 194);
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//20160115Image//L_1//%d_L_Image.png", nframes + 3424); //3424 //4024
 		//sprintf(link, "D://Myproject//VS_Project//TestedVideo//CodeBook_videoOutput//video_output_original//%05d.png", nframes + 1);
-		img = cvLoadImage(link, 1);
+		img = cvLoadImage(inputPath, 1);
 #endif
 
 #if inputPath_Hardy
@@ -72,18 +72,29 @@ int main(int argc, const char** argv)
 
 		if (img.empty()) break;
 
-		if (BS.MotionDetectionProcessing(img) != true){} // Build background model		
+		resize(img, imgCompress, cv::Size(img.cols * 0.5, img.rows * 0.5));
+
+		if (BS.MotionDetectionProcessing(imgCompress) != true){} // Build background model		
 		
 		else  // Initial background model has finished	
 		{
 			fgmask = BS.OutputFMask();            // Get image output of background subtraction			
+			
 			BS.Output2dROI(fgmask, ROI, &ObjNum); // Get ROI detection	
-			t = (double)cvGetTickCount();         // Get executing time 	
+			
+			t = (double)cvGetTickCount();         // Get executing time 
 
-			tracking_function(img, fgmask, ROI, ObjNum); // Plot tracking rectangles and their trajectories
+			tracking_function(img, imgTracking, ROI, ObjNum); // Plot tracking rectangles and their trajectories
 	
 			t = (double)cvGetTickCount() - t;
 			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 
+				
+			imshow("Tracking_image", imgTracking);
+			imshow("foreground mask", fgmask);
+			sprintf(outputPath, "video_output_tracking//%05d.png", nframes + 1);
+			sprintf(outputPath2, "video_output_BS//%05d.png", nframes + 1);
+			imwrite(outputPath, imgTracking);
+			imwrite(outputPath2, fgmask);
 		}
 
 		nframes++;	
