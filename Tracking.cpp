@@ -17,35 +17,22 @@ Scalar *ColorPtr;
 
 void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum)
 {
-	CvPoint centers[10];
-	int c, n, iter, iter2;
-	static int nframes = 0;
-	static char prevData = false, runFirst = true;;
-	static int pre_data_X[10], pre_data_Y[10];              //for tracking line
+	static char runFirst = true;
 	static vector<Object2D> object_list;
 	static KalmanF KF;
 	vector<cv::Rect> KFBox;
 	static IObjectTracker *ms_tracker = new MeanShiftTracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);   // Normal: cols = 640, rows = 480
 	TrackingLine = Scalar::all(0);
-
-	for (int iter = 0; iter < MaxObjNum; ++iter)
-	{
-		bbs[iter].x *= 2;
-		bbs[iter].y *= 2;
-		bbs[iter].width *= 2;
-		bbs[iter].height *= 2;
-		centers[iter].x *= 2;
-		centers[iter].y *= 2;
-	}
+	revertBbsSize(img_input, bbs, MaxObjNum); // Enlarge the size of bbs 2 times
 	
 	if (runFirst)
 	{
 		for (unsigned int s = 0; s < 10; s++)
 		{
-			objNumArray[s] = 65535;                       // Set all values as max number for ordered arrangement
+			objNumArray[s] = 65535;
 			objNumArray_BS[s] = 65535;
-		}
+		}	
 		
 		for (int iter = 0; iter < MaxObjNum; iter++)
 		{
@@ -54,202 +41,47 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 		}
 		KF.Init();
 	}
-
-	else
-	{		
-		ms_tracker->track(img_input, object_list);
-
-		getNewObject(img_input, ms_tracker, object_list, bbs, MaxObjNum);
-
-		for (iter = 0; iter < 10; iter++)
-			objNumArray_BS[iter] = objNumArray[iter]; // Copy array from objNumArray to objNumArray_BS
-
-		BubbleSort(objNumArray_BS, 10);               // Let objNumArray_BS array execute bubble sort 
-
-		/* Modify the size of the tracking box  */
-		int bbsNumber = 0;
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		{
-			for (int i = 0; i < MaxObjNum; i++)
-			{
-				// Find how many bbs in the tracking box
-				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
-					bbsNumber++;
-			}
-			// When the width of tracking box has 1.5 times more bigger than the width of bbs:
-			for (int i = 0; i < MaxObjNum; i++)
-			{
-				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && (object_list[obj_list_iter].boundingBox.width > 1.5 * bbs[i].width) && (bbsNumber == 1))
-					ms_tracker->updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
-			}
-		}
-
-		/* Removing motionless tracking box  */
-		int black = 0, times = 0;
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		{
-			for (int i = 0; i < MaxObjNum; i++)
-			{
-				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.01f))
-					break;
-				else
-					black++; 
-			}
-			// Restarting count when count > DELE_RECT_FRAMENO number
-			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
-				object_list[obj_list_iter].cPtNumber = 0;
-
-			// findBbs[i] = 0 -> no object; findBbs[i] = 1 -> has object
-			if (black == MaxObjNum)
-				object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 0;		
-			else
-				object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 1;
-
-			object_list[obj_list_iter].cPtNumber++;
-
-			// To determine whether it continuously keep no object 
-			for (int i = 0; i < DELE_RECT_FRAMENO; i++) 
-			{
-				if (object_list[obj_list_iter].findBbs[i] == 0)
-				{
-					times++;
-				}
-			}
-			if (DELE_RECT_FRAMENO == times) 
-			{
-				for (int iterColor = 0; iterColor < 10; iterColor++)
-				{
-					if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
-					{
-						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-						break;
-					}
-				}
-				object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box	
-
-				if (object_list.size() == 0)//Prevent out of vector range
-					break;
-				
-			}
-			black = 0;
-			times = 0;		
-		}
-
-		/* Removing one of overlapping tracking box */
-		//if (object_list.size() == 2)
-		//{
-		//	if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.9f))
-		//	{
-		//		if (object_list[0].boundingBox.height > object_list[1].boundingBox.height)
-		//		{
-		//			for (int iterColor = 0; iterColor < 10; iterColor++)
-		//			{
-		//				if (objNumArray_BS[1] == objNumArray[iterColor])
-		//				{
-		//					objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-		//					break;
-		//				}
-		//			}
-		//			object_list.erase(object_list.begin() + 1); // Remove the tracking box
-		//		}
-		//		else
-		//		{
-		//			for (int iterColor = 0; iterColor < 10; iterColor++)
-		//			{
-		//				if (objNumArray_BS[0] == objNumArray[iterColor])
-		//				{
-		//					objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-		//					break;
-		//				}
-		//			}
-		//			object_list.erase(object_list.begin()); // Remove the tracking box
-		//		}
-		//	}
-		//}
-
-		ms_tracker->drawTrackBox(img_input, object_list);   // Draw all the track boxes and their numbers 
-
-		/* plotting trajectory */
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		{
-			if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
-			{
-				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
-
-				if (demoMode == true) // Draw the arrow on the pedestrian's head
-					drawArrow(img_input,
-					Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-					(object_list[obj_list_iter].boundingBox.y) - 40)
-					, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-					(object_list[obj_list_iter].boundingBox.y) - 20)
-
-					);
-			}
-
-			// Get previous point in order to use line function. 
-			pre_data_X[obj_list_iter] = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-			pre_data_Y[obj_list_iter] = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
-
-			// Restarting count when count > plotLineLength number
-			if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
-				object_list[obj_list_iter].PtNumber = 0;
-
-			object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
-
-			object_list[obj_list_iter].PtNumber++;
-			object_list[obj_list_iter].PtCount++;
-
-		}// end of plotting trajectory
-		prevData = true;
-
-		/*Kalman Filter Function */
-		if ((display_kalmanArrow == true) || (display_kalmanRectangle == true))
-		{
-			KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
-
-			int UpateKF = true;
-			KF.drawPredBox(img_input);             // Draw predict bounding boxes	
-			if (object_list.size() == 2)
-			{
-				for (size_t obj_list_iter = 0; obj_list_iter < object_list.size() - 1; obj_list_iter++)
-				{
-					int p_x = object_list[obj_list_iter].boundingBox.x;
-					int p_y = object_list[obj_list_iter].boundingBox.y;
-					int q_x = object_list[obj_list_iter + 1].boundingBox.x;
-					int q_y = object_list[obj_list_iter + 1].boundingBox.y;
-					double hypotenuse = sqrt((p_y - q_y)*(p_y - q_y) + (p_x - q_x)*(p_x - q_x)); //length of pq line
-					int intHY = (int)hypotenuse;
-					//cout << "hypotenuse" << hypotenuse << endl;
-
-					if (intHY == 64)//if (Overlap(object_list[obj_list_iter].boundingBox, object_list[obj_list_iter + 1].boundingBox, 0.001f))			
-						UpateKF = false;
-				}
-			}
-			KF.Update(object_list, KFBox, UpateKF);   // Update of Kalman filter
-		}
-	} // end of else loop
-
-	if (demoMode != true)
+	else // Main tracking loop
 	{
-		if (display_bbsRectangle == true)
-		{
-			/* Plot the rectangles background subtarction finds */
-			for (iter = 0; iter < MaxObjNum; iter++){
-				rectangle(img_input, bbs[iter], Scalar(0, 255, 255), 2);
-			}
-		}
-		/* Show the number of the frame on the image */
-		stringstream textFrameNo;
-		textFrameNo << nframes;
-		putText(img_input, "Frame=" + textFrameNo.str(), Point(10, img_input.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
-	}
+		for (int iter = 0; iter < 10; iter++)
+			objNumArray_BS[iter] = objNumArray[iter];     // Copy array from objNumArray to objNumArray_BS
 
-	// Merge 3-channel image and 4-channel image
-	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0));
+		BubbleSort(objNumArray_BS, 10);                   // Let objNumArray_BS array execute bubble sort 
 
-	nframes++;
+		
+		ms_tracker->track(img_input, object_list);        // Main tracking code by Mean-shift 
+		
+		getNewObject(img_input, ms_tracker, object_list, bbs, MaxObjNum);   // Add new useful ROI to the object_list for tracking
+	
+		modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum); // Modify the size of the tracking box, and delete useless box
+	
+		ms_tracker->drawTrackBox(img_input, object_list); // Draw all the track boxes and their numbers 
+
+		DrawTrajectory(img_input, TrackingLine, ms_tracker, object_list);   //plotting trajectory 
+
+		KFtrack(img_input, object_list, KF, KFBox);       // Prediction and update of Kalman Filter 	
+	}	
+
+	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0)); //Tracking image output (merge 3-channel image and 4-channel trakcing lines)
 }
 
+void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
+{
+	for (int iter = 0; iter < MaxObjNum; ++iter)
+	{
+		bbs[iter].x *= 2;
+		bbs[iter].y *= 2;
+		bbs[iter].width *= 2;
+		bbs[iter].height *= 2;
+	}
+	if (display_bbsRectangle == true)
+	{
+		/* Plot the rectangles background subtarction finds */
+		for (int iter = 0; iter < MaxObjNum; iter++){
+			rectangle(img_input, bbs[iter], Scalar(0, 255, 255), 2);
+		}
+	}
+}
 void getNewObject(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	int bbs_iter;
@@ -343,6 +175,175 @@ void getNewObject(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &o
 
 		vector<int>().swap(replaceList);
 	}  // end of 1st for 
+}
+
+void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
+{
+	/* Modify the size of the tracking box  */
+	int bbsNumber = 0;
+	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+	{
+		for (int i = 0; i < MaxObjNum; i++)
+		{
+			// Find how many bbs in the tracking box
+			if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
+				bbsNumber++;
+		}
+		// When the width of tracking box has 1.5 times more bigger than the width of bbs:
+		for (int i = 0; i < MaxObjNum; i++)
+		{
+			if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && (object_list[obj_list_iter].boundingBox.width > 1.5 * bbs[i].width) && (bbsNumber == 1))
+				ms_tracker->updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
+		}
+	}
+
+	/* Removing motionless tracking box  */
+	int black = 0, times = 0;
+	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+	{
+		for (int i = 0; i < MaxObjNum; i++)
+		{
+			if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.01f))
+				break;
+			else
+				black++;
+		}
+		// Restarting count when count > DELE_RECT_FRAMENO number
+		if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
+			object_list[obj_list_iter].cPtNumber = 0;
+
+		// findBbs[i] = 0 -> no object; findBbs[i] = 1 -> has object
+		if (black == MaxObjNum)
+			object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 0;
+		else
+			object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 1;
+
+		object_list[obj_list_iter].cPtNumber++;
+
+		// To determine whether it continuously keep no object 
+		for (int i = 0; i < DELE_RECT_FRAMENO; i++)
+		{
+			if (object_list[obj_list_iter].findBbs[i] == 0)
+			{
+				times++;
+			}
+		}
+		if (DELE_RECT_FRAMENO == times)
+		{
+			for (int iterColor = 0; iterColor < 10; iterColor++)
+			{
+				if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+				{
+					objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+					break;
+				}
+			}
+			object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box	
+
+			if (object_list.size() == 0)//Prevent out of vector range
+				break;
+
+		}
+		black = 0;
+		times = 0;
+	}
+
+	/* Removing one of overlapping tracking box */
+	//if (object_list.size() == 2)
+	//{
+	//	if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.9f))
+	//	{
+	//		if (object_list[0].boundingBox.height > object_list[1].boundingBox.height)
+	//		{
+	//			for (int iterColor = 0; iterColor < 10; iterColor++)
+	//			{
+	//				if (objNumArray_BS[1] == objNumArray[iterColor])
+	//				{
+	//					objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+	//					break;
+	//				}
+	//			}
+	//			object_list.erase(object_list.begin() + 1); // Remove the tracking box
+	//		}
+	//		else
+	//		{
+	//			for (int iterColor = 0; iterColor < 10; iterColor++)
+	//			{
+	//				if (objNumArray_BS[0] == objNumArray[iterColor])
+	//				{
+	//					objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+	//					break;
+	//				}
+	//			}
+	//			object_list.erase(object_list.begin()); // Remove the tracking box
+	//		}
+	//	}
+	//}
+}
+
+void DrawTrajectory(Mat img_input, Mat &TrackingLine,IObjectTracker *ms_tracker, vector<Object2D> &object_list)
+{
+	static char prevData = false;
+	static int pre_data_X[10], pre_data_Y[10];  
+
+	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+	{
+		if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
+		{
+			ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
+
+			if (demoMode == true) // Draw the arrow on the pedestrian's head
+				drawArrow(img_input,
+				Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+				(object_list[obj_list_iter].boundingBox.y) - 40)
+				, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+				(object_list[obj_list_iter].boundingBox.y) - 20));
+		}
+
+		// Get previous point in order to use line function. 
+		pre_data_X[obj_list_iter] = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
+		pre_data_Y[obj_list_iter] = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+
+		// Restarting count when count > plotLineLength number
+		if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
+			object_list[obj_list_iter].PtNumber = 0;
+
+		object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
+
+		object_list[obj_list_iter].PtNumber++;
+		object_list[obj_list_iter].PtCount++;
+
+	}// end of plotting trajectory
+	prevData = true;
+}
+
+void KFtrack(Mat img_input, vector<Object2D> &object_list, KalmanF KF, vector<cv::Rect> KFBox)
+{
+	/*Kalman Filter Function */
+	if ((display_kalmanArrow == true) || (display_kalmanRectangle == true))
+	{
+		KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
+
+		int UpateKF = true;
+		KF.drawPredBox(img_input);             // Draw predict bounding boxes	
+		if (object_list.size() == 2)
+		{
+			for (size_t obj_list_iter = 0; obj_list_iter < object_list.size() - 1; obj_list_iter++)
+			{
+				int p_x = object_list[obj_list_iter].boundingBox.x;
+				int p_y = object_list[obj_list_iter].boundingBox.y;
+				int q_x = object_list[obj_list_iter + 1].boundingBox.x;
+				int q_y = object_list[obj_list_iter + 1].boundingBox.y;
+				double hypotenuse = sqrt((p_y - q_y)*(p_y - q_y) + (p_x - q_x)*(p_x - q_x)); //length of pq line
+				int intHY = (int)hypotenuse;
+				//cout << "hypotenuse" << hypotenuse << endl;
+
+				if (intHY == 64)//if (Overlap(object_list[obj_list_iter].boundingBox, object_list[obj_list_iter + 1].boundingBox, 0.001f))			
+					UpateKF = false;
+			}
+		}
+		KF.Update(object_list, KFBox, UpateKF);   // Update of Kalman filter
+	}
 }
 
 MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)

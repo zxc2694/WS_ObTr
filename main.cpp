@@ -84,17 +84,24 @@ int main(int argc, const char** argv)
 			
 			t = (double)cvGetTickCount();         // Get executing time 
 
+
 			tracking_function(img, imgTracking, ROI, ObjNum); // Plot tracking rectangles and their trajectories
 	
+			
 			t = (double)cvGetTickCount() - t;
 			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 
 				
+			// Show the number of the frame on the image
+			stringstream textFrameNo;
+			textFrameNo << nframes;
+			putText(imgTracking, "Frame=" + textFrameNo.str(), Point(10, imgTracking.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
+
 			imshow("Tracking_image", imgTracking);
 			imshow("foreground mask", fgmask);
 			sprintf(outputPath, "video_output_tracking//%05d.png", nframes + 1);
 			sprintf(outputPath2, "video_output_BS//%05d.png", nframes + 1);
 			imwrite(outputPath, imgTracking);
-			imwrite(outputPath2, fgmask);
+			imwrite(outputPath2, fgmask);			
 		}
 
 		nframes++;	
