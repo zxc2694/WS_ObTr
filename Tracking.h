@@ -25,7 +25,7 @@ using namespace std;
 #define display_bbsRectangle     0  // 0: Not show bbs rectangles, 1: Show bbs rectangles
 #define display_kalmanRectangle  0  // 0: Not show KF rectangles, 1: Show KF rectangles
 #define display_kalmanArrow      0  // 0: Not show KF arrows, 1: Show KF arrows 
-#define demoMode                 0  // Without accumulating number and saving images output (0:debug mode, 1:demo mode) 
+#define demoMode                 0  // Without accumulating number (0:debug mode, 1:demo mode) 
 
 /* Math */
 #define PI 3.141592653589793238463 
@@ -61,8 +61,14 @@ typedef struct
 	int cPtNumber;
 	int PtCount;
 	int findBbs[DELE_RECT_FRAMENO]; //It decides whether rectangles is motionless or not.
-
+	bool bIsDrawing;			    //It decides whether trajectory is plotted or not.
 } Object2D;
+
+typedef struct
+{
+	Rect	boundingBox;
+	bool	bIsTrigger;
+} InputObjInfo;
 
 class IObjectTracker
 {
@@ -117,13 +123,13 @@ public:
 
 private:
 	// don't tracking too small obj 
-    int minObjWidth_Ini;
-    int minObjHeight_Ini;
+	int minObjWidth_Ini;
+	int minObjHeight_Ini;
 	//const int minObjArea_Ini = IMG_WIDTH*IMG_HEIGHT / 30;
 
 	// del too small obj 
-    int minObjWidth;
-    int minObjHeight;
+	int minObjWidth;
+	int minObjHeight;
 	//const int minObjArea = 1000;
 
 	int Max_Mean_Shift_Iter;
@@ -146,6 +152,15 @@ class KalmanF
 public:
 	KalmanF()
 	{
+		ticks = 0;
+		found = false;
+		notFoundCount = 0;
+		precTick = ticks;
+		stateSize = 6;
+		measSize = 4;
+		contrSize = 0;
+		type = CV_32F;
+
 		kf[0] = KalmanFilter(stateSize, measSize, contrSize, type); state[0] = Mat(stateSize, 1, type);	meas[0] = Mat(measSize, 1, type);
 		kf[1] = KalmanFilter(stateSize, measSize, contrSize, type);	state[1] = Mat(stateSize, 1, type);	meas[1] = Mat(measSize, 1, type);
 		kf[2] = KalmanFilter(stateSize, measSize, contrSize, type);	state[2] = Mat(stateSize, 1, type);	meas[2] = Mat(measSize, 1, type);
@@ -155,24 +170,24 @@ public:
 		kf[6] = KalmanFilter(stateSize, measSize, contrSize, type);	state[6] = Mat(stateSize, 1, type);	meas[6] = Mat(measSize, 1, type);
 		kf[7] = KalmanFilter(stateSize, measSize, contrSize, type);	state[7] = Mat(stateSize, 1, type);	meas[7] = Mat(measSize, 1, type);
 		kf[8] = KalmanFilter(stateSize, measSize, contrSize, type);	state[8] = Mat(stateSize, 1, type);	meas[8] = Mat(measSize, 1, type);
-		kf[9] = KalmanFilter(stateSize, measSize, contrSize, type);	state[9] = Mat(stateSize, 1, type);	meas[9] = Mat(measSize, 1, type);
+		kf[9] = KalmanFilter(stateSize, measSize, contrSize, type);	state[9] = Mat(stateSize, 1, type);	meas[9] = Mat(measSize, 1, type);		
 	}
 	~KalmanF(){}
 	void Init();
 	void Predict(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox);
 	void Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox, int Upate);
 	void drawPredBox(Mat &img);
-	double ticks = 0;
-	bool found = false;
-	int notFoundCount = 0;
-	double precTick = ticks;
+	double ticks;
+	bool found;
+	int notFoundCount;
+	double precTick;
 	double dT;
 
 private:
-	int stateSize = 6;
-	int measSize = 4;
-	int contrSize = 0;
-	unsigned int type = CV_32F;
+	int stateSize;
+	int measSize;
+	int contrSize;
+	unsigned int type;
 	KalmanFilter kf[10];
 	Mat state[10];
 	Mat meas[10];

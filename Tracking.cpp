@@ -51,7 +51,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	// Prediction and update of Kalman Filter 	
 	KFtrack(img_input, object_list, KF);	
 
-	//Tracking image output (merge 3-channel image and 4-channel trakcing lines)
+	// Tracking image output (merge 3-channel image and 4-channel trakcing lines)
 	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0));
 
 	runFirst = false;
