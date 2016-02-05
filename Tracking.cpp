@@ -20,49 +20,41 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	static char runFirst = true;
 	static vector<Object2D> object_list;
 	static KalmanF KF;
-	vector<cv::Rect> KFBox;
 	static IObjectTracker *ms_tracker = new MeanShiftTracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
-	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);   // Normal: cols = 640, rows = 480
+	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
 	TrackingLine = Scalar::all(0);
-	revertBbsSize(img_input, bbs, MaxObjNum); // Enlarge the size of bbs 2 times
+
+	// Kalman Filter initialization
+	if (runFirst)  KF.Init();
+
+	// Enlarge the size of bbs 2 times
+	revertBbsSize(img_input, bbs, MaxObjNum); 
 	
-	if (runFirst)
-	{
-		for (unsigned int s = 0; s < 10; s++)
-		{
-			objNumArray[s] = 65535;
-			objNumArray_BS[s] = 65535;
-		}	
-		
-		for (int iter = 0; iter < MaxObjNum; iter++)
-		{
-			ms_tracker->addTrackedList(img_input, object_list, bbs[iter], 2);
-			runFirst = false;
-		}
-		KF.Init();
-	}
-	else // Main tracking loop
-	{
-		for (int iter = 0; iter < 10; iter++)
-			objNumArray_BS[iter] = objNumArray[iter];     // Copy array from objNumArray to objNumArray_BS
+	// Arrange object number to prevent accumulation
+	ObjNumArr(objNumArray, objNumArray_BS);
 
-		BubbleSort(objNumArray_BS, 10);                   // Let objNumArray_BS array execute bubble sort 
+	// Main tracking code by Mean-shift
+	ms_tracker->track(img_input, object_list);         	
 
-		
-		ms_tracker->track(img_input, object_list);        // Main tracking code by Mean-shift 
-		
-		getNewObject(img_input, ms_tracker, object_list, bbs, MaxObjNum);   // Add new useful ROI to the object_list for tracking
-	
-		modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum); // Modify the size of the tracking box, and delete useless box
-	
-		ms_tracker->drawTrackBox(img_input, object_list); // Draw all the track boxes and their numbers 
+	// Add new useful ROI to the object_list for tracking
+	getNewObject(img_input, ms_tracker, object_list, bbs, MaxObjNum);			
 
-		DrawTrajectory(img_input, TrackingLine, ms_tracker, object_list);   //plotting trajectory 
+	// Modify the size of the tracking box, and delete useless box
+	modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
-		KFtrack(img_input, object_list, KF, KFBox);       // Prediction and update of Kalman Filter 	
-	}	
+	// Draw all the track boxes and their numbers 
+	ms_tracker->drawTrackBox(img_input, object_list);
 
-	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0)); //Tracking image output (merge 3-channel image and 4-channel trakcing lines)
+	//plotting trajectory 
+	DrawTrajectory(img_input, TrackingLine, ms_tracker, object_list);
+
+	// Prediction and update of Kalman Filter 	
+	KFtrack(img_input, object_list, KF);	
+
+	//Tracking image output (merge 3-channel image and 4-channel trakcing lines)
+	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0));
+
+	runFirst = false;
 }
 
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
@@ -82,6 +74,28 @@ void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
 		}
 	}
 }
+
+void ObjNumArr(int *objNumArray, int *objNumArray_BS)
+{
+	static char runFirst = true;
+	if (runFirst)
+	{
+		for (unsigned int s = 0; s < 10; s++)
+		{
+			objNumArray[s] = 65535;
+			objNumArray_BS[s] = 65535;
+		}
+		runFirst = false;
+	}
+	else 
+	{
+		for (int iter = 0; iter < 10; iter++)
+			objNumArray_BS[iter] = objNumArray[iter];
+
+		BubbleSort(objNumArray_BS, 10);
+	}
+}
+
 void getNewObject(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	int bbs_iter;
@@ -317,8 +331,10 @@ void DrawTrajectory(Mat img_input, Mat &TrackingLine,IObjectTracker *ms_tracker,
 	prevData = true;
 }
 
-void KFtrack(Mat img_input, vector<Object2D> &object_list, KalmanF KF, vector<cv::Rect> KFBox)
+void KFtrack(Mat img_input, vector<Object2D> &object_list, KalmanF KF)
 {
+	vector<cv::Rect> KFBox;
+
 	/*Kalman Filter Function */
 	if ((display_kalmanArrow == true) || (display_kalmanRectangle == true))
 	{

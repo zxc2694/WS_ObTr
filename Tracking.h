@@ -183,10 +183,11 @@ private:
 };
 
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
+void ObjNumArr(int *objNumArray, int *objNumArray_BS);
 void getNewObject(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
 void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
 void DrawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list);
-void KFtrack(Mat img_input, vector<Object2D> &object_list, KalmanF KF, vector<cv::Rect> KFBox);
+void KFtrack(Mat img_input, vector<Object2D> &object_list, KalmanF KF);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
 void BubbleSort(int* array, int size);
