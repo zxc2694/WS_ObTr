@@ -149,7 +149,6 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 		}
 	end: // break for loop
 
-
 		if ((int)replaceList.size() != 0 && iter1 == (int)replaceList.size())
 		{
 			Overlapping = true;
@@ -293,6 +292,59 @@ void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> 
 	//		}
 	//	}
 	//}
+}
+
+void areaTrigger(vector<Object2D> &object_list, InputObjInfo* TriggerInfo)
+{
+	static bool bIsTrigger = false;
+	for (int z = 0; z < object_list.size(); z++)
+	{
+		if (object_list[z].bIsDrawing == true)
+		{
+			bIsTrigger = true;
+		}
+	}
+
+	int ObjX, ObjY, TriggerX, TriggerY, tempCntr, tempObj;
+	unsigned int MinDistance, TempMin;
+
+	for (int iCntr = 0; iCntr < 10; iCntr++)
+	{
+		if (TriggerInfo[iCntr].bIsTrigger == true)
+		{
+			MinDistance = -1;
+			tempObj = -1;
+			for (int y = 0; y < object_list.size(); y++)
+			{
+				if (object_list[y].bIsDrawing != true)
+				{
+					ObjX = (object_list[y].boundingBox.x + object_list[y].boundingBox.width) / 2;
+					ObjY = (object_list[y].boundingBox.y + object_list[y].boundingBox.height) / 2;
+
+					TriggerX = (TriggerInfo[iCntr].boundingBox.x + TriggerInfo[iCntr].boundingBox.width) / 2;
+					TriggerY = (TriggerInfo[iCntr].boundingBox.x + TriggerInfo[iCntr].boundingBox.width) / 2;
+
+					TempMin = (unsigned int)(sqrt((ObjX - TriggerX)*(ObjX - TriggerX) + (ObjY - TriggerY)*(ObjY - TriggerY)));
+
+					if (MinDistance > TempMin)
+					{
+						tempObj = y;
+						tempCntr = iCntr;
+						MinDistance = TempMin;
+					}
+				}
+			}
+
+			if (tempObj != -1)
+			{
+				object_list[tempObj].bIsDrawing = true;
+				if (bIsTrigger == false)
+				{
+					bIsTrigger = true;
+				}
+			}
+		}
+	}
 }
 
 void DrawTrajectory(Mat img_input, Mat &TrackingLine,IObjectTracker *ms_tracker, vector<Object2D> &object_list)
