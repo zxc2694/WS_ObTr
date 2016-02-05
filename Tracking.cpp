@@ -33,19 +33,19 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	// Arrange object number to prevent accumulation
 	ObjNumArr(objNumArray, objNumArray_BS);
 
-	// Main tracking code by Mean-shift
+	// Main tracking code using Mean-shift algorithm
 	ms_tracker->track(img_input, object_list);         	
 
 	// Add new useful ROI to the object_list for tracking
-	getNewObject(img_input, ms_tracker, object_list, bbs, MaxObjNum);			
+	getNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);			
 
-	// Modify the size of the tracking box, and delete useless box
+	// Modify the size of the tracking boxes and delete useless boxes
 	modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
 	// Draw all the track boxes and their numbers 
 	ms_tracker->drawTrackBox(img_input, object_list);
 
-	//plotting trajectory 
+	//Plotting trajectories
 	DrawTrajectory(img_input, TrackingLine, ms_tracker, object_list);
 
 	// Prediction and update of Kalman Filter 	
@@ -96,7 +96,7 @@ void ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void getNewObject(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
+void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
