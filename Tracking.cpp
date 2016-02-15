@@ -383,7 +383,7 @@ void DrawTrajectory(Mat img_input, Mat &TrackingLine,IObjectTracker *ms_tracker,
 	prevData = true;
 }
 
-void KFtrack(Mat img_input, vector<Object2D> &object_list, KalmanF KF)
+void KFtrack(Mat &img_input, vector<Object2D> &object_list, KalmanF &KF)
 {
 	vector<cv::Rect> KFBox;
 
