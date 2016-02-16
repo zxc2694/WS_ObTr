@@ -42,11 +42,14 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	// Modify the size of the tracking boxes and delete useless boxes
 	modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
+	// Find trigger object
+	findTrigObj(object_list, trigROI);
+
 	// Draw all the track boxes and their numbers 
 	ms_tracker->drawTrackBox(img_input, object_list);
 
 	//Plotting trajectories
-	DrawTrajectory(img_input, TrackingLine, ms_tracker, object_list);
+	drawTrajectory(img_input, TrackingLine, ms_tracker, object_list, trigROI);
 
 	// Prediction and update of Kalman Filter 	
 	KFtrack(img_input, object_list, KF);	
@@ -294,60 +297,25 @@ void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> 
 	//}
 }
 
-void areaTrigger(vector<Object2D> &object_list, InputObjInfo* TriggerInfo)
+void findTrigObj(vector<Object2D> &object_list, InputObjInfo &TriggerInfo)
 {
-	static bool bIsTrigger = false;
-	for (int z = 0; z < object_list.size(); z++)
+	if (TriggerInfo.bIsTrigger == true)
 	{
-		if (object_list[z].bIsDrawing == true)
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
-			bIsTrigger = true;
-		}
-	}
-
-	int ObjX, ObjY, TriggerX, TriggerY, tempCntr, tempObj;
-	unsigned int MinDistance, TempMin;
-
-	for (int iCntr = 0; iCntr < 10; iCntr++)
-	{
-		if (TriggerInfo[iCntr].bIsTrigger == true)
-		{
-			MinDistance = -1;
-			tempObj = -1;
-			for (int y = 0; y < object_list.size(); y++)
+			if (Overlap(object_list[obj_list_iter].boundingBox, TriggerInfo.boundingBox, 0.5f))
 			{
-				if (object_list[y].bIsDrawing != true)
-				{
-					ObjX = (object_list[y].boundingBox.x + object_list[y].boundingBox.width) / 2;
-					ObjY = (object_list[y].boundingBox.y + object_list[y].boundingBox.height) / 2;
-
-					TriggerX = (TriggerInfo[iCntr].boundingBox.x + TriggerInfo[iCntr].boundingBox.width) / 2;
-					TriggerY = (TriggerInfo[iCntr].boundingBox.x + TriggerInfo[iCntr].boundingBox.width) / 2;
-
-					TempMin = (unsigned int)(sqrt((ObjX - TriggerX)*(ObjX - TriggerX) + (ObjY - TriggerY)*(ObjY - TriggerY)));
-
-					if (MinDistance > TempMin)
-					{
-						tempObj = y;
-						tempCntr = iCntr;
-						MinDistance = TempMin;
-					}
-				}
+				object_list[obj_list_iter].bIsDrawing = true;
 			}
-
-			if (tempObj != -1)
+			else
 			{
-				object_list[tempObj].bIsDrawing = true;
-				if (bIsTrigger == false)
-				{
-					bIsTrigger = true;
-				}
+				object_list[obj_list_iter].bIsDrawing = false;
 			}
 		}
 	}
 }
 
-void DrawTrajectory(Mat img_input, Mat &TrackingLine,IObjectTracker *ms_tracker, vector<Object2D> &object_list)
+void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo &TriggerInfo)
 {
 	static char prevData = false;
 	static int pre_data_X[10], pre_data_Y[10];  
@@ -356,7 +324,17 @@ void DrawTrajectory(Mat img_input, Mat &TrackingLine,IObjectTracker *ms_tracker,
 	{
 		if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
 		{
-			ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
+			if (TriggerInfo.bIsTrigger == false) // if no trigger, draw all trajectories
+			{
+				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
+			}
+			else // trigger area is being invaded
+			{
+				if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
+				{
+					ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
+				}
+			}
 
 			if (demoMode == true) // Draw the arrow on the pedestrian's head
 				drawArrow(img_input,
