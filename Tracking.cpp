@@ -333,15 +333,14 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 				if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
 				{
 					ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
+
+					drawArrow(img_input,  // Draw the arrow on the pedestrian's head
+						Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+						(object_list[obj_list_iter].boundingBox.y) - 40)
+						, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+						(object_list[obj_list_iter].boundingBox.y) - 20));
 				}
 			}
-
-			if (demoMode == true) // Draw the arrow on the pedestrian's head
-				drawArrow(img_input,
-				Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-				(object_list[obj_list_iter].boundingBox.y) - 40)
-				, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-				(object_list[obj_list_iter].boundingBox.y) - 20));
 		}
 
 		// Get previous point in order to use line function. 
@@ -658,7 +657,7 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 					}
 				}
 				object_list[c].color = *(ColorPtr + iter);
-				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
+				//cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 			}
 			else
 			{
