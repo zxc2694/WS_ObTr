@@ -15,7 +15,7 @@ int objNumArray[10];
 int objNumArray_BS[10];
 Scalar *ColorPtr;
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum)
+void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo &trigROI)
 {
 	static char runFirst = true;
 	static vector<Object2D> object_list;

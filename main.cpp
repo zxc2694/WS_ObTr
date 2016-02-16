@@ -26,9 +26,17 @@ int main(int argc, const char** argv)
 	double t = 0;
 	Mat img, imgCompress, fgmask, imgTracking;
 	CvRect ROI[10];	
+	InputObjInfo trigROI;
 
 	/* Select BS algorithm */
 	CMotionDetection BS(2);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS, 3: CodeBook+MOG
+
+	//trigger box position
+	trigROI.boundingBox.x = 500;
+	trigROI.boundingBox.y = 350;
+	trigROI.boundingBox.width = 50;
+	trigROI.boundingBox.height = 80;
+	trigROI.bIsTrigger = true;
 
 #if EtronCamera
 	// Set the parameter for EStereo
@@ -72,6 +80,10 @@ int main(int argc, const char** argv)
 
 		if (img.empty()) break;
 
+		rectangle(img, trigROI.boundingBox, Scalar(125,10,255), 2);
+		line(img, Point(trigROI.boundingBox.x, trigROI.boundingBox.y), Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
+		line(img, Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y), Point(trigROI.boundingBox.x, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
+
 		resize(img, imgCompress, cv::Size(img.cols * 0.5, img.rows * 0.5));
 
 		if (BS.MotionDetectionProcessing(imgCompress) != true){} // Build background model		
@@ -85,7 +97,7 @@ int main(int argc, const char** argv)
 			t = (double)cvGetTickCount();         // Get executing time 
 
 
-			tracking_function(img, imgTracking, ROI, ObjNum); // Plot tracking rectangles and their trajectories
+			tracking_function(img, imgTracking, ROI, ObjNum, trigROI); // Plot tracking rectangles and their trajectories
 	
 			
 			t = (double)cvGetTickCount() - t;

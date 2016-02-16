@@ -197,6 +197,7 @@ private:
 	int pred_y[10];
 };
 
+void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo &trigROI);
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
 void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
@@ -207,7 +208,6 @@ void KFtrack(Mat &img_input, vector<Object2D> &object_list, KalmanF &KF);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
 void BubbleSort(int* array, int size);
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum);
 void KF_init(cv::KalmanFilter *kf);
 void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
