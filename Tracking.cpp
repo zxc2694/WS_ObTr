@@ -265,36 +265,36 @@ void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> 
 	}
 
 	/* Removing one of overlapping tracking box */
-	//if (object_list.size() == 2)
-	//{
-	//	if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.9f))
-	//	{
-	//		if (object_list[0].boundingBox.height > object_list[1].boundingBox.height)
-	//		{
-	//			for (int iterColor = 0; iterColor < 10; iterColor++)
-	//			{
-	//				if (objNumArray_BS[1] == objNumArray[iterColor])
-	//				{
-	//					objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-	//					break;
-	//				}
-	//			}
-	//			object_list.erase(object_list.begin() + 1); // Remove the tracking box
-	//		}
-	//		else
-	//		{
-	//			for (int iterColor = 0; iterColor < 10; iterColor++)
-	//			{
-	//				if (objNumArray_BS[0] == objNumArray[iterColor])
-	//				{
-	//					objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-	//					break;
-	//				}
-	//			}
-	//			object_list.erase(object_list.begin()); // Remove the tracking box
-	//		}
-	//	}
-	//}
+	if (object_list.size() == 2)
+	{
+		if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.8f) && (MaxObjNum == object_list.size()))
+		{
+			if (object_list[0].boundingBox.height > object_list[1].boundingBox.height)
+			{
+				for (int iterColor = 0; iterColor < 10; iterColor++)
+				{
+					if (objNumArray_BS[1] == objNumArray[iterColor])
+					{
+						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+						break;
+					}
+				}
+				object_list.erase(object_list.begin() + 1); // Remove the tracking box
+			}
+			else
+			{
+				for (int iterColor = 0; iterColor < 10; iterColor++)
+				{
+					if (objNumArray_BS[0] == objNumArray[iterColor])
+					{
+						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+						break;
+					}
+				}
+				object_list.erase(object_list.begin()); // Remove the tracking box
+			}
+		}
+	}
 }
 
 void findTrigObj(vector<Object2D> &object_list, InputObjInfo &TriggerInfo)
@@ -324,23 +324,28 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 	{
 		if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
 		{
-			if (TriggerInfo.bIsTrigger == false) // if no trigger, draw all trajectories
+			if (demoMode)
 			{
-				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
-			}
-			else // trigger area is being invaded
-			{
-				if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
+				if (TriggerInfo.bIsTrigger == false) // if no trigger, draw all trajectories
 				{
-					ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
+					ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
+				}
+				else // trigger area is being invaded
+				{
+					if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
+					{
+						ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
 
-					drawArrow(img_input,  // Draw the arrow on the pedestrian's head
-						Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-						(object_list[obj_list_iter].boundingBox.y) - 40)
-						, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-						(object_list[obj_list_iter].boundingBox.y) - 20));
+						drawArrow(img_input,  // Draw the arrow on the pedestrian's head
+							Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+							(object_list[obj_list_iter].boundingBox.y) - 40)
+							, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+							(object_list[obj_list_iter].boundingBox.y) - 20));
+					}
 				}
 			}
+			else
+				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
 		}
 
 		// Get previous point in order to use line function. 
