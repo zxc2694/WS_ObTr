@@ -97,7 +97,7 @@ int main(int argc, const char** argv)
 			t = (double)cvGetTickCount();         // Get executing time 
 
 
-			tracking_function(img, imgTracking, ROI, ObjNum, trigROI); // Plot tracking rectangles and their trajectories
+			tracking_function(img, imgTracking, ROI, ObjNum, &trigROI); // Plot tracking rectangles and their trajectories
 	
 			
 			t = (double)cvGetTickCount() - t;

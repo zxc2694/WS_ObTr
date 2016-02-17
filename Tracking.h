@@ -198,13 +198,13 @@ private:
 	int pred_y[10];
 };
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo &trigROI);
+void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI);
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
 void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
 void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
-void findTrigObj(vector<Object2D> &object_list, InputObjInfo &TriggerInfo);
-void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo &TriggerInfo);
+void findTrigObj(vector<Object2D> &object_list, InputObjInfo *TriggerInfo);
+void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo *TriggerInfo);
 void KFtrack(Mat &img_input, vector<Object2D> &object_list, KalmanF &KF);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);

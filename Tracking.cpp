@@ -17,7 +17,7 @@ Scalar *ColorPtr;
 bool suspendUpdate = false;
 bool addObj = false;
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo &trigROI)
+void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI)
 {
 	static char runFirst = true;
 	static vector<Object2D> object_list;
@@ -328,14 +328,14 @@ void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> 
 	}
 }
 
-void findTrigObj(vector<Object2D> &object_list, InputObjInfo &TriggerInfo)
+void findTrigObj(vector<Object2D> &object_list, InputObjInfo *TriggerInfo)
 {
 	// Find the triggered object when prohibited area is invaded
-	if (TriggerInfo.bIsTrigger == true)
+	if (TriggerInfo->bIsTrigger == true)
 	{
 		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
-			if (Overlap(object_list[obj_list_iter].boundingBox, TriggerInfo.boundingBox, 0.5f))
+			if (Overlap(object_list[obj_list_iter].boundingBox, TriggerInfo->boundingBox, 0.5f))
 			{
 				object_list[obj_list_iter].bIsDrawing = true;
 			}
@@ -347,7 +347,7 @@ void findTrigObj(vector<Object2D> &object_list, InputObjInfo &TriggerInfo)
 	}
 }
 
-void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo &TriggerInfo)
+void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo *TriggerInfo)
 {
 	static char prevData = false;
 	static int pre_data_X[10], pre_data_Y[10];  
@@ -358,7 +358,7 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 		{
 			if (demoMode)
 			{
-				if (TriggerInfo.bIsTrigger == false) // if no trigger, draw all trajectories
+				if (TriggerInfo->bIsTrigger == false) // if no trigger, draw all trajectories
 				{
 					ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
 				}
