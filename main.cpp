@@ -80,10 +80,6 @@ int main(int argc, const char** argv)
 
 		if (img.empty()) break;
 
-		rectangle(img, trigROI.boundingBox, Scalar(125,10,255), 2);
-		line(img, Point(trigROI.boundingBox.x, trigROI.boundingBox.y), Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
-		line(img, Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y), Point(trigROI.boundingBox.x, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
-
 		resize(img, imgCompress, cv::Size(img.cols * 0.5, img.rows * 0.5));
 
 		if (BS.MotionDetectionProcessing(imgCompress) != true){} // Build background model		
@@ -108,6 +104,14 @@ int main(int argc, const char** argv)
 			textFrameNo << nframes;
 			putText(imgTracking, "Frame=" + textFrameNo.str(), Point(10, imgTracking.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
 
+			// Show prohibited area
+			if (demoMode == true)
+			{
+				rectangle(imgTracking, trigROI.boundingBox, Scalar(125, 10, 255), 2);
+				line(imgTracking, Point(trigROI.boundingBox.x, trigROI.boundingBox.y), Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
+				line(imgTracking, Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y), Point(trigROI.boundingBox.x, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
+			}
+			// Show image output
 			imshow("Tracking_image", imgTracking);
 			imshow("foreground mask", fgmask);
 			sprintf(outputPath, "video_output_tracking//%05d.png", nframes + 1);

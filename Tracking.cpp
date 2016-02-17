@@ -185,26 +185,47 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 				object_list.erase(object_list.begin() + replaceList[iter]);
 			}
 		}
-
-		//if ((!Overlapping && addToList) && ((unsigned int)MaxObjNum > object_list.size()))
 		if (!Overlapping && addToList)
 		{
-			ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); //No replace and add object list -> bbs convert boundingBox.
-			occlusionNewObj(img_input, ms_tracker, object_list);
+			ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
+			ms_tracker->occlusionNewObj(img_input, ms_tracker, object_list);      // Consider two men occlusion
 		}
 
 		vector<int>().swap(replaceList);
 	}  // end of 1st for 
 }
 
-void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list)
+void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list)
 {
 	if (addObj == true) // It confirms that one of objects has appeared after occlusion
 	{
 		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
-			if (object_list[obj_list_iter].bIsUpdateTrack == false)
-			{
+			if (object_list[obj_list_iter].bIsUpdateTrack == false) // object_list[obj_list_iter].boundingbox is the suspended box
+			{		
+				// Compute color hist of each object				
+				double similarityToNew = 0;                         // Compare the suspended box with the new appearing box  
+				double similarityToOld = 0;                         // Compare the suspended box with the moving box
+				for (int histIdx = 0; histIdx < 4096; ++histIdx)    // Compute similarity
+				{
+					similarityToNew += sqrt(object_list[obj_list_iter].hist[histIdx] * object_list[(int)object_list.size() - 1].hist[histIdx]);
+				}
+
+				if (obj_list_iter == 0)
+				{
+					for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+					{
+						similarityToOld += sqrt(object_list[obj_list_iter].hist[histIdx] * object_list[1].hist[histIdx]);
+					}
+				}
+				if (obj_list_iter == 1)
+				{
+					for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+					{
+						similarityToOld += sqrt(object_list[obj_list_iter].hist[histIdx] * object_list[0].hist[histIdx]);
+					}
+				}
+				
 				// Update the suspended object from new object 
 				ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
 
@@ -221,6 +242,17 @@ void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D>
 				}
 				object_list.erase(object_list.begin() + (int)object_list.size() - 1);
 
+				if (similarityToNew < similarityToOld)
+				{
+					// Exchange correct tracking box
+					if (object_list.size() == 2)
+					{
+						Rect tempRect;
+						tempRect = object_list[0].boundingBox;
+						ms_tracker->updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
+						ms_tracker->updateObjBbs(img_input, object_list, tempRect, 1);
+					}
+				}
 				suspendUpdate = false;
 			}
 		}

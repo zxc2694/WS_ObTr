@@ -86,7 +86,7 @@ public:
 	virtual void addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type) = 0;
 	virtual void updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx) = 0;
 	virtual int  track(Mat &img, vector<Object2D> &object_list) = 0; // track single object
-
+	virtual void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list) = 0;
 	virtual bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list) = 0;
 	virtual bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list) = 0;
 	virtual void drawTrackBox(Mat &img, vector<Object2D> &object_list) = 0;
@@ -120,6 +120,8 @@ public:
 	void drawTrackBox(Mat &img, vector<Object2D> &object_list);
 	void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
 	int  track(Mat &img, vector<Object2D> &object_list);
+	void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list);
+
 	int count;
 
 private:
@@ -212,6 +214,5 @@ void BubbleSort(int* array, int size);
 void KF_init(cv::KalmanFilter *kf);
 void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
-void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list);
 
 #endif
