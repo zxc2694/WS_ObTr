@@ -62,6 +62,7 @@ typedef struct
 	int PtCount;
 	int findBbs[DELE_RECT_FRAMENO]; //It decides whether rectangles is motionless or not.
 	bool bIsDrawing;			    //It decides whether trajectory is plotted or not.
+	bool bIsUpdateTrack;
 } Object2D;
 
 typedef struct
@@ -211,6 +212,6 @@ void BubbleSort(int* array, int size);
 void KF_init(cv::KalmanFilter *kf);
 void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
-int FindObjBlackPoints(vector<Object2D> &object_list, int obj_list_iter);
+void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list);
 
 #endif
