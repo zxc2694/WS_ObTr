@@ -902,6 +902,8 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 
 				if ((object_list[c].boundingBox.height & 1) == 0)    object_list[c].boundingBox.height -= 1; // bbs.height should be odd number
 				if ((object_list[c].boundingBox.width & 1) == 0)    object_list[c].boundingBox.width -= 1; // bbs.width should be odd number
+			
+				continue;
 			}
 
 			CandCen = Point((object_list[c].boundingBox.width - 1) / 2, (object_list[c].boundingBox.height - 1) / 2);
