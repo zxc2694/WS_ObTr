@@ -174,15 +174,8 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 			//for (int iter = 0; iter < (int)replaceList.size(); ++iter)
 			for (int iter = (int)replaceList.size() - 1; iter >= 0; --iter)
 			{
-				for (int iterColor = 0; iterColor < 10; iterColor++)
-				{
-					if (objNumArray_BS[replaceList[iter]] == objNumArray[iterColor])
-					{
-						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-						break;
-					}
-				}
-				object_list.erase(object_list.begin() + replaceList[iter]);
+				size_t delNum = replaceList[iter];
+				object_list_erase(object_list, delNum);
 			}
 		}
 		if (!Overlapping && addToList)
@@ -232,15 +225,8 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 				object_list[obj_list_iter].bIsUpdateTrack = true;
 
 				// Delete new object
-				for (int iterColor = 0; iterColor < 10; iterColor++)
-				{
-					if (objNumArray_BS[(int)object_list.size() - 1] == objNumArray[iterColor])
-					{
-						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-						break;
-					}
-				}
-				object_list.erase(object_list.begin() + (int)object_list.size() - 1);
+				size_t delNum = (int)object_list.size() - 1;
+				object_list_erase(object_list, delNum);
 
 				if (similarityToNew < similarityToOld)
 				{
@@ -314,15 +300,7 @@ void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> 
 			}
 			if (DELE_RECT_FRAMENO == times)
 			{
-				for (int iterColor = 0; iterColor < 10; iterColor++)
-				{
-					if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
-					{
-						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
-						break;
-					}
-				}
-				object_list.erase(object_list.begin() + obj_list_iter); // Remove the tracking box	
+				object_list_erase(object_list, obj_list_iter);
 
 				if (object_list.size() == 0)//Prevent out of vector range
 					break;
@@ -634,53 +612,10 @@ bool MeanShiftTracker::checkTrackedList(vector<Object2D> &object_list, vector<Ob
 		}
 		else
 		{
-			for (int iterColor = 0; iterColor < 10; iterColor++)
-			{
-				if (objNumArray_BS[c] == objNumArray[iterColor])
-				{
-					objNumArray[iterColor] = 1000;
-					break;
-				}
-			}
-			object_list.erase(object_list.begin() + c);
-			//prev_object_list.erase(prev_object_list.begin() + c);
+			object_list_erase(object_list, c);
 			c--;
 		}
 	}
-
-	//// hit check: delete element one by one from pre_tracked_list until check finished
-	//for (size_t i = 0; i < object_list.size(); i++){
-	//	for (size_t j = 0; j < prev_object_list.size(); j++){
-	//		/*if (tracked_list[i].type != prev_tracked_list[j].type)
-	//		continue;*/
-	//		// intersect check
-	//		bool bHit = testObjectIntersection(object_list[i], prev_object_list[j]);
-	//		// check object distance
-	//		//bool bEqualDepth = checkByDepth(tracked_list[i].xyz.z, prev_tracked_list[j].xyz.z);
-	//		if (bHit){
-	//			prev_object_list.erase(prev_object_list.begin() + j);
-	//			if (prev_object_list.empty()) break;
-	//			if (j == 0) j = -1;
-	//			else j--;
-	//			//break;
-	//		}
-	//	}
-	//}
-	//// miss detected objects: the left elements in the prev_tracked_list are missed detected objects, and then copy to tracked_list
-	//for (size_t c = 0; c < prev_object_list.size(); c++){
-	//	prev_object_list[c].status = 3; // missed
-	//	object_list.push_back(prev_object_list[c]);
-	//}
-	//if (prev_object_list.empty()) // no missed object
-	//{
-	//	prev_object_list = object_list;
-	//	return false;
-	//}
-	//else{
-	//	prev_object_list.clear();
-	//	prev_object_list = object_list;
-	//	return true;
-	//}
 	return true;
 }
 
@@ -699,15 +634,7 @@ bool MeanShiftTracker::updateTrackedList(vector<Object2D> &object_list, vector<O
 			}
 			else
 			{
-				for (int iterColor = 0; iterColor < 10; iterColor++)
-				{
-					if (objNumArray_BS[c] == objNumArray[iterColor])
-					{
-						objNumArray[iterColor] = 1000;
-						break;
-					}
-				}
-				object_list.erase(object_list.begin() + c);
+				object_list_erase(object_list, c);
 				prev_object_list.erase(prev_object_list.begin() + c);
 				c--;
 			}
@@ -962,15 +889,7 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 			// if the part of bbs inside img is too small for all scales after shifts, abandon tracking this obj, i.e. delete this obj from object_list 
 			if (exceedImgBoundary)
 			{
-				//for (int iterColor = 0; iterColor < 10; iterColor++)
-				//{
-				//	if (objNumArray_BS[c] == objNumArray[iterColor])
-				//	{
-				//		objNumArray[iterColor] = 1000;
-				//		break;
-				//	}
-				//}
-				//object_list.erase(object_list.begin() + c);
+				//object_list_erase(object_list, c);
 				//--c;
 				//continue;
 			}
@@ -1118,15 +1037,7 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 
 			if (delBbsOutImg)
 			{
-				for (int iterColor = 0; iterColor < 10; iterColor++)
-				{
-					if (objNumArray_BS[c] == objNumArray[iterColor])
-					{
-						objNumArray[iterColor] = 1000;
-						break;
-					}
-				}
-				object_list.erase(object_list.begin() + c);
+				object_list_erase(object_list, c);
 				--c;
 				continue; // if the part of bbs inside img is too small after scale and shift, abandon tracking this obj
 			}
@@ -1607,3 +1518,15 @@ void drawArrow(Mat img, CvPoint p, CvPoint q)
 	}
 }
 
+void object_list_erase(vector<Object2D> &object_list, size_t &obj_list_iter)
+{
+	for (int iterColor = 0; iterColor < 10; iterColor++)
+	{
+		if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+		{
+			objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+			break;
+		}
+	}
+	object_list.erase(object_list.begin() + obj_list_iter);
+}

@@ -217,5 +217,7 @@ void BubbleSort(int* array, int size);
 void KF_init(cv::KalmanFilter *kf);
 void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
+void object_list_erase(vector<Object2D> &object_list, size_t &obj_list_iter);
+
 
 #endif
