@@ -176,7 +176,7 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 			{
 				for (int iterColor = 0; iterColor < 10; iterColor++)
 				{
-					if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+					if (objNumArray_BS[replaceList[iter]] == objNumArray[iterColor])
 					{
 						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
 						break;
@@ -381,52 +381,74 @@ void findTrigObj(vector<Object2D> &object_list, InputObjInfo *TriggerInfo)
 
 void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo *TriggerInfo)
 {
-	static char prevData = false;
-	static int pre_data_X[10], pre_data_Y[10];  
-
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-	{
-		if (prevData == true) //prevent plotting tracking line when previous tracking data is none.
+	{	
+		if (demoMode)
 		{
-			if (demoMode)
+			if (TriggerInfo->bIsTrigger == false) // if no trigger, draw all trajectories
 			{
-				if (TriggerInfo->bIsTrigger == false) // if no trigger, draw all trajectories
+				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
+			}
+			else // trigger area is being invaded
+			{
+				if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
 				{
-					ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
-				}
-				else // trigger area is being invaded
-				{
-					if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
-					{
-						ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
+					ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
 
-						drawArrow(img_input,  // Draw the arrow on the pedestrian's head
-							Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-							(object_list[obj_list_iter].boundingBox.y) - 40)
-							, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-							(object_list[obj_list_iter].boundingBox.y) - 20));
-					}
+					drawArrow(img_input,  // Draw the arrow on the pedestrian's head
+						Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+						(object_list[obj_list_iter].boundingBox.y) - 40)
+						, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+						(object_list[obj_list_iter].boundingBox.y) - 20));
 				}
 			}
-			else
-				ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
 		}
+		else // for debug
+			ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
+		
+		/* Solve politting pulse of track */
+		if (object_list[obj_list_iter].PtCount < 5)
+		{
+			// Get previous point in order to use line function. 
+			object_list[obj_list_iter].pre_data_X = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
+			object_list[obj_list_iter].pre_data_Y = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+		}
+		else // Start judgement of plotting pulse after passing 5 frame
+		{
+			int currentX = (int)(0.9 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
+			int currentY = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));		
+			
+			// It decides whether the point Y is great change or not
+			if ((30 >= abs(currentY - object_list[obj_list_iter].pre_data_Y)) || (30 >= abs(currentX - object_list[obj_list_iter].pre_data_X))) // Without great change -> Normal update point
+			{
+				object_list[obj_list_iter].pre_data_X = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
+				object_list[obj_list_iter].pre_data_Y = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+			}
+			else // Great change -> Not update point
+			{
+				object_list[obj_list_iter].waitFrame++; // Wait for plotting line
+			}
 
-		// Get previous point in order to use line function. 
-		pre_data_X[obj_list_iter] = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-		pre_data_Y[obj_list_iter] = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+			// Restart plotting suspended line
+			if (object_list[obj_list_iter].waitFrame == 3)
+			{
+				object_list[obj_list_iter].pre_data_X = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
+				object_list[obj_list_iter].pre_data_Y = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+				object_list[obj_list_iter].waitFrame = 0;
+			}
+		}
 
 		// Restarting count when count > plotLineLength number
 		if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
 			object_list[obj_list_iter].PtNumber = 0;
 
-		object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(pre_data_X[obj_list_iter], pre_data_Y[obj_list_iter]); //Storage all of points on the array. 
-
+		//Storage all of points on the array
+		object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(object_list[obj_list_iter].pre_data_X, object_list[obj_list_iter].pre_data_Y);
 		object_list[obj_list_iter].PtNumber++;
 		object_list[obj_list_iter].PtCount++;
 
 	}// end of plotting trajectory
-	prevData = true;
+
 }
 
 void KFtrack(Mat &img_input, vector<Object2D> &object_list, KalmanF &KF)
@@ -540,6 +562,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	obj.cPtNumber = 0;
 	obj.PtCount = 0;
 	obj.objScale = 1;
+	obj.waitFrame = 0;
 	obj.kernel.create(obj.boundingBox.height, obj.boundingBox.width, CV_64FC1);
 	obj.bIsUpdateTrack = true;
 

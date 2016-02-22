@@ -63,6 +63,9 @@ typedef struct
 	int findBbs[DELE_RECT_FRAMENO]; //It decides whether rectangles is motionless or not.
 	bool bIsDrawing;			    //It decides whether trajectory is plotted or not.
 	bool bIsUpdateTrack;
+	int waitFrame;
+	int pre_data_X;
+	int pre_data_Y;
 } Object2D;
 
 typedef struct
