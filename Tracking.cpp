@@ -598,58 +598,11 @@ void MeanShiftTracker::updateObjBbs(const Mat &img, vector<Object2D> &object_lis
 	computeHist(tempMat, object_list[idx].kernel, object_list[idx].hist);
 }
 
-bool MeanShiftTracker::checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list)
-{
-	if (object_list.empty())	return false;
-
-	for (size_t c = 0; c < object_list.size(); c++)
-	{
-		if (object_list[c].similar_val > Similar_Val_Threshold - 0.02)
-		{
-			//prev_object_list[c].status = 2;
-			//prev_object_list[c].boundingBox = object_list[c].boundingBox;
-			//prev_object_list[c].similar_val = object_list[c].similar_val;
-		}
-		else
-		{
-			object_list_erase(object_list, c);
-			c--;
-		}
-	}
-	return true;
-}
-
-bool MeanShiftTracker::updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list)
-{
-	for (size_t c = 0; c < object_list.size(); c++)
-	{
-		if (object_list[c].status == 3)
-		{
-			bool bIntraSec = testIntraObjectIntersection(object_list, c);
-			if (object_list[c].similar_val > Similar_Val_Threshold - 0.02 && !bIntraSec)
-			{
-				prev_object_list[c].status = 2;
-				prev_object_list[c].boundingBox = object_list[c].boundingBox;
-				prev_object_list[c].similar_val = object_list[c].similar_val;
-			}
-			else
-			{
-				object_list_erase(object_list, c);
-				prev_object_list.erase(prev_object_list.begin() + c);
-				c--;
-			}
-		}
-	}
-	return 1;
-}
-
 void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 {
 	int iter;
-	for (size_t c = 0; c < object_list.size(); c++){
-		//for (size_t c = 0; c < 1; c++){
-		//if (object_list[c].status == 2){
-
+	for (size_t c = 0; c < object_list.size(); c++)
+	{
 		if (object_list[c].type == 1) //vehicle	
 		{
 			std::stringstream ss, ss1, ss2, ss3;
@@ -680,14 +633,13 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 				object_list[c].color = *(ColorPtr + iter);
 				//cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 			}
-			else
+			else // for debug
 			{
 				ss3 << object_list[c].No;
 				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 			}
 		}
-		//}
 	}
 }
 
@@ -716,9 +668,7 @@ void MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &
 			line(TrackingLine, object_list[obj_list_iter].point[iter - 1]										//Directly plot all the points array storages.
 			, object_list[obj_list_iter].point[iter], Scalar(object_list[obj_list_iter].color.val[0], object_list[obj_list_iter].color.val[1], object_list[obj_list_iter].color.val[2], 20 + 235 * (iter - 1) / (object_list[obj_list_iter].PtNumber - 1)), 3, 1, 0);
 	}
-
 }
-
 
 int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 {

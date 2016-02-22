@@ -79,34 +79,21 @@ class IObjectTracker
 public:
 	IObjectTracker(){ count = 0; }
 	~IObjectTracker(){}
-
-	//virtual void addTrackedList(const Mat &img, vector<Object2D> &object_list, Object2D &obj) = 0;
 	Mat DistMat;
 	Scalar ColorMatrix[10];
 	int histSize;
+	int count;
 
 	virtual int DistBetObj(Rect a, Rect b) = 0;
 	virtual void addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type) = 0;
 	virtual void updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx) = 0;
-	virtual int  track(Mat &img, vector<Object2D> &object_list) = 0; // track single object
+	virtual int track(Mat &img, vector<Object2D> &object_list) = 0; // track single object
 	virtual void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list) = 0;
-	virtual bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list) = 0;
-	virtual bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list) = 0;
 	virtual void drawTrackBox(Mat &img, vector<Object2D> &object_list) = 0;
-	virtual void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
-	//double getDistanceThreshold(){ return Dist_Threshold; }
-
-	//double track(Mat &img, Object2D &object); // track single object
-	//double getDistanceThreshold(){ return Dist_Threshold; }
-	//vector<double> track2(Mat &img, vector<Object2D> &object_list); // track multiple objects
-	int count;
+	virtual void drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
 
 private:
-	/*DescriptorFactory *pDescriptorFac;
-	IObjectDescriptor *HOG;
-	const double	Dist_Threshold = 0.1f;*/
-
-	//double computeDistance(vector<double> &feature1, vector<double> &feature2);
+	
 };
 
 class MeanShiftTracker : public IObjectTracker
@@ -115,17 +102,16 @@ public:
 	MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale);
 	~MeanShiftTracker();
 
+	int count;
 	int DistBetObj(Rect a, Rect b);
 	void addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type);
 	void updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx);
 	bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
 	bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
 	void drawTrackBox(Mat &img, vector<Object2D> &object_list);
-	void  drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
-	int  track(Mat &img, vector<Object2D> &object_list);
+	void drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
+	int track(Mat &img, vector<Object2D> &object_list);
 	void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list);
-
-	int count;
 
 private:
 	// don't tracking too small obj 
