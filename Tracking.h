@@ -64,8 +64,11 @@ typedef struct
 	bool bIsDrawing;			    //It decides whether trajectory is plotted or not.
 	bool bIsUpdateTrack;
 	int waitFrame;
+	int initFrame;
 	int pre_data_X;
 	int pre_data_Y;
+	double histV2[MaxHistBins];
+	Mat kernelV2;
 } Object2D;
 
 typedef struct
@@ -91,6 +94,7 @@ public:
 	virtual void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list) = 0;
 	virtual void drawTrackBox(Mat &img, vector<Object2D> &object_list) = 0;
 	virtual void drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
+	virtual void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum) = 0;
 
 private:
 	
@@ -111,6 +115,7 @@ public:
 	void drawTrackBox(Mat &img, vector<Object2D> &object_list);
 	void drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
 	int track(Mat &img, vector<Object2D> &object_list);
+	void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
 	void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list);
 
 private:
@@ -193,7 +198,6 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
 void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
-void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
 void findTrigObj(vector<Object2D> &object_list, InputObjInfo *TriggerInfo);
 void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo *TriggerInfo);
 void KFtrack(Mat &img_input, vector<Object2D> &object_list, KalmanF &KF);

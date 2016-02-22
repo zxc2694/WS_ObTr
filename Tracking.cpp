@@ -42,7 +42,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	getNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);			
 
 	// Modify the size of the tracking boxes and delete useless boxes
-	modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
+	ms_tracker->modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
 	// Find trigger object
 	findTrigObj(object_list, trigROI);
@@ -201,23 +201,24 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 				double similarityToOld = 0;                         // Compare the suspended box with the moving box
 				for (int histIdx = 0; histIdx < 4096; ++histIdx)    // Compute similarity
 				{
-					similarityToNew += sqrt(object_list[obj_list_iter].hist[histIdx] * object_list[(int)object_list.size() - 1].hist[histIdx]);
+					similarityToNew += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[(int)object_list.size() - 1].hist[histIdx]);
 				}
 
 				if (obj_list_iter == 0)
 				{
 					for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
 					{
-						similarityToOld += sqrt(object_list[obj_list_iter].hist[histIdx] * object_list[1].hist[histIdx]);
+						similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[1].hist[histIdx]);
 					}
 				}
 				if (obj_list_iter == 1)
 				{
 					for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
 					{
-						similarityToOld += sqrt(object_list[obj_list_iter].hist[histIdx] * object_list[0].hist[histIdx]);
+						similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[0].hist[histIdx]);
 					}
 				}
+				cout << "objNum = " << obj_list_iter << "similarityToOld = " << similarityToOld << "similarityToNew = " << similarityToNew << endl;
 				
 				// Update the suspended object from new object 
 				ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
@@ -245,7 +246,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 	}
 	addObj = false;
 }
-void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	/* Modify the size of the tracking box  */
 	int bbsNumber = 0;
@@ -309,11 +310,45 @@ void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> 
 			times = 0;
 		}
 	}
-
+	
 	/* Solve two men occlusion */
-	if (suspendUpdate == false)
-	{	
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++) // Update of track
+	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+	{
+		if (((object_list[obj_list_iter].PtCount) % 5 == 0) && (object_list[obj_list_iter].PtCount <=20)) // Get color histogram at every 5 frames to prevent large number of calculations
+		{
+			int wd = 10;  // |---------wd-------	-|
+			int hd = 10;  // |	   |--usew--|	 |
+			int usew = 8; // | useh|   	    |	 |hd
+			int useh = 8; // |	   |	    |	 |
+
+			int Ori_x = object_list[obj_list_iter].boundingBox.x;
+			int Ori_y = object_list[obj_list_iter].boundingBox.y;
+			int Ori_w = object_list[obj_list_iter].boundingBox.width;
+			int Ori_h = object_list[obj_list_iter].boundingBox.height;
+
+			Rect R; // Get resized rectangle which is consistent with central point of original ROI 
+			R.width = Ori_w / wd*usew;
+			R.height = Ori_h / hd*useh;
+			R.x = Ori_x + (Ori_w - R.width) / 2;
+			R.y = Ori_y + (Ori_h - R.height) / 2;
+
+			// Use resized rectangle to compute color histogram 
+			object_list[obj_list_iter].kernelV2.create(R.height, R.width, CV_64FC1);
+			getKernel(object_list[obj_list_iter].kernelV2, kernel_type);
+			Mat tempMat = img_input(R);
+			double histTemp[MaxHistBins];
+			computeHist(tempMat, object_list[obj_list_iter].kernelV2, object_list[obj_list_iter].histV2);
+		
+			// Update new color histogram. And its proportion: old hist is 70%, new hist is 30%
+			/*for (int histIdx = 0; histIdx < 4096; ++histIdx)
+			{
+				object_list[obj_list_iter].histV2[histIdx] = 0.3 * object_list[obj_list_iter].histV2[histIdx] + 0.7 * object_list[obj_list_iter].histV2[histIdx];
+			}*/
+		}
+	}
+	if (suspendUpdate == false) // Update of track
+	{			
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 			object_list[obj_list_iter].bIsUpdateTrack = true;
 	}
 	if (object_list.size() == 2)
@@ -322,7 +357,7 @@ void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> 
 		if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.2f))
 		{
 			suspendUpdate = true; //suspend update of track
-
+		
 			// suspend small box
 			if (object_list[0].boundingBox.height > object_list[1].boundingBox.height)
 			{
@@ -541,6 +576,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	obj.PtCount = 0;
 	obj.objScale = 1;
 	obj.waitFrame = 0;
+	obj.initFrame = 0;
 	obj.kernel.create(obj.boundingBox.height, obj.boundingBox.width, CV_64FC1);
 	obj.bIsUpdateTrack = true;
 
