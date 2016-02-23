@@ -30,16 +30,16 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	if (runFirst)  KF.Init();
 
 	// Enlarge the size of bbs 2 times
-	revertBbsSize(img_input, bbs, MaxObjNum); 
-	
+	revertBbsSize(img_input, bbs, MaxObjNum);
+
 	// Arrange object number to prevent accumulation
 	ObjNumArr(objNumArray, objNumArray_BS);
 
 	// Main tracking code using Mean-shift algorithm
-	ms_tracker->track(img_input, object_list);         	
+	ms_tracker->track(img_input, object_list);
 
 	// Add new useful ROI to the object_list for tracking
-	getNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);			
+	getNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
 	// Modify the size of the tracking boxes and delete useless boxes
 	ms_tracker->modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
@@ -54,7 +54,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	drawTrajectory(img_input, TrackingLine, ms_tracker, object_list, trigROI);
 
 	// Prediction and update of Kalman Filter 	
-	KFtrack(img_input, object_list, KF);	
+	KFtrack(img_input, object_list, KF);
 
 	// Tracking image output (merge 3-channel image and 4-channel trakcing lines)
 	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0));
@@ -92,7 +92,7 @@ void ObjNumArr(int *objNumArray, int *objNumArray_BS)
 		}
 		runFirst = false;
 	}
-	else 
+	else
 	{
 		for (int iter = 0; iter < 10; iter++)
 			objNumArray_BS[iter] = objNumArray[iter];
@@ -181,64 +181,168 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 		if (!Overlapping && addToList)
 		{
 			ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
-			ms_tracker->occlusionNewObj(img_input, ms_tracker, object_list);      // Consider two men occlusion
+			ms_tracker->occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
 		}
 
 		vector<int>().swap(replaceList);
 	}  // end of 1st for 
 }
 
-void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list)
+void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	if (addObj == true) // It confirms that one of objects has appeared after occlusion
 	{
 		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
 			if (object_list[obj_list_iter].bIsUpdateTrack == false) // object_list[obj_list_iter].boundingbox is the suspended box
-			{		
-				// Compute color hist of each object				
-				double similarityToNew = 0;                         // Compare the suspended box with the new appearing box  
-				double similarityToOld = 0;                         // Compare the suspended box with the moving box
-				for (int histIdx = 0; histIdx < 4096; ++histIdx)    // Compute similarity
+			{
+				if (occSolve == 1)
 				{
-					similarityToNew += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[(int)object_list.size() - 1].hist[histIdx]);
-				}
-
-				if (obj_list_iter == 0)
-				{
-					for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+					// Compute color hist of each object				
+					double similarityToNew = 0;                         // Compare the suspended box with the new appearing box  
+					double similarityToOld = 0;                         // Compare the suspended box with the moving box
+					for (int histIdx = 0; histIdx < 4096; ++histIdx)    // Compute similarity
 					{
-						similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[1].hist[histIdx]);
+						similarityToNew += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[(int)object_list.size() - 1].hist[histIdx]);
+					}
+
+					if (obj_list_iter == 0)
+					{
+						for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+						{
+							similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[1].hist[histIdx]);
+						}
+					}
+					if (obj_list_iter == 1)
+					{
+						for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+						{
+							similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[0].hist[histIdx]);
+						}
+					}
+					cout << "objNum = " << obj_list_iter << "similarityToOld = " << similarityToOld << "similarityToNew = " << similarityToNew << endl;
+
+					// Update the suspended object from new object 
+					ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
+
+					object_list[obj_list_iter].bIsUpdateTrack = true;
+
+					// Delete new object
+					size_t delNum = (int)object_list.size() - 1;
+					object_list_erase(object_list, delNum);
+
+					if (similarityToNew < similarityToOld)
+					{
+						// Exchange correct tracking box
+						if (object_list.size() == 2)
+						{
+							Rect tempRect;
+							tempRect = object_list[0].boundingBox;
+							ms_tracker->updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
+							ms_tracker->updateObjBbs(img_input, object_list, tempRect, 1);
+						}
 					}
 				}
-				if (obj_list_iter == 1)
+				if (occSolve == 2)
 				{
-					for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+					/* Judgment appearing new object position and update it */
+					if (object_list[(int)object_list.size() - 1].boundingBox.x < object_list[0].boundingBox.x) // New object appears on the left side of the occlusion
 					{
-						similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[0].hist[histIdx]);
+						if (object_list[1].boundingBox.x > object_list[0].boundingBox.x) // First: New-> N0-> N1
+						{
+							ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
+							//object_list[1].objScale = 1;
+							//object_list[1].boundingBox = object_list[(int)object_list.size() - 1].boundingBox;
+
+							// Next: N1(New) -> N0
+							if ((OverlapValue(object_list[1].boundingBox, bbs[0]) > OverlapValue(object_list[1].boundingBox, bbs[1])))
+							{
+								ms_tracker->updateObjBbs(img_input, object_list, bbs[1], 0);
+								//object_list[0].objScale = 1;
+								//object_list[0].boundingBox = bbs[1];
+							}
+
+							if ((OverlapValue(object_list[1].boundingBox, bbs[0]) < OverlapValue(object_list[1].boundingBox, bbs[1])))
+							{
+								ms_tracker->updateObjBbs(img_input, object_list, bbs[0], 0);
+								//object_list[0].objScale = 1;
+								//object_list[0].boundingBox = bbs[0];
+							}
+
+						}
+						else // First: New-> N1-> N0
+						{
+							ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0);
+							//object_list[0].objScale = 1;
+							//object_list[0].boundingBox = object_list[(int)object_list.size() - 1].boundingBox;
+
+							// Next: N0(New) -> N1
+							if ((OverlapValue(object_list[0].boundingBox, bbs[0]) > OverlapValue(object_list[0].boundingBox, bbs[1])))
+							{
+								ms_tracker->updateObjBbs(img_input, object_list, bbs[1], 1);
+								//object_list[1].objScale = 1;
+								//object_list[1].boundingBox = bbs[1];
+							}
+							else
+							{
+								ms_tracker->updateObjBbs(img_input, object_list, bbs[0], 1);
+								//object_list[1].objScale = 1;
+								//object_list[1].boundingBox = bbs[0];
+							}
+						}
 					}
-				}
-				cout << "objNum = " << obj_list_iter << "similarityToOld = " << similarityToOld << "similarityToNew = " << similarityToNew << endl;
-				
-				// Update the suspended object from new object 
-				ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
-
-				object_list[obj_list_iter].bIsUpdateTrack = true;
-
-				// Delete new object
-				size_t delNum = (int)object_list.size() - 1;
-				object_list_erase(object_list, delNum);
-
-				if (similarityToNew < similarityToOld)
-				{
-					// Exchange correct tracking box
-					if (object_list.size() == 2)
+					else // New object appears on the right side of the occlusion
 					{
-						Rect tempRect;
-						tempRect = object_list[0].boundingBox;
-						ms_tracker->updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
-						ms_tracker->updateObjBbs(img_input, object_list, tempRect, 1);
+						if (object_list[1].boundingBox.x > object_list[0].boundingBox.x) //  N0-> N1-> New
+						{
+							ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0); //Reset the scale of the tracking box.
+							//object_list[0].objScale = 1;
+							//object_list[0].boundingBox = object_list[(int)object_list.size() - 1].boundingBox;
+
+							// Next: N1 -> N0(New)
+							if ((OverlapValue(object_list[0].boundingBox, bbs[0]) > OverlapValue(object_list[0].boundingBox, bbs[1])))
+							{
+								ms_tracker->updateObjBbs(img_input, object_list, bbs[1], 0);
+								//object_list[1].objScale = 1;
+								//object_list[1].boundingBox = bbs[1];
+							}
+
+							if ((OverlapValue(object_list[0].boundingBox, bbs[0]) < OverlapValue(object_list[0].boundingBox, bbs[1])))
+							{
+								ms_tracker->updateObjBbs(img_input, object_list, bbs[0], 0);
+								//object_list[1].objScale = 1;
+								//object_list[1].boundingBox = bbs[0];
+							}
+						}
+						else // N1-> N0-> New
+						{
+							ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
+							//object_list[1].objScale = 1;
+							//object_list[1].boundingBox = object_list[(int)object_list.size() - 1].boundingBox;
+
+							// Next: N0 -> N1(New)
+							if ((OverlapValue(object_list[1].boundingBox, bbs[0]) > OverlapValue(object_list[1].boundingBox, bbs[1])))
+							{
+								ms_tracker->updateObjBbs(img_input, object_list, bbs[1], 0);
+								//object_list[0].objScale = 1;
+								//object_list[0].boundingBox = bbs[1];
+							}
+
+							if ((OverlapValue(object_list[1].boundingBox, bbs[0]) < OverlapValue(object_list[1].boundingBox, bbs[1])))
+							{
+								ms_tracker->updateObjBbs(img_input, object_list, bbs[0], 0);
+								//object_list[0].objScale = 1;
+								//object_list[0].boundingBox = bbs[0];
+							}
+						}
 					}
+
+					// Delete new object
+					size_t delNum = (int)object_list.size() - 1;
+					object_list_erase(object_list, delNum);
+
+					object_list[0].bIsUpdateTrack = true;
+					object_list[1].bIsUpdateTrack = true;
 				}
 				suspendUpdate = false;
 			}
@@ -310,64 +414,78 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 			times = 0;
 		}
 	}
-	
+
 	/* Solve two men occlusion */
-	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+	if (occSolve == 1)
 	{
-		if (((object_list[obj_list_iter].PtCount) % 5 == 0) && (object_list[obj_list_iter].PtCount <=20)) // Get color histogram at every 5 frames to prevent large number of calculations
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 		{
-			int wd = 10;  // |---------wd-------	-|
-			int hd = 10;  // |	   |--usew--|	 |
-			int usew = 8; // | useh|   	    |	 |hd
-			int useh = 8; // |	   |	    |	 |
-
-			int Ori_x = object_list[obj_list_iter].boundingBox.x;
-			int Ori_y = object_list[obj_list_iter].boundingBox.y;
-			int Ori_w = object_list[obj_list_iter].boundingBox.width;
-			int Ori_h = object_list[obj_list_iter].boundingBox.height;
-
-			Rect R; // Get resized rectangle which is consistent with central point of original ROI 
-			R.width = Ori_w / wd*usew;
-			R.height = Ori_h / hd*useh;
-			R.x = Ori_x + (Ori_w - R.width) / 2;
-			R.y = Ori_y + (Ori_h - R.height) / 2;
-
-			// Use resized rectangle to compute color histogram 
-			object_list[obj_list_iter].kernelV2.create(R.height, R.width, CV_64FC1);
-			getKernel(object_list[obj_list_iter].kernelV2, kernel_type);
-			Mat tempMat = img_input(R);
-			double histTemp[MaxHistBins];
-			computeHist(tempMat, object_list[obj_list_iter].kernelV2, object_list[obj_list_iter].histV2);
-		
-			// Update new color histogram. And its proportion: old hist is 70%, new hist is 30%
-			/*for (int histIdx = 0; histIdx < 4096; ++histIdx)
+			if (((object_list[obj_list_iter].PtCount) % 5 == 0) && (object_list[obj_list_iter].PtCount <= 20)) // Get color histogram at every 5 frames to prevent large number of calculations
 			{
-				object_list[obj_list_iter].histV2[histIdx] = 0.3 * object_list[obj_list_iter].histV2[histIdx] + 0.7 * object_list[obj_list_iter].histV2[histIdx];
-			}*/
+				int wd = 10;  // |---------wd--------|
+				int hd = 10;  // |	   |--usew--|	 |
+				int usew = 8; // | useh|   	    |	 |hd
+				int useh = 8; // |	   |	    |	 |
+
+				int Ori_x = object_list[obj_list_iter].boundingBox.x;
+				int Ori_y = object_list[obj_list_iter].boundingBox.y;
+				int Ori_w = object_list[obj_list_iter].boundingBox.width;
+				int Ori_h = object_list[obj_list_iter].boundingBox.height;
+
+				Rect R; // Get resized rectangle which is consistent with central point of original ROI 
+				R.width = Ori_w / wd*usew;
+				R.height = Ori_h / hd*useh;
+				R.x = Ori_x + (Ori_w - R.width) / 2;
+				R.y = Ori_y + (Ori_h - R.height) / 2;
+
+				// Use resized rectangle to compute color histogram 
+				object_list[obj_list_iter].kernelV2.create(R.height, R.width, CV_64FC1);
+				getKernel(object_list[obj_list_iter].kernelV2, kernel_type);
+				Mat tempMat = img_input(R);
+				double histTemp[MaxHistBins];
+				computeHist(tempMat, object_list[obj_list_iter].kernelV2, object_list[obj_list_iter].histV2);
+
+				// Update new color histogram. And its proportion: old hist is 70%, new hist is 30%
+				//for (int histIdx = 0; histIdx < 4096; ++histIdx)
+				//{
+				//	object_list[obj_list_iter].histV2[histIdx] = 0.3 * object_list[obj_list_iter].histV2[histIdx] + 0.7 * object_list[obj_list_iter].histV2[histIdx];
+				//}
+			}
 		}
 	}
 	if (suspendUpdate == false) // Update of track
-	{			
+	{
 		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 			object_list[obj_list_iter].bIsUpdateTrack = true;
 	}
-	if (object_list.size() == 2)
+	if ((object_list.size() == 2) && (object_list[0].PtCount > 2) && ((object_list[1].PtCount > 2)))
 	{
 		// two bounding boxes is overlap
 		if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.2f))
 		{
 			suspendUpdate = true; //suspend update of track
-		
-			// suspend small box
-			if (object_list[0].boundingBox.height > object_list[1].boundingBox.height)
+
+			if (occSolve == 1)
 			{
-				object_list[1].bIsUpdateTrack = false;
-				object_list[0].bIsUpdateTrack = true;
+				// suspend small box
+				if (object_list[0].boundingBox.height > object_list[1].boundingBox.height)
+				{
+					object_list[1].bIsUpdateTrack = false;
+					object_list[0].bIsUpdateTrack = true;
+				}
+				else
+				{
+					object_list[0].bIsUpdateTrack = false;
+					object_list[1].bIsUpdateTrack = true;
+				}
 			}
-			else
+			if (occSolve == 2)
 			{
-				object_list[0].bIsUpdateTrack = false;
-				object_list[1].bIsUpdateTrack = true;
+				if (abs(object_list[0].boundingBox.x - object_list[1].boundingBox.x) < 50)
+				{
+					object_list[1].bIsUpdateTrack = false;
+					object_list[0].bIsUpdateTrack = false;
+				}
 			}
 		}
 	}
@@ -395,7 +513,7 @@ void findTrigObj(vector<Object2D> &object_list, InputObjInfo *TriggerInfo)
 void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo *TriggerInfo)
 {
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-	{	
+	{
 		if (demoMode)
 		{
 			if (TriggerInfo->bIsTrigger == false) // if no trigger, draw all trajectories
@@ -418,7 +536,7 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 		}
 		else // for debug
 			ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
-		
+
 		/* Solve politting pulse of track */
 		if (object_list[obj_list_iter].PtCount < 5)
 		{
@@ -429,8 +547,8 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 		else // Start judgement of plotting pulse after passing 5 frame
 		{
 			int currentX = (int)(0.9 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-			int currentY = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));		
-			
+			int currentY = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+
 			// It decides whether the point Y is great change or not
 			if ((30 >= abs(currentY - object_list[obj_list_iter].pre_data_Y)) || (30 >= abs(currentX - object_list[obj_list_iter].pre_data_X))) // Without great change -> Normal update point
 			{
@@ -902,8 +1020,8 @@ int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
 
 				if ((object_list[c].boundingBox.height & 1) == 0)    object_list[c].boundingBox.height -= 1; // bbs.height should be odd number
 				if ((object_list[c].boundingBox.width & 1) == 0)    object_list[c].boundingBox.width -= 1; // bbs.width should be odd number
-			
-				continue;
+
+				//continue;
 			}
 
 			CandCen = Point((object_list[c].boundingBox.width - 1) / 2, (object_list[c].boundingBox.height - 1) / 2);
@@ -1303,6 +1421,31 @@ int Overlap(Rect a, Rect b, double ration)
 	return 0;
 }
 
+double OverlapValue(Rect a, Rect b)
+{
+	double ration;
+
+	Rect c = a.x + a.width >= b.x + b.width ? a : b;
+	Rect d = a.x + a.width >= b.x + b.width ? b : a;
+
+	int e = MIN(d.x + d.width - c.x, d.width);
+	if (e <= 0)
+		return 0;
+
+	c = a.y + a.height >= b.y + b.height ? a : b;
+	d = a.y + a.height >= b.y + b.height ? b : a;
+
+	int f = MIN(d.y + d.height - c.y, d.height);
+	if (f <= 0)
+		return 0;
+
+	int overlapArea = e*f;
+	int area_a = a.width * a.height;
+	int area_b = b.width * b.height;
+	int minArea = (area_a <= area_b ? area_a : area_b);
+
+	return (double)overlapArea / (double)minArea;
+}
 
 void BubbleSort(int* array, int size)
 {

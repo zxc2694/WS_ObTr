@@ -22,6 +22,7 @@ using namespace std;
 /* Display */
 #define plotLineLength          99  // Set tracking line length, (allowed range: 0~99)
 #define DELE_RECT_FRAMENO        3  // Allowed frames for boxes of loiter (suggest range: 5~15)
+#define occSolve                 2  // 0: not use, 1: use color hist, 2:directly exchange 
 #define display_bbsRectangle     0  // 0: Not show bbs rectangles, 1: Show bbs rectangles
 #define display_kalmanRectangle  0  // 0: Not show KF rectangles, 1: Show KF rectangles
 #define display_kalmanArrow      0  // 0: Not show KF arrows, 1: Show KF arrows 
@@ -69,6 +70,7 @@ typedef struct
 	int pre_data_Y;
 	double histV2[MaxHistBins];
 	Mat kernelV2;
+	int position;                 //1:up, 2:down, 3:left, 4:right
 } Object2D;
 
 typedef struct
@@ -91,13 +93,13 @@ public:
 	virtual void addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type) = 0;
 	virtual void updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx) = 0;
 	virtual int track(Mat &img, vector<Object2D> &object_list) = 0; // track single object
-	virtual void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list) = 0;
+	virtual void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum) = 0;
 	virtual void drawTrackBox(Mat &img, vector<Object2D> &object_list) = 0;
 	virtual void drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
 	virtual void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum) = 0;
 
 private:
-	
+
 };
 
 class MeanShiftTracker : public IObjectTracker
@@ -116,7 +118,7 @@ public:
 	void drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
 	int track(Mat &img, vector<Object2D> &object_list);
 	void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
-	void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list);
+	void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
 
 private:
 	// don't tracking too small obj 
@@ -167,7 +169,7 @@ public:
 		kf[6] = KalmanFilter(stateSize, measSize, contrSize, type);	state[6] = Mat(stateSize, 1, type);	meas[6] = Mat(measSize, 1, type);
 		kf[7] = KalmanFilter(stateSize, measSize, contrSize, type);	state[7] = Mat(stateSize, 1, type);	meas[7] = Mat(measSize, 1, type);
 		kf[8] = KalmanFilter(stateSize, measSize, contrSize, type);	state[8] = Mat(stateSize, 1, type);	meas[8] = Mat(measSize, 1, type);
-		kf[9] = KalmanFilter(stateSize, measSize, contrSize, type);	state[9] = Mat(stateSize, 1, type);	meas[9] = Mat(measSize, 1, type);		
+		kf[9] = KalmanFilter(stateSize, measSize, contrSize, type);	state[9] = Mat(stateSize, 1, type);	meas[9] = Mat(measSize, 1, type);
 	}
 	~KalmanF(){}
 	void Init();
@@ -203,6 +205,7 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 void KFtrack(Mat &img_input, vector<Object2D> &object_list, KalmanF &KF);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
+double OverlapValue(Rect a, Rect b);
 void BubbleSort(int* array, int size);
 void KF_init(cv::KalmanFilter *kf);
 void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
