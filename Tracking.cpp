@@ -502,18 +502,18 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 		{
 			// Get previous point in order to use line function. 
 			object_list[obj_list_iter].pre_data_X = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-			object_list[obj_list_iter].pre_data_Y = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+			object_list[obj_list_iter].pre_data_Y = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
 		}
 		else // Start judgement of plotting pulse after passing 5 frame
 		{
-			int currentX = (int)(0.9 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-			int currentY = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+			int currentX = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
+			int currentY = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
 
 			// It decides whether the point Y is great change or not
 			if ((30 >= abs(currentY - object_list[obj_list_iter].pre_data_Y)) || (30 >= abs(currentX - object_list[obj_list_iter].pre_data_X))) // Without great change -> Normal update point
 			{
 				object_list[obj_list_iter].pre_data_X = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-				object_list[obj_list_iter].pre_data_Y = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+				object_list[obj_list_iter].pre_data_Y = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
 			}
 			else // Great change -> Not update point
 			{
@@ -524,7 +524,7 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 			if (object_list[obj_list_iter].waitFrame == 3)
 			{
 				object_list[obj_list_iter].pre_data_X = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-				object_list[obj_list_iter].pre_data_Y = (int)(0.9 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+				object_list[obj_list_iter].pre_data_Y = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
 				object_list[obj_list_iter].waitFrame = 0;
 			}
 		}
@@ -630,9 +630,11 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	// don't tracking too small obj 
 	if (bbs.width < minObjWidth_Ini || bbs.height < minObjHeight_Ini)	return;
 
-	// don't track when obj just emerge at img edge
-	if (bbs.x < 3 || bbs.y < 3 || bbs.x + bbs.width > img.cols - 1 || bbs.y + bbs.height > img.rows - 1)		return;
-
+	if (!demoMode) // Due to the fact that Etron camera is too close
+	{
+		// don't track when obj just emerge at img edge
+		if (bbs.x < 3 || bbs.y < 3 || bbs.x + bbs.width > img.cols - 1 || bbs.y + bbs.height > img.rows - 1)		return;
+	}
 	++count;
 
 	if ((bbs.height & 1) == 0)    bbs.height -= 1; // bbs.height should be odd number
