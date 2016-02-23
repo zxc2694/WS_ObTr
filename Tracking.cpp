@@ -16,6 +16,7 @@ int objNumArray_BS[10];
 Scalar *ColorPtr;
 bool suspendUpdate = false;
 bool addObj = false;
+bool newObjFind = false;
 
 void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI)
 {
@@ -175,6 +176,7 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 		{
 			ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
 			ms_tracker->occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
+			newObjFind = true;
 		}
 
 		vector<int>().swap(replaceList);
@@ -245,11 +247,21 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 						if (N1_cenPoint > N0_cenPoint) // First: [New][N0][N1]
 						{
 							// Next: [New][XX][N0(N1)]
+							OverlapCompare ocp[10];
 							for (int i = 0; i < MaxObjNum; i++)
 							{
-								if (Overlap(object_list[1].boundingBox, bbs[i], 0.1f))
-									ms_tracker->updateObjBbs(img_input, object_list, bbs[i], 0);
+								ocp[i].value = OverlapValue(object_list[1].boundingBox, bbs[i]);
+								ocp[i].objNum = i;
 							}
+							int maxNum = ocp[0].objNum;
+
+							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+							{
+								if (maxNum < ocp[j].value)
+									maxNum = ocp[j].objNum;
+							}
+							ms_tracker->updateObjBbs(img_input, object_list, bbs[maxNum], 0);
+							
 							// Next: [N1(New)][N0]
 							ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
 						}
@@ -257,11 +269,21 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 						else // First: [New][N1][N0]
 						{
 							// Next: [New][XX][N1(N0)]
-							for (int i =0 ; i < MaxObjNum; i++)
+							OverlapCompare ocp[10];
+							for (int i = 0; i < MaxObjNum; i++)
 							{
-								if (Overlap(object_list[0].boundingBox, bbs[i], 0.1f))
-									ms_tracker->updateObjBbs(img_input, object_list, bbs[i], 1);
+								ocp[i].value = OverlapValue(object_list[0].boundingBox, bbs[i]);
+								ocp[i].objNum = i;
 							}
+							int maxNum = ocp[0].objNum;
+							
+							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+							{
+								if (maxNum < ocp[j].value)
+									maxNum = ocp[j].objNum;
+							}
+							ms_tracker->updateObjBbs(img_input, object_list, bbs[maxNum], 1);
+
 							// Next: [N0(New)][N1]
 							ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0);
 						}
@@ -272,11 +294,21 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 						if (N1_cenPoint > N0_cenPoint) // First: [N0][N1][New]
 						{
 							// Next: [N1(N0)][XX][New]
+							OverlapCompare ocp[10];
 							for (int i = 0; i < MaxObjNum; i++)
 							{
-								if (Overlap(object_list[0].boundingBox, bbs[i], 0.1f))
-									ms_tracker->updateObjBbs(img_input, object_list, bbs[i], 1);
+								ocp[i].value = OverlapValue(object_list[0].boundingBox, bbs[i]);
+								ocp[i].objNum = i;
 							}
+							int maxNum = ocp[0].objNum;
+
+							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+							{
+								if (maxNum < ocp[j].value)
+									maxNum = ocp[j].objNum;
+							}
+							ms_tracker->updateObjBbs(img_input, object_list, bbs[maxNum], 1);
+							
 							// Next: [N1][N0(New)]
 							ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0); //Reset the scale of the tracking box.
 						}
@@ -284,11 +316,21 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 						else // First: [N1][N0][New]
 						{
 							// Next: [N0(N1)][XX][New]
+							OverlapCompare ocp[10];
 							for (int i = 0; i < MaxObjNum; i++)
 							{
-								if (Overlap(object_list[1].boundingBox, bbs[i], 0.1f))
-									ms_tracker->updateObjBbs(img_input, object_list, bbs[i], 0);
+								ocp[i].value = OverlapValue(object_list[1].boundingBox, bbs[i]);
+								ocp[i].objNum = i;
 							}
+							int maxNum = ocp[0].objNum;
+
+							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+							{
+								if (maxNum < ocp[j].value)
+									maxNum = ocp[j].objNum;
+							}
+							ms_tracker->updateObjBbs(img_input, object_list, bbs[maxNum], 0);
+
 							// Next: [N0][N1(New)]
 							ms_tracker->updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
 						}
@@ -327,6 +369,38 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 		}
 	}
 
+	/* merge tracking box from previous similar one */
+	static bool mergeBOX = false;
+	static size_t leftObjNum;
+	if ((mergeBOX == true) && (newObjFind == true))
+	{
+		if (object_list.size() < 2){}
+		else
+		{
+			size_t newObjNum = (int)object_list.size() - 1;
+			bool Similar = false;
+			double similarityH = 0.0;
+
+			for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+			{
+				similarityH += sqrt(object_list[leftObjNum].hist[histIdx] * object_list[newObjNum].hist[histIdx]);
+			}
+			if (similarityH > 0.7)
+			{
+				cout << object_list[leftObjNum].No << " to " << object_list[newObjNum].No << " similarity: " << similarityH << endl;
+				ms_tracker->updateObjBbs(img_input, object_list, object_list[newObjNum].boundingBox, leftObjNum); //Reset the scale of the tracking box.
+				object_list_erase(object_list, newObjNum);
+				Similar = true;
+			}
+			similarityH = 0.0;
+
+			if (!Similar)
+				object_list_erase(object_list, leftObjNum);
+
+			mergeBOX = false;
+			newObjFind == false;
+		}
+	}
 	/* Removing motionless tracking box */
 	int black = 0, times = 0;
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
@@ -358,36 +432,25 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 				if (object_list[obj_list_iter].findBbs[i] == 0)
 				{
 					times++;
+					mergeBOX = true; // Wait for next object appearing
+					newObjFind = false;
+					leftObjNum = obj_list_iter;
 				}
 			}
 			if (DELE_RECT_FRAMENO == times)
 			{
-				size_t i;
-				bool Similar = false;
-				double similarityH = 0.0;
-				for (i= 0; i < object_list.size(); i++)
-				{		
-					if (i == obj_list_iter) continue;
-
-					for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
-					{
-						similarityH += sqrt(object_list[obj_list_iter].hist[histIdx] * object_list[i].hist[histIdx]);
-					}
-					if (similarityH > 0.7)
-					{
-						ms_tracker->updateObjBbs(img_input, object_list, object_list[i].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
-						object_list_erase(object_list, i);
-						Similar = true;
-						cout << object_list[obj_list_iter].No << " to " << object_list[i].No << " similarity: " << similarityH << endl;
-						break;
-					}	
-					similarityH = 0.0;
-				}
-				if (!Similar)
+				int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
+				int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
+				if ((cenPointX < img_input.cols * 0.15) || (cenPointX > img_input.cols * 0.85) || (cenPointY < img_input.rows * 0.15) || (cenPointY > img_input.rows * 0.85)) // Tracking box is on image edges
+				{
 					object_list_erase(object_list, obj_list_iter);
-
-				if (object_list.size() == 0)//Prevent out of vector range
-					break;
+				}
+				else // Tracking box is not on image edges
+				{
+					mergeBOX = true; // Wait for next object appearing
+					newObjFind = false;
+					leftObjNum = obj_list_iter;
+				}		
 			}
 			black = 0;
 			times = 0;
@@ -440,7 +503,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 	if ((object_list.size() == 2) && (object_list[0].PtCount > 2) && ((object_list[1].PtCount > 2)))
 	{
 		// two bounding boxes is overlap
-		if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.2f))
+		if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.1f))
 		{
 			suspendUpdate = true; //suspend update of track
 
