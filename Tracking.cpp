@@ -235,10 +235,14 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 				if (occSolve == 2)
 				{
 					/* Judgment appearing new object position and update it */
-					if (object_list[(int)object_list.size() - 1].boundingBox.x < object_list[0].boundingBox.x) // New object appears on the left side of the occlusion
+					int New_cenPoint = object_list[(int)object_list.size() - 1].boundingBox.x + 0.5 * object_list[(int)object_list.size() - 1].boundingBox.width;
+					int N0_cenPoint = object_list[0].boundingBox.x + 0.5 * object_list[0].boundingBox.width;
+					int N1_cenPoint = object_list[1].boundingBox.x + 0.5 * object_list[1].boundingBox.width;
+
+					if (New_cenPoint < N0_cenPoint) // New object appears on the left side of the occlusion
 					{
 						// Condition 1
-						if (object_list[1].boundingBox.x > object_list[0].boundingBox.x) // First: [New][N0][N1]
+						if (N1_cenPoint > N0_cenPoint) // First: [New][N0][N1]
 						{
 							// Next: [New][XX][N0(N1)]
 							for (int i = 0; i < MaxObjNum; i++)
@@ -265,7 +269,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 					else // New object appears on the right side of the occlusion
 					{
 						// Condition 3
-						if (object_list[1].boundingBox.x > object_list[0].boundingBox.x) // First: [N0][N1][New]
+						if (N1_cenPoint > N0_cenPoint) // First: [N0][N1][New]
 						{
 							// Next: [N1(N0)][XX][New]
 							for (int i = 0; i < MaxObjNum; i++)
@@ -358,7 +362,29 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 			}
 			if (DELE_RECT_FRAMENO == times)
 			{
-				object_list_erase(object_list, obj_list_iter);
+				size_t i;
+				bool Similar = false;
+				double similarityH = 0.0;
+				for (i= 0; i < object_list.size(); i++)
+				{		
+					if (i == obj_list_iter) continue;
+
+					for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+					{
+						similarityH += sqrt(object_list[obj_list_iter].hist[histIdx] * object_list[i].hist[histIdx]);
+					}
+					if (similarityH > 0.7)
+					{
+						ms_tracker->updateObjBbs(img_input, object_list, object_list[i].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
+						object_list_erase(object_list, i);
+						Similar = true;
+						cout << object_list[obj_list_iter].No << " to " << object_list[i].No << " similarity: " << similarityH << endl;
+						break;
+					}	
+					similarityH = 0.0;
+				}
+				if (!Similar)
+					object_list_erase(object_list, obj_list_iter);
 
 				if (object_list.size() == 0)//Prevent out of vector range
 					break;
