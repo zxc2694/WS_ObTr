@@ -375,10 +375,17 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 	/* merge tracking box from previous similar one */
 	static bool mergeBOX = false;
 	static size_t leftObjNum;
+	bool bIsOverlap = false;
 	if ((mergeBOX == true) && (newObjFind == true))
 	{
-		if (object_list.size() < 2){}
-		else
+		for (int i = 0; i < MaxObjNum; i++)
+		{
+			if (Overlap(object_list[leftObjNum].boundingBox, bbs[i], 0.5f))
+			{
+				bIsOverlap = true;
+			}
+		}
+		if ((object_list.size() >= 2) && (bIsOverlap == false))
 		{
 			size_t newObjNum = (int)object_list.size() - 1;
 			bool Similar = false;
@@ -398,11 +405,11 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 			similarityH = 0.0;
 
 			if (!Similar)
-				object_list_erase(object_list, leftObjNum);
-
-			mergeBOX = false;
-			newObjFind == false;
+				object_list_erase(object_list, leftObjNum);			
 		}
+		mergeBOX = false;
+		newObjFind == false;
+		
 	}
 	/* Removing motionless tracking box */
 	int black = 0, times = 0;
@@ -444,7 +451,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 			{
 				int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
 				int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
-				if ((cenPointX < img_input.cols * 0.15) || (cenPointX > img_input.cols * 0.85) || (cenPointY < img_input.rows * 0.15) || (cenPointY > img_input.rows * 0.85)) // Tracking box is on image edges
+				if ((cenPointX < img_input.cols * 0.18) || (cenPointX > img_input.cols * 0.82) || (cenPointY < img_input.rows * 0.18) || (cenPointY > img_input.rows * 0.82)) // Tracking box is on image edges
 				{
 					object_list_erase(object_list, obj_list_iter);
 				}
