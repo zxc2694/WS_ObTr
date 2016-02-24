@@ -36,7 +36,7 @@ int main(int argc, const char** argv)
 	trigROI.boundingBox.y = 350;
 	trigROI.boundingBox.width = 50;
 	trigROI.boundingBox.height = 80;
-	trigROI.bIsTrigger = true;
+	trigROI.bIsTrigger = false;
 
 #if EtronCamera
 	// Set the parameter for EStereo
@@ -104,13 +104,13 @@ int main(int argc, const char** argv)
 			textFrameNo << nframes;
 			putText(imgTracking, "Frame=" + textFrameNo.str(), Point(10, imgTracking.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
 
-			// Show prohibited area
-			if (demoMode == true)
-			{
-				rectangle(imgTracking, trigROI.boundingBox, Scalar(125, 10, 255), 2);
-				line(imgTracking, Point(trigROI.boundingBox.x, trigROI.boundingBox.y), Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
-				line(imgTracking, Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y), Point(trigROI.boundingBox.x, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
-			}
+			//// Show prohibited area
+			//if (demoMode == true)
+			//{
+			//	rectangle(imgTracking, trigROI.boundingBox, Scalar(125, 10, 255), 2);
+			//	line(imgTracking, Point(trigROI.boundingBox.x, trigROI.boundingBox.y), Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
+			//	line(imgTracking, Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y), Point(trigROI.boundingBox.x, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
+			//}
 			// Show image output
 			imshow("Tracking_image", imgTracking);
 			imshow("foreground mask", fgmask);

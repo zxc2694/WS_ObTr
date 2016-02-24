@@ -21,12 +21,13 @@ using namespace std;
 
 /* Display */
 #define plotLineLength          99  // Set tracking line length, (allowed range: 0~99)
-#define DELE_RECT_FRAMENO        1  // Allowed frames for boxes of loiter (suggest range: 5~15)
-#define occSolve                 2  // 0: not use, 1: use color hist, 2:directly exchange 
+#define DELE_RECT_FRAMENO        3  // Allowed frames for boxes of loiter (suggest range: 5~15)
+#define occSolve                 2  // 0: not use, 1: use color hist, 2:directly exchange
+#define keepTrajectory           0  // 0: not keep, 1: keep. (by color hist)
 #define display_bbsRectangle     0  // 0: Not show bbs rectangles, 1: Show bbs rectangles
 #define display_kalmanRectangle  0  // 0: Not show KF rectangles, 1: Show KF rectangles
 #define display_kalmanArrow      0  // 0: Not show KF arrows, 1: Show KF arrows 
-#define demoMode                 0  // Without accumulating number (0:debug mode, 1:demo mode) 
+#define demoMode                 1  // Without accumulating number (0:debug mode, 1:demo mode) 
 
 /* Math */
 #define PI 3.141592653589793238463 

@@ -175,11 +175,23 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 				}
 			}
 		}
-		if (!Overlapping && addToList)
+		if (suspendUpdate == true) // Stop update track
 		{
-			ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
-			ms_tracker->occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
-			newObjFind = true;
+			if (!Overlapping && addToList)
+			{
+				ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
+				ms_tracker->occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
+				newObjFind = true;
+			}
+		}
+		else // Update track
+		{
+			if ((!Overlapping && addToList) && (MaxObjNum > object_list.size()))
+			{
+				ms_tracker->addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
+				ms_tracker->occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
+				newObjFind = true;
+			}
 		}
 
 		vector<int>().swap(replaceList);
@@ -442,25 +454,32 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 				if (object_list[obj_list_iter].findBbs[i] == 0)
 				{
 					times++;
-					mergeBOX = true; // Wait for next object appearing
-					newObjFind = false;
-					leftObjNum = obj_list_iter;
 				}
 			}
 			if (DELE_RECT_FRAMENO == times)
 			{
-				int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
-				int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
-				if ((cenPointX < img_input.cols * 0.18) || (cenPointX > img_input.cols * 0.82) || (cenPointY < img_input.rows * 0.18) || (cenPointY > img_input.rows * 0.82)) // Tracking box is on image edges
+				if (keepTrajectory == true)
 				{
-					object_list_erase(object_list, obj_list_iter);
-				}
-				else // Tracking box is not on image edges
-				{
+					//int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
+					//int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
+					//if ((cenPointX < img_input.cols * 0.18) || (cenPointX > img_input.cols * 0.82) || (cenPointY < img_input.rows * 0.18) || (cenPointY > img_input.rows * 0.82)) // Tracking box is on image edges
+					//{
+					//	object_list_erase(object_list, obj_list_iter);
+					//}
+					//else // Tracking box is not on image edges
+					//{
+					//	mergeBOX = true; // Wait for next object appearing
+					//	newObjFind = false;
+					//	leftObjNum = obj_list_iter;
+					//}
 					mergeBOX = true; // Wait for next object appearing
 					newObjFind = false;
 					leftObjNum = obj_list_iter;
-				}		
+				}
+				else
+				{
+					object_list_erase(object_list, obj_list_iter);
+				}
 			}
 			black = 0;
 			times = 0;
@@ -846,7 +865,7 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 					}
 				}
 				object_list[c].color = *(ColorPtr + iter);
-				//cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
+				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 			}
 			else // for debug
 			{
