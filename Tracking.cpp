@@ -151,25 +151,29 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 		if ((int)replaceList.size() != 0 && iter1 == (int)replaceList.size())
 		{
 			Overlapping = true;
-
-			// choose obj with longest duration from replaceList to update it by new bbs found by codebook
-			int  objWithLongestDuration = 0;
-			for (int iter = 0; iter < (int)replaceList.size(); ++iter)
+			
+			if (object_list[0].bIsUpdateTrack == false || object_list[1].bIsUpdateTrack == false){}
+			else
 			{
-				if (object_list[replaceList[iter]].PtCount > object_list[replaceList[objWithLongestDuration]].PtCount)		objWithLongestDuration = iter;
-			}
+				// choose obj with longest duration from replaceList to update it by new bbs found by codebook
+				int  objWithLongestDuration = 0;
+				for (int iter = 0; iter < (int)replaceList.size(); ++iter)
+				{
+					if (object_list[replaceList[iter]].PtCount > object_list[replaceList[objWithLongestDuration]].PtCount)		objWithLongestDuration = iter;
+				}
 
-			ms_tracker->updateObjBbs(img_input, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
+				ms_tracker->updateObjBbs(img_input, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
 
-			replaceList.erase(replaceList.begin() + objWithLongestDuration); // reserve the obj with longest duration in replaceList (exclude it from replaceList)
+				replaceList.erase(replaceList.begin() + objWithLongestDuration); // reserve the obj with longest duration in replaceList (exclude it from replaceList)
 
-			if ((int)replaceList.size() > 1)	BubbleSort(&replaceList[0], (int)replaceList.size());
+				if ((int)replaceList.size() > 1)	BubbleSort(&replaceList[0], (int)replaceList.size());
 
-			//for (int iter = 0; iter < (int)replaceList.size(); ++iter)
-			for (int iter = (int)replaceList.size() - 1; iter >= 0; --iter)
-			{
-				size_t delNum = replaceList[iter];
-				object_list_erase(object_list, delNum);
+				//for (int iter = 0; iter < (int)replaceList.size(); ++iter)
+				for (int iter = (int)replaceList.size() - 1; iter >= 0; --iter)
+				{
+					size_t delNum = replaceList[iter];
+					object_list_erase(object_list, delNum);
+				}
 			}
 		}
 		if (!Overlapping && addToList)
