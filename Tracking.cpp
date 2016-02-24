@@ -294,7 +294,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 							
 							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 							{
-								if (maxNum < ocp[j].value)
+								if (ocp[maxNum].value < ocp[j].value)
 									maxNum = ocp[j].objNum;
 							}
 							ms_tracker->updateObjBbs(img_input, object_list, bbs[maxNum], 1);
