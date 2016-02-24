@@ -33,9 +33,6 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	// Enlarge the size of bbs 2 times
 	revertBbsSize(img_input, bbs, MaxObjNum);
 
-	// Arrange object number to prevent accumulation
-	ObjNumArr(objNumArray, objNumArray_BS);
-
 	// Main tracking code using Mean-shift algorithm
 	ms_tracker->track(img_input, object_list);
 
@@ -47,6 +44,9 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 
 	// Find trigger object
 	findTrigObj(object_list, trigROI);
+
+	// Arrange object number to prevent accumulation
+	ObjNumArr(objNumArray, objNumArray_BS);
 
 	// Draw all the track boxes and their numbers 
 	ms_tracker->drawTrackBox(img_input, object_list);
