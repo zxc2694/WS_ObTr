@@ -152,8 +152,7 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 		{
 			Overlapping = true;
 			
-			if (object_list[0].bIsUpdateTrack == false || object_list[1].bIsUpdateTrack == false){}
-			else
+			if (!suspendUpdate) // keep update track
 			{
 				// choose obj with longest duration from replaceList to update it by new bbs found by codebook
 				int  objWithLongestDuration = 0;
