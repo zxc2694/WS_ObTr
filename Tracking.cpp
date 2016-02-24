@@ -460,21 +460,18 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 			{
 				if (keepTrajectory == true)
 				{
-					//int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
-					//int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
-					//if ((cenPointX < img_input.cols * 0.18) || (cenPointX > img_input.cols * 0.82) || (cenPointY < img_input.rows * 0.18) || (cenPointY > img_input.rows * 0.82)) // Tracking box is on image edges
-					//{
-					//	object_list_erase(object_list, obj_list_iter);
-					//}
-					//else // Tracking box is not on image edges
-					//{
-					//	mergeBOX = true; // Wait for next object appearing
-					//	newObjFind = false;
-					//	leftObjNum = obj_list_iter;
-					//}
-					mergeBOX = true; // Wait for next object appearing
-					newObjFind = false;
-					leftObjNum = obj_list_iter;
+					int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
+					int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
+					if ((cenPointX < img_input.cols * 0.18) || (cenPointX > img_input.cols * 0.82) || (cenPointY < img_input.rows * 0.18) || (cenPointY > img_input.rows * 0.82)) // Tracking box is on image edges
+					{
+						object_list_erase(object_list, obj_list_iter);
+					}
+					else // Tracking box is not on image edges
+					{
+						mergeBOX = true; // Wait for next object appearing
+						newObjFind = false;
+						leftObjNum = obj_list_iter;
+					}
 				}
 				else
 				{
