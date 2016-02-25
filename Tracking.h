@@ -25,7 +25,6 @@ using namespace std;
 #define occSolve                 2  // 0: not use, 1: use color hist, 2:directly exchange
 #define keepTrajectory           0  // 0: not keep, 1: keep. (by color hist)
 #define setPointY                4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
-#define display_bbsRectangle     0  // 0: Not show bbs rectangles, 1: Show bbs rectangles
 #define display_kalmanRectangle  0  // 0: Not show KF rectangles, 1: Show KF rectangles
 #define display_kalmanArrow      0  // 0: Not show KF arrows, 1: Show KF arrows 
 #define demoMode                 1  // Without accumulating number (0:debug mode, 1:demo mode) 

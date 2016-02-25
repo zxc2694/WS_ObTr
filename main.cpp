@@ -14,6 +14,10 @@
 #define inputPath_Hardy  0
 #define EtronCamera      0
 
+/* Display*/
+#define display_bbsRectangle    0  
+#define display_prohibitedArea  0
+
 #if EtronCamera
 #include "WiCameraFactory.h"  //for Etron camera
 #endif
@@ -87,15 +91,13 @@ int main(int argc, const char** argv)
 		
 		else  // Initial background model has finished	
 		{
-			fgmask = BS.OutputFMask();            // Get image output of background subtraction			
-			
+			fgmask = BS.OutputFMask();            // Get image output of background subtraction						
 			BS.Output2dROI(fgmask, ROI, &ObjNum); // Get ROI detection	
 			
 			t = (double)cvGetTickCount();         // Get executing time 
 
-
-			tracking_function(img, imgTracking, ROI, ObjNum, &trigROI); // Plot tracking rectangles and their trajectories
-	
+			/* Plotting trajectories */
+			tracking_function(img, imgTracking, ROI, ObjNum, &trigROI);
 			
 			t = (double)cvGetTickCount() - t;
 			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 
@@ -105,13 +107,21 @@ int main(int argc, const char** argv)
 			textFrameNo << nframes;
 			putText(imgTracking, "Frame=" + textFrameNo.str(), Point(10, imgTracking.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
 
-			//// Show prohibited area
-			//if (demoMode == true)
-			//{
-			//	rectangle(imgTracking, trigROI.boundingBox, Scalar(125, 10, 255), 2);
-			//	line(imgTracking, Point(trigROI.boundingBox.x, trigROI.boundingBox.y), Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
-			//	line(imgTracking, Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y), Point(trigROI.boundingBox.x, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
-			//}
+			// Plot the rectangles background subtarction finds
+			if (display_bbsRectangle)
+			{
+				for (int iter = 0; iter < ObjNum; iter++)
+					rectangle(imgTracking, ROI[iter], Scalar(0, 255, 255), 2);
+			}
+
+			// Show prohibited area
+			if (display_prohibitedArea)
+			{
+				rectangle(imgTracking, trigROI.boundingBox, Scalar(125, 10, 255), 2);
+				line(imgTracking, Point(trigROI.boundingBox.x, trigROI.boundingBox.y), Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
+				line(imgTracking, Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y), Point(trigROI.boundingBox.x, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
+			}
+
 			// Show image output
 			imshow("Tracking_image", imgTracking);
 			imshow("foreground mask", fgmask);

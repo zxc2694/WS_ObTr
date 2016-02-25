@@ -272,7 +272,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 
 							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 							{
-								if (maxNum < ocp[j].value)
+								if (ocp[maxNum].value < ocp[j].value)
 									maxNum = ocp[j].objNum;
 							}
 							ms_tracker->updateObjBbs(img_input, object_list, bbs[maxNum], 0);
@@ -319,7 +319,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 
 							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 							{
-								if (maxNum < ocp[j].value)
+								if (ocp[maxNum].value < ocp[j].value)
 									maxNum = ocp[j].objNum;
 							}
 							ms_tracker->updateObjBbs(img_input, object_list, bbs[maxNum], 1);
@@ -341,7 +341,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 
 							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 							{
-								if (maxNum < ocp[j].value)
+								if (ocp[maxNum].value < ocp[j].value)
 									maxNum = ocp[j].objNum;
 							}
 							ms_tracker->updateObjBbs(img_input, object_list, bbs[maxNum], 0);
@@ -555,13 +555,6 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 					object_list[0].bIsUpdateTrack = false;
 	//			}
 			}
-		}
-	}
-	if (display_bbsRectangle == true)
-	{
-		/* Plot the rectangles background subtarction finds */
-		for (int iter = 0; iter < MaxObjNum; iter++){
-			rectangle(img_input, bbs[iter], Scalar(0, 255, 255), 2);
 		}
 	}
 }
