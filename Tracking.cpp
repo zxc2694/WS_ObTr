@@ -810,6 +810,12 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 		objNumArray[countNo] = obj.No;
 		countNo++;
 	}
+
+	for (int iter = 0; iter < 10; iter++)
+		objNumArray_BS[iter] = objNumArray[iter];
+
+	BubbleSort(objNumArray_BS, 10);
+
 	addObj = true;
 }
 
