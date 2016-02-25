@@ -612,23 +612,24 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 		else // for debug
 			ms_tracker->drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
 
+		// Position of plotting point
+		int currentX = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
+		int currentY = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+
 		/* Solve politting pulse of track */
 		if (object_list[obj_list_iter].PtCount < 5)
 		{
 			// Get previous point in order to use line function. 
-			object_list[obj_list_iter].pre_data_X = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-			object_list[obj_list_iter].pre_data_Y = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+			object_list[obj_list_iter].pre_data_X = currentX;
+			object_list[obj_list_iter].pre_data_Y = currentY;
 		}
 		else // Start judgement of plotting pulse after passing 5 frame
-		{
-			int currentX = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-			int currentY = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
-
+		{	
 			// It decides whether the point Y is great change or not
 			if ((30 >= abs(currentY - object_list[obj_list_iter].pre_data_Y)) || (30 >= abs(currentX - object_list[obj_list_iter].pre_data_X))) // Without great change -> Normal update point
 			{
-				object_list[obj_list_iter].pre_data_X = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-				object_list[obj_list_iter].pre_data_Y = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+				object_list[obj_list_iter].pre_data_X = currentX;
+				object_list[obj_list_iter].pre_data_Y = currentY;
 			}
 			else // Great change -> Not update point
 			{
@@ -638,8 +639,8 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 			// Restart plotting suspended line
 			if (object_list[obj_list_iter].waitFrame == 3)
 			{
-				object_list[obj_list_iter].pre_data_X = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-				object_list[obj_list_iter].pre_data_Y = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+				object_list[obj_list_iter].pre_data_X = currentX;
+				object_list[obj_list_iter].pre_data_Y = currentY;
 				object_list[obj_list_iter].waitFrame = 0;
 			}
 		}
