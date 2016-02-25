@@ -614,7 +614,7 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 
 		// Position of plotting point
 		int currentX = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-		int currentY = (int)(1 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+		int currentY = (int)(0.1 * setPointY * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
 
 		/* Solve politting pulse of track */
 		if (object_list[obj_list_iter].PtCount < 5)
