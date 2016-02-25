@@ -431,7 +431,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 		{
 			for (int i = 0; i < MaxObjNum; i++)
 			{
-				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
+				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.2f))
 					break;
 				else
 					black++;
