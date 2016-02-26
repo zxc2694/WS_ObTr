@@ -72,7 +72,7 @@ typedef struct
 	double histV2[MaxHistBins];
 	Mat kernelV2;
 	int position;                 //1:up, 2:down, 3:left, 4:right
-} Object2D;
+} ObjTrackInfo;
 
 typedef struct
 {
@@ -97,13 +97,13 @@ public:
 	int count;
 
 	virtual int DistBetObj(Rect a, Rect b) = 0;
-	virtual void addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type) = 0;
-	virtual void updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx) = 0;
-	virtual int track(Mat &img, vector<Object2D> &object_list) = 0; // track single object
-	virtual void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum) = 0;
-	virtual void drawTrackBox(Mat &img, vector<Object2D> &object_list) = 0;
-	virtual void drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter) = 0;
-	virtual void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum) = 0;
+	virtual void addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type) = 0;
+	virtual void updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx) = 0;
+	virtual int track(Mat &img, vector<ObjTrackInfo> &object_list) = 0; // track single object
+	virtual void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum) = 0;
+	virtual void drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list) = 0;
+	virtual void drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInfo> &object_list, size_t &obj_list_iter) = 0;
+	virtual void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum) = 0;
 
 private:
 
@@ -117,15 +117,15 @@ public:
 
 	int count;
 	int DistBetObj(Rect a, Rect b);
-	void addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type);
-	void updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx);
-	bool checkTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
-	bool updateTrackedList(vector<Object2D> &object_list, vector<Object2D> &prev_object_list);
-	void drawTrackBox(Mat &img, vector<Object2D> &object_list);
-	void drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter);
-	int track(Mat &img, vector<Object2D> &object_list);
-	void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
-	void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
+	void addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type);
+	void updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx);
+	bool checkTrackedList(vector<ObjTrackInfo> &object_list, vector<ObjTrackInfo> &prev_object_list);
+	bool updateTrackedList(vector<ObjTrackInfo> &object_list, vector<ObjTrackInfo> &prev_object_list);
+	void drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list);
+	void drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
+	int track(Mat &img, vector<ObjTrackInfo> &object_list);
+	void modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
+	void occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
 
 private:
 	// don't tracking too small obj 
@@ -149,8 +149,8 @@ private:
 	void getKernel(Mat &kernel, const int func_type = 0);
 	void computeHist(const Mat &roiMat, const Mat &kernel, double hist[]);
 	int setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight);
-	bool testObjectIntersection(Object2D &obj1, Object2D &obj2);
-	bool testIntraObjectIntersection(vector<Object2D> &object_list, int cur_pos);
+	bool testObjectIntersection(ObjTrackInfo &obj1, ObjTrackInfo &obj2);
+	bool testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos);
 };
 
 class KalmanF
@@ -180,8 +180,8 @@ public:
 	}
 	~KalmanF(){}
 	void Init();
-	void Predict(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox);
-	void Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox, int Upate);
+	void Predict(vector<ObjTrackInfo> &object_list, vector<cv::Rect> &ballsBox);
+	void Update(vector<ObjTrackInfo> &object_list, vector<cv::Rect> &ballsBox, int Upate);
 	void drawPredBox(Mat &img);
 	double ticks;
 	bool found;
@@ -206,18 +206,18 @@ private:
 void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI);
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
-void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum);
-void findTrigObj(vector<Object2D> &object_list, InputObjInfo *TriggerInfo);
-void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo *TriggerInfo);
-void KFtrack(Mat &img_input, vector<Object2D> &object_list, KalmanF &KF);
+void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
+void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
+void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
+void KFtrack(Mat &img_input, vector<ObjTrackInfo> &object_list, KalmanF &KF);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
 double OverlapValue(Rect a, Rect b);
 void BubbleSort(int* array, int size);
 void KF_init(cv::KalmanFilter *kf);
-void ComparePoint_9(IplImage fgmaskIpl, vector<Object2D> &object_list, int obj_list_iter, int PtN);
+void ComparePoint_9(IplImage fgmaskIpl, vector<ObjTrackInfo> &object_list, int obj_list_iter, int PtN);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
-void object_list_erase(vector<Object2D> &object_list, size_t &obj_list_iter);
+void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 
 
 #endif

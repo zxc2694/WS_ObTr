@@ -21,7 +21,7 @@ bool newObjFind = false;
 void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI)
 {
 	static char runFirst = true;
-	static vector<Object2D> object_list;
+	static vector<ObjTrackInfo> object_list;
 	static KalmanF KF;
 	static IObjectTracker *ms_tracker = new MeanShiftTracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
@@ -95,7 +95,7 @@ void ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
+void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
@@ -198,7 +198,7 @@ void getNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &obje
 	}  // end of 1st for 
 }
 
-void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	if (addObj == true) // It confirms that one of objects has appeared after occlusion
 	{
@@ -364,7 +364,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, IObjectTracker *ms_tracker
 	}
 	addObj = false;
 }
-void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<Object2D> &object_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	/* Modify the size of the tracking box  */
 	int bbsNumber = 0;
@@ -559,7 +559,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, IObjectTracker *ms_tracker,
 	}
 }
 
-void findTrigObj(vector<Object2D> &object_list, InputObjInfo *TriggerInfo)
+void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 {
 	// Find the triggered object when prohibited area is invaded
 	if (TriggerInfo->bIsTrigger == true)
@@ -578,7 +578,7 @@ void findTrigObj(vector<Object2D> &object_list, InputObjInfo *TriggerInfo)
 	}
 }
 
-void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<Object2D> &object_list, InputObjInfo *TriggerInfo)
+void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 {
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
@@ -651,7 +651,7 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, IObjectTracker *ms_tracker
 
 }
 
-void KFtrack(Mat &img_input, vector<Object2D> &object_list, KalmanF &KF)
+void KFtrack(Mat &img_input, vector<ObjTrackInfo> &object_list, KalmanF &KF)
 {
 	vector<cv::Rect> KFBox;
 
@@ -734,7 +734,7 @@ int MeanShiftTracker::DistBetObj(Rect a, Rect b)
 	else return 0;
 }
 
-void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_list, Rect bbs, short type)
+void MeanShiftTracker::addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type)
 {
 	// don't tracking too small obj 
 	if (bbs.width < minObjWidth_Ini || bbs.height < minObjHeight_Ini)	return;
@@ -749,7 +749,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	if ((bbs.height & 1) == 0)    bbs.height -= 1; // bbs.height should be odd number
 	if ((bbs.width & 1) == 0)    bbs.width -= 1; // bbs.width should be odd number
 
-	Object2D obj;
+	ObjTrackInfo obj;
 	obj.No = count;
 	//CvScalar Scalar = cvScalar(rand() % 256, rand() % 256, rand() % 256);
 	obj.color = ColorMatrix[count % 10];
@@ -812,7 +812,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<Object2D> &object_l
 	addObj = true;
 }
 
-void MeanShiftTracker::updateObjBbs(const Mat &img, vector<Object2D> &object_list, Rect bbs, int idx)
+void MeanShiftTracker::updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx)
 {
 	if ((bbs.height & 1) == 0)    bbs.height -= 1; // bbs.height should be odd number
 	if ((bbs.width & 1) == 0)    bbs.width -= 1; // bbs.width should be odd number
@@ -829,7 +829,7 @@ void MeanShiftTracker::updateObjBbs(const Mat &img, vector<Object2D> &object_lis
 	computeHist(tempMat, object_list[idx].kernel, object_list[idx].hist);
 }
 
-void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
+void MeanShiftTracker::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
 {
 	int iter;
 	for (size_t c = 0; c < object_list.size(); c++)
@@ -874,7 +874,7 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<Object2D> &object_list)
 	}
 }
 
-void MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &object_list, size_t &obj_list_iter)
+void MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
 {
 	if (object_list[obj_list_iter].PtCount > plotLineLength + 1)										//When plotting arrary is overflow:
 	{
@@ -901,7 +901,7 @@ void MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<Object2D> &
 	}
 }
 
-int MeanShiftTracker::track(Mat &img, vector<Object2D> &object_list)
+int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 {
 	Rect CandBbs[3]; // candidate bbs
 	Point CandCen; // candidate bbs center coordinates (let upper left corner of bbs have coordinate (0, 0))
@@ -1401,13 +1401,13 @@ bool testBoxIntersection(int left1, int top1, int right1, int bottom1, int left2
 	return true;
 }
 
-bool MeanShiftTracker::testObjectIntersection(Object2D &obj1, Object2D &obj2)
+bool MeanShiftTracker::testObjectIntersection(ObjTrackInfo &obj1, ObjTrackInfo &obj2)
 {
 	return testBoxIntersection(obj1.boundingBox.x, obj1.boundingBox.y, obj1.boundingBox.x + obj1.boundingBox.width - 1, obj1.boundingBox.y + obj1.boundingBox.height - 1,
 		obj2.boundingBox.x, obj2.boundingBox.y, obj2.boundingBox.x + obj2.boundingBox.width - 1, obj2.boundingBox.y + obj2.boundingBox.height - 1);
 }
 
-bool MeanShiftTracker::testIntraObjectIntersection(vector<Object2D> &object_list, int cur_pos)
+bool MeanShiftTracker::testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos)
 {
 	bool bSection = false;
 	for (size_t c = 0; c < object_list.size(); c++){
@@ -1587,7 +1587,7 @@ void KalmanF::Init()
 	}
 }
 
-void KalmanF::Predict(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
+void KalmanF::Predict(vector<ObjTrackInfo> &object_list, vector<cv::Rect> &ballsBox)
 {
 	ticks = (double)cv::getTickCount();
 	dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
@@ -1618,7 +1618,7 @@ void KalmanF::Predict(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox)
 	}
 }
 
-void KalmanF::Update(vector<Object2D> &object_list, vector<cv::Rect> &ballsBox, int Upate)
+void KalmanF::Update(vector<ObjTrackInfo> &object_list, vector<cv::Rect> &ballsBox, int Upate)
 {
 	for (unsigned int iter = 0; iter < object_list.size(); iter++)
 		ballsBox.push_back(object_list[iter].boundingBox);
@@ -1726,7 +1726,7 @@ void drawArrow(Mat img, CvPoint p, CvPoint q)
 	}
 }
 
-void object_list_erase(vector<Object2D> &object_list, size_t &obj_list_iter)
+void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
 {
 	for (int iterColor = 0; iterColor < 10; iterColor++)
 	{
