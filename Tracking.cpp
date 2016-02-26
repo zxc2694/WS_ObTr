@@ -95,7 +95,7 @@ void ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void getNewObj(Mat img_input, MeanShiftTracker  ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
@@ -198,7 +198,7 @@ void getNewObj(Mat img_input, MeanShiftTracker  ms_tracker, vector<ObjTrackInfo>
 	}  // end of 1st for 
 }
 
-void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker  ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	if (addObj == true) // It confirms that one of objects has appeared after occlusion
 	{
@@ -364,7 +364,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker  ms_track
 	}
 	addObj = false;
 }
-void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker  ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	/* Modify the size of the tracking box  */
 	int bbsNumber = 0;
@@ -578,7 +578,7 @@ void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 	}
 }
 
-void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker  ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
+void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 {
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
