@@ -65,12 +65,45 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
 {
+	// Enlarge the size of bbs 2 times
 	for (int iter = 0; iter < MaxObjNum; ++iter)
 	{
 		bbs[iter].x *= 2;
 		bbs[iter].y *= 2;
 		bbs[iter].width *= 2;
 		bbs[iter].height *= 2;
+	}
+
+	// Delete useless small bbs
+	int obj = MaxObjNum;
+	for (int iter = 0; iter < MaxObjNum; ++iter)
+	{
+		if ((bbs[iter].width < ((img_input.cols + img_input.rows) / minObjWidth_Ini_Scale)) || (bbs[iter].height < (img_input.cols + img_input.rows) / minObjHeight_Ini_Scale))
+		{
+			obj = obj - 1;
+			bbs[iter].width = 0;
+		}
+	}
+	Rect temp[10];
+	int j = 0;
+	for (int iter = 0; iter < MaxObjNum; ++iter)
+	{
+		if (bbs[iter].width != 0)
+		{
+			temp[j].x = bbs[iter].x;
+			temp[j].y = bbs[iter].y;
+			temp[j].width = bbs[iter].width;
+			temp[j].height = bbs[iter].height;
+			j++;
+		}
+	}
+	MaxObjNum = obj;
+	for (int iter = 0; iter < obj; ++iter)
+	{
+		bbs[iter].x = temp[iter].x;
+		bbs[iter].y = temp[iter].y;
+		bbs[iter].width = temp[iter].width;
+		bbs[iter].height = temp[iter].height;
 	}
 }
 
@@ -370,17 +403,20 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 	int bbsNumber = 0;
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
-		for (int i = 0; i < MaxObjNum; i++)
+		if (object_list[obj_list_iter].bIsUpdateTrack == true)
 		{
-			// Find how many bbs in the tracking box
-			if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
-				bbsNumber++;
-		}
-		// When the width of tracking box has 1.5 times more bigger than the width of bbs:
-		for (int i = 0; i < MaxObjNum; i++)
-		{
-			if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && (object_list[obj_list_iter].boundingBox.width > 1.5 * bbs[i].width) && (bbsNumber == 1))
-				ms_tracker.updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
+			for (int i = 0; i < MaxObjNum; i++)
+			{
+				// Find how many bbs in the tracking box
+				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
+					bbsNumber++;
+			}
+			// When the width of tracking box has 1.5 times more bigger than the width of bbs:
+			for (int i = 0; i < MaxObjNum; i++)
+			{
+				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && ((object_list[obj_list_iter].boundingBox.width > 1.3 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height > 1.3 * bbs[i].height) || (object_list[obj_list_iter].boundingBox.width < 0.8 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height < 0.8 * bbs[i].height)) && (bbsNumber == 1))
+					ms_tracker.updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
+			}
 		}
 	}
 
@@ -397,7 +433,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 				bIsOverlap = true;
 			}
 		}
-		if ((object_list.size() >= 2) && (bIsOverlap == false))
+		if ((object_list.size() >= 2) && (bIsOverlap == false) && (object_list[leftObjNum].bIsUpdateTrack == true))
 		{
 			size_t newObjNum = (int)object_list.size() - 1;
 			bool Similar = false;
