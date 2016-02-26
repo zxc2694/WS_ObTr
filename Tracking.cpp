@@ -422,10 +422,16 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 
 	/* merge tracking box from previous similar one */
 	static bool mergeBOX = false;
-	static size_t leftObjNum;
+	static size_t leftObjNo, leftObjNum;
 	bool bIsOverlap = false;
 	if ((mergeBOX == true) && (newObjFind == true))
 	{
+		// Due to the fact that the array number of object_list always updates in adding new object, we need to ensure what is the correct left object.
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		{
+			if (leftObjNo == object_list[obj_list_iter].No) // Find left object number
+				leftObjNum = obj_list_iter;                 // Get real left object number called leftObjNum
+		}
 		for (int i = 0; i < MaxObjNum; i++)
 		{
 			if (Overlap(object_list[leftObjNum].boundingBox, bbs[i], 0.5f))
@@ -453,7 +459,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			similarityH = 0.0;
 
 			if (!Similar)
-				object_list_erase(object_list, leftObjNum);			
+				object_list_erase(object_list, leftObjNum);
 		}
 		mergeBOX = false;
 		newObjFind == false;
@@ -506,7 +512,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 					{
 						mergeBOX = true; // Wait for next object appearing
 						newObjFind = false;
-						leftObjNum = obj_list_iter;
+						leftObjNo = object_list[obj_list_iter].No; // Get the left object number
 					}
 				}
 				else
