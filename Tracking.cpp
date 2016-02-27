@@ -208,23 +208,11 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 				}
 			}
 		}
-		if (suspendUpdate == true) // Stop update track
+		if (!Overlapping && addToList)
 		{
-			if (!Overlapping && addToList)
-			{
-				ms_tracker.addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
-				ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
-				newObjFind = true;
-			}
-		}
-		else // Update track
-		{
-			if ((!Overlapping && addToList) && (MaxObjNum > object_list.size()))
-			{
-				ms_tracker.addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
-				ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
-				newObjFind = true;
-			}
+			ms_tracker.addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
+			ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
+			newObjFind = true;
 		}
 
 		vector<int>().swap(replaceList);
