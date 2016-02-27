@@ -27,8 +27,14 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
 	TrackingLine = Scalar::all(0);
 
-	// Kalman Filter initialization
-	if (runFirst)  KF.Init();
+	if (runFirst)
+	{	
+		// Arrange object number to prevent accumulation
+		ObjNumArr(objNumArray, objNumArray_BS);
+
+		// Kalman Filter initialization
+		KF.Init();
+	}
 
 	// Enlarge the size of bbs 2 times
 	revertBbsSize(img_input, bbs, MaxObjNum);
