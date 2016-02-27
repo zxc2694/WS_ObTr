@@ -51,7 +51,7 @@ typedef struct
 	double	stdDisparity;
 	Point3f xyz0;				// 3d position of previous time instance in world coordinate, minimum distance from camera
 	Point3f xyz;				// 3d position of currnet time in world coordinate, minimum distance from camera
-	Size	objSize;
+	Size objSize;
 	vector<double> descriptor;
 	Point point[100];           // trajectory points 
 	Scalar color;               // bbs color 
@@ -76,14 +76,14 @@ typedef struct
 
 typedef struct
 {
-	Rect	boundingBox;
-	bool	bIsTrigger;
+	Rect boundingBox;
+	bool bIsTrigger;
 } InputObjInfo;
 
 typedef struct
 {
 	float value;
-	int	objNum;
+	int objNum;
 } OverlapCompare;
 
 
@@ -118,10 +118,9 @@ private:
 
 	int Max_Mean_Shift_Iter;
 	double Similar_Val_Threshold;
-	int  kernel_type;
-	int	 bin_width;
-	int  bins;
-	
+	int kernel_type;
+	int bin_width;
+	int bins;
 	Scalar ColorMatrix[10];
 	int histSize;
 	int count;
@@ -149,7 +148,7 @@ public:
 		contrSize = 0;
 		type = CV_32F;
 
-		kf[0] = KalmanFilter(stateSize, measSize, contrSize, type); state[0] = Mat(stateSize, 1, type);	meas[0] = Mat(measSize, 1, type);
+		kf[0] = KalmanFilter(stateSize, measSize, contrSize, type);	state[0] = Mat(stateSize, 1, type);	meas[0] = Mat(measSize, 1, type);
 		kf[1] = KalmanFilter(stateSize, measSize, contrSize, type);	state[1] = Mat(stateSize, 1, type);	meas[1] = Mat(measSize, 1, type);
 		kf[2] = KalmanFilter(stateSize, measSize, contrSize, type);	state[2] = Mat(stateSize, 1, type);	meas[2] = Mat(measSize, 1, type);
 		kf[3] = KalmanFilter(stateSize, measSize, contrSize, type);	state[3] = Mat(stateSize, 1, type);	meas[3] = Mat(measSize, 1, type);
@@ -197,7 +196,6 @@ int Overlap(Rect a, Rect b, double ration);
 double OverlapValue(Rect a, Rect b);
 void BubbleSort(int* array, int size);
 void KF_init(cv::KalmanFilter *kf);
-void ComparePoint_9(IplImage fgmaskIpl, vector<ObjTrackInfo> &object_list, int obj_list_iter, int PtN);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
 void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 
