@@ -948,11 +948,11 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
 			{			
 				if (object_list[c].moveDirect == 'L')
 				{
-					object_list[c].boundingBox.x = object_list[c].boundingBox.x - 2;
+					object_list[c].boundingBox.x = object_list[c].boundingBox.x - moveRate;
 				}
 				else if (object_list[c].moveDirect == 'R')
 				{
-					object_list[c].boundingBox.x = object_list[c].boundingBox.x + 2;
+					object_list[c].boundingBox.x = object_list[c].boundingBox.x + moveRate;
 				}
 			}
 
