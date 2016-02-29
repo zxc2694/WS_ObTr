@@ -276,7 +276,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 					object_list[obj_list_iter].bIsUpdateTrack = true;
 				}
 
-				if (occSolve == 2)
+				if ((occSolve == 2) || (occSolve == 3))
 				{
 					/* Judgment appearing new object position and update it */
 					int New_cenPoint = object_list[(int)object_list.size() - 1].boundingBox.x + 0.5 * object_list[(int)object_list.size() - 1].boundingBox.width;
@@ -381,6 +381,12 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 					object_list[1].bIsUpdateTrack = true;
 				}
 
+				if (occSolve == 3)
+				{
+					Rect rectTemp = object_list[0].boundingBox;
+					ms_tracker.updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
+					ms_tracker.updateObjBbs(img_input, object_list, rectTemp, 1);
+				}
 				// Delete new object
 				size_t delNum = (int)object_list.size() - 1;
 				object_list_erase(object_list, delNum);
@@ -457,7 +463,6 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 		}
 		mergeBOX = false;
 		newObjFind == false;
-		
 	}
 	/* Removing motionless tracking box */
 	int black = 0, times = 0;
@@ -583,13 +588,57 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 					object_list[1].bIsUpdateTrack = true;
 				}
 			}
-			if (occSolve == 2)
+			if ((occSolve == 2) || (occSolve == 3))
 			{
-	//			if (abs(object_list[0].boundingBox.x - object_list[1].boundingBox.x) < 50)
-	//			{
 					object_list[1].bIsUpdateTrack = false;
 					object_list[0].bIsUpdateTrack = false;
-	//			}
+			}
+		}
+	}
+
+	// Get the moving direction
+	if (occSolve == 3) // 3: directly exchange with prediction
+	{
+		for (size_t c = 0; c < object_list.size(); c++)
+		{
+			if (object_list[c].bIsUpdateTrack == true) // In order to prevent wrong of moving direction at sometimes, we just get the fisrt moving direction.
+				object_list[c].startOcc = true;
+
+			if ((object_list[c].bIsUpdateTrack == false) && (object_list[c].PtNumber != 0) && (object_list[c].startOcc))
+			{
+				if ((object_list[c].PtNumber - 1) >= 2)
+				{
+					// Object direction moves to left, then old point x > new one 
+					if (object_list[c].point[object_list[c].PtNumber - 3].x > object_list[c].point[object_list[c].PtNumber - 1].x) // "object_list[c].PtNumber -1" is current status of point 
+					{
+						object_list[c].moveDirect = 'L'; // left
+					}
+					// Object direction moves to right, then old point x < new one 
+					else if (object_list[c].point[object_list[c].PtNumber - 3].x < object_list[c].point[object_list[c].PtNumber - 1].x)
+					{
+						object_list[c].moveDirect = 'R'; // right
+					}
+					else // Old point x = new one 
+					{
+					}
+				}
+				else if ((object_list[c].PtNumber - 1) < 2)
+				{
+					// Object direction moves to left, then old point x > new one 
+					if (object_list[c].point[plotLineLength - 3].x > object_list[c].point[object_list[c].PtNumber - 1].x)
+					{
+						object_list[c].moveDirect = 'L'; // left
+					}
+					// Object direction moves to right, then old point x < new one 
+					else if (object_list[c].point[plotLineLength - 3].x < object_list[c].point[object_list[c].PtNumber - 1].x)
+					{
+						object_list[c].moveDirect = 'R'; // right
+					}
+					else // Old point x = new one 
+					{
+					}
+				}
+				object_list[c].startOcc = false;
 			}
 		}
 	}
@@ -808,6 +857,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<ObjTrackInfo> &obje
 	obj.initFrame = 0;
 	obj.kernel.create(obj.boundingBox.height, obj.boundingBox.width, CV_64FC1);
 	obj.bIsUpdateTrack = true;
+	obj.startOcc = true;
 
 	for (int i = 0; i < DELE_RECT_FRAMENO; i++)
 		obj.findBbs[i] = 1; // 1: has object; 0: no object -> default: has object
@@ -889,26 +939,37 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
 		}
 		if (object_list[c].type == 2) //pedestrian
 		{
-			std::stringstream ss, ss1, ss2, ss3;
+			if ((occSolve == 3) && (object_list[c].bIsUpdateTrack == false)) // 3: directly exchange with prediction
+			{			
+				if (object_list[c].moveDirect == 'L')
+				{
+					object_list[c].boundingBox.x = object_list[c].boundingBox.x - 2;
+				}
+				else if (object_list[c].moveDirect == 'R')
+				{
+					object_list[c].boundingBox.x = object_list[c].boundingBox.x + 2;
+				}
+			}
 
+			stringstream ss;
 			if (demoMode == true)
 			{
 				for (iter = 0; iter < 10; iter++)
 				{
 					if (objNumArray_BS[c] == objNumArray[iter])
 					{
-						ss3 << iter + 1;
+						ss << iter + 1;
 						break;
 					}
 				}
 				object_list[c].color = *(ColorPtr + iter);
-				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
+				rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 			}
 			else // for debug
 			{
-				ss3 << object_list[c].No;
-				cv::rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
-				cv::putText(img, ss3.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
+				ss << object_list[c].No;
+                rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
+				putText(img, ss.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 			}
 		}
 	}
