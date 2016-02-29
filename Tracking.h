@@ -22,7 +22,7 @@ using namespace std;
 /* Display */
 #define plotLineLength          99  // Set tracking line length, (allowed range: 0~99)
 #define DELE_RECT_FRAMENO        1  // Allowed frames for boxes of loiter (suggest range: 5~15)
-#define occSolve                 2  // 0: not use, 1: use color hist, 2:directly exchange
+#define occSolve                 3  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
 #define keepTrajectory           1  // 0: not keep, 1: keep. (by color hist)
 #define setPointY                4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
 #define display_kalmanRectangle  0  // 0: Not show KF rectangles, 1: Show KF rectangles
@@ -71,7 +71,8 @@ typedef struct
 	int pre_data_Y;
 	double histV2[MaxHistBins];
 	Mat kernelV2;
-	int position;                 //1:up, 2:down, 3:left, 4:right
+	char moveDirect;           //U:up, D:down, L:left, R:right
+	bool startOcc;
 } ObjTrackInfo;
 
 typedef struct
