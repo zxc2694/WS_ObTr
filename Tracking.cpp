@@ -478,26 +478,6 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 				else
 				{
 					black++; // Count the accumulation of no overlapping object
-
-					if (keepTrajectory == true) // Accumulate the number 
-					{
-						int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
-						int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
-						if ((cenPointX < img_input.cols * 0.1) || (cenPointX > img_input.cols * 0.9) || (cenPointY < img_input.rows * 0.1) || (cenPointY > img_input.rows * 0.9)) // Tracking box is on image edges
-						{
-							object_list_erase(object_list, obj_list_iter);
-						}
-						else // Tracking box is not on image edges
-						{
-							mergeBOX = true; // Wait for next object appearing
-							newObjFind = false;
-							leftObjNo = object_list[obj_list_iter].No; // Get the left object number
-						}
-					}
-					else
-					{
-						object_list_erase(object_list, obj_list_iter);
-					}
 				}
 			}
 			// Restarting count when count > DELE_RECT_FRAMENO number
@@ -520,9 +500,35 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 					times++;
 				}
 			}
-			if (DELE_RECT_FRAMENO == times)
+			if (1 == times) // the bbs and tracking box are not overlap for one consecutive frame.
 			{
-				object_list_erase(object_list, obj_list_iter);
+				if (keepTrajectory == true) // merge tracking box from previous similar one
+				{
+					int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
+					int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
+					
+					// Directly remove the object which is near edges
+					if ((cenPointX < img_input.cols * 0.1) || (cenPointX > img_input.cols * 0.9) || (cenPointY < img_input.rows * 0.1) || (cenPointY > img_input.rows * 0.9)) // Tracking box is on image edges
+					{
+						object_list_erase(object_list, obj_list_iter);
+					}
+					else // Tracking box is not on image edges
+					{
+						mergeBOX = true; // Wait for next object appearing
+						newObjFind = false;
+						leftObjNo = object_list[obj_list_iter].No; // Get the left object number
+					}
+				}
+				else // Not merge previous similar box
+				{
+					object_list_erase(object_list, obj_list_iter);
+				}
+			}
+
+			if (DELE_RECT_FRAMENO == times) // the bbs and tracking box are not overlap for XX consecutive frames. (default: XX = 4)
+			{
+				object_list_erase(object_list, obj_list_iter); // Forcibly remove the object no matter what to do. 
+
 			}
 			black = 0;
 			times = 0;
