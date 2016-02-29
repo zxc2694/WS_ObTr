@@ -503,7 +503,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 				{
 					int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
 					int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
-					if ((cenPointX < img_input.cols * 0.18) || (cenPointX > img_input.cols * 0.82) || (cenPointY < img_input.rows * 0.18) || (cenPointY > img_input.rows * 0.82)) // Tracking box is on image edges
+					if ((cenPointX < img_input.cols * 0.1) || (cenPointX > img_input.cols * 0.9) || (cenPointY < img_input.rows * 0.1) || (cenPointY > img_input.rows * 0.9)) // Tracking box is on image edges
 					{
 						object_list_erase(object_list, obj_list_iter);
 					}
