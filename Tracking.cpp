@@ -464,6 +464,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 		mergeBOX = false;
 		newObjFind == false;
 	}
+	
 	/* Removing motionless tracking box */
 	int black = 0, times = 0;
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
@@ -475,7 +476,29 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.2f))
 					break;
 				else
-					black++;
+				{
+					black++; // Count the accumulation of no overlapping object
+
+					if (keepTrajectory == true) // Accumulate the number 
+					{
+						int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
+						int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
+						if ((cenPointX < img_input.cols * 0.1) || (cenPointX > img_input.cols * 0.9) || (cenPointY < img_input.rows * 0.1) || (cenPointY > img_input.rows * 0.9)) // Tracking box is on image edges
+						{
+							object_list_erase(object_list, obj_list_iter);
+						}
+						else // Tracking box is not on image edges
+						{
+							mergeBOX = true; // Wait for next object appearing
+							newObjFind = false;
+							leftObjNo = object_list[obj_list_iter].No; // Get the left object number
+						}
+					}
+					else
+					{
+						object_list_erase(object_list, obj_list_iter);
+					}
+				}
 			}
 			// Restarting count when count > DELE_RECT_FRAMENO number
 			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
@@ -499,25 +522,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			}
 			if (DELE_RECT_FRAMENO == times)
 			{
-				if (keepTrajectory == true)
-				{
-					int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
-					int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
-					if ((cenPointX < img_input.cols * 0.1) || (cenPointX > img_input.cols * 0.9) || (cenPointY < img_input.rows * 0.1) || (cenPointY > img_input.rows * 0.9)) // Tracking box is on image edges
-					{
-						object_list_erase(object_list, obj_list_iter);
-					}
-					else // Tracking box is not on image edges
-					{
-						mergeBOX = true; // Wait for next object appearing
-						newObjFind = false;
-						leftObjNo = object_list[obj_list_iter].No; // Get the left object number
-					}
-				}
-				else
-				{
-					object_list_erase(object_list, obj_list_iter);
-				}
+				object_list_erase(object_list, obj_list_iter);
 			}
 			black = 0;
 			times = 0;
