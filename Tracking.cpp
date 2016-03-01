@@ -419,53 +419,11 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			}
 		}
 	}
-
-	/* merge tracking box from previous similar one */
-	static bool mergeBOX = false;
-	static size_t leftObjNo, leftObjNum;
-	bool bIsOverlap = false;
-	if ((mergeBOX == true) && (newObjFind == true))
-	{
-		// Due to the fact that the array number of object_list always updates in adding new object, we need to ensure what is the correct left object.
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		{
-			if (leftObjNo == object_list[obj_list_iter].No) // Find left object number
-				leftObjNum = obj_list_iter;                 // Get real left object number called leftObjNum
-		}
-		for (int i = 0; i < MaxObjNum; i++)
-		{
-			if ((object_list.size() >= 2) && (Overlap(object_list[leftObjNum].boundingBox, bbs[i], 0.5f)))
-			{
-				bIsOverlap = true;
-			}
-		}
-		if ((object_list.size() >= 2) && (bIsOverlap == false) && (object_list[leftObjNum].bIsUpdateTrack == true))
-		{
-			size_t newObjNum = (int)object_list.size() - 1;
-			bool Similar = false;
-			double similarityH = 0.0;
-
-			for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
-			{
-				similarityH += sqrt(object_list[leftObjNum].hist[histIdx] * object_list[newObjNum].hist[histIdx]);
-			}
-			if (similarityH > 0.7)
-			{
-				cout << object_list[leftObjNum].No << " to " << object_list[newObjNum].No << " similarity: " << similarityH << endl;
-				ms_tracker.updateObjBbs(img_input, object_list, object_list[newObjNum].boundingBox, leftObjNum); //Reset the scale of the tracking box.
-				object_list_erase(object_list, newObjNum);
-				Similar = true;
-			}
-			similarityH = 0.0;
-
-			if (!Similar)
-				object_list_erase(object_list, leftObjNum);
-		}
-		mergeBOX = false;
-		newObjFind == false;
-	}
 	
 	/* Removing motionless tracking box */
+	static bool mergeBOX = false;
+	static size_t leftObjNo, leftObjNum;
+	bool checkDel = false;
 	int black = 0, times = 0;
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
@@ -500,8 +458,9 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 					times++;
 				}
 			}
-			if (1 == times) // the bbs and tracking box are not overlap for one consecutive frame.
-			{
+			// The following condition is that bbs and tracking box are not overlap from one to 'DELE_RECT_FRAMENO' consecutive frames.
+			if ((1 <= times) && ((times < DELE_RECT_FRAMENO)))
+			{			
 				if (keepTrajectory == true) // merge tracking box from previous similar one
 				{
 					int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
@@ -511,28 +470,73 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 					if ((cenPointX < img_input.cols * 0.1) || (cenPointX > img_input.cols * 0.9) || (cenPointY < img_input.rows * 0.1) || (cenPointY > img_input.rows * 0.9)) // Tracking box is on image edges
 					{
 						object_list_erase(object_list, obj_list_iter);
+						checkDel = true;
 					}
 					else // Tracking box is not on image edges
 					{
 						mergeBOX = true; // Wait for next object appearing
-						newObjFind = false;
 						leftObjNo = object_list[obj_list_iter].No; // Get the left object number
 					}
 				}
 				else // Not merge previous similar box
 				{
 					object_list_erase(object_list, obj_list_iter);
+					checkDel = true;
 				}
 			}
 
-			if (DELE_RECT_FRAMENO == times) // the bbs and tracking box are not overlap for XX consecutive frames. (default: XX = 4)
+			// The following condition is that bbs and tracking box are not overlap for XX consecutive frames. (default: XX = 4).
+			if ((DELE_RECT_FRAMENO == times) && (checkDel == false)) // no object for the long time 
 			{
 				object_list_erase(object_list, obj_list_iter); // Forcibly remove the object no matter what to do. 
-
+				checkDel = true;
 			}
 			black = 0;
 			times = 0;
 		}
+	}
+
+	/* merge tracking box from previous similar one */
+	bool bIsOverlap = false;
+	if ((mergeBOX == true) && (newObjFind == true) && (checkDel == false))
+	{
+		// Due to the fact that the array number of object_list always updates in adding new object, we need to ensure what is the correct left object.
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		{
+			if (leftObjNo == object_list[obj_list_iter].No) // Find left object number
+				leftObjNum = obj_list_iter;                 // Get real left object number called leftObjNum
+		}
+		for (int i = 0; i < MaxObjNum; i++)
+		{
+			if ((object_list.size() >= 2) && (Overlap(object_list[leftObjNum].boundingBox, bbs[i], 0.5f)))
+			{
+				bIsOverlap = true;
+			}
+		}
+		if ((object_list.size() >= 2) && (bIsOverlap == false) && (object_list[leftObjNum].bIsUpdateTrack == true))
+		{
+			size_t newObjNum = (int)object_list.size() - 1;
+			bool Similar = false;
+			double similarityH = 0.0;
+
+			for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+			{
+				similarityH += sqrt(object_list[leftObjNum].hist[histIdx] * object_list[newObjNum].hist[histIdx]);
+			}
+			if (similarityH > 0.7)
+			{
+				ms_tracker.updateObjBbs(img_input, object_list, object_list[newObjNum].boundingBox, leftObjNum); //Reset the scale of the tracking box.
+				object_list_erase(object_list, newObjNum);
+				Similar = true;
+			}
+			//cout << object_list[leftObjNum].No << " to " << object_list[newObjNum].No << " similarity: " << similarityH << endl;
+			similarityH = 0.0;
+
+			if (!Similar)
+				object_list_erase(object_list, leftObjNum);
+		}
+		mergeBOX = false;
+		newObjFind = false;
 	}
 
 	/* Solve two men occlusion */
@@ -653,6 +657,8 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			}
 		}
 	}
+
+	newObjFind = false;
 }
 
 void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)

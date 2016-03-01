@@ -22,7 +22,7 @@ using namespace std;
 /* Display */
 #define plotLineLength          99  // Set tracking line length, (allowed range: 0~99)
 #define DELE_RECT_FRAMENO        4  // Allowed frames for boxes of loiter (suggest range: 5~15)
-#define occSolve                 3  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
+#define occSolve                 2  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
 #define moveRate                 2  // It's used for modifying the moving rate of predicted objects in occSolve 3. (Range:2~10)
 #define keepTrajectory           1  // 0: not keep, 1: keep. (by color hist)
 #define setPointY                4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
