@@ -577,11 +577,16 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			}
 		}
 	}
+
+	static int countOccFrameNum = 0;
 	if (suspendUpdate == false) // Update of track
 	{
 		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-			object_list[obj_list_iter].bIsUpdateTrack = true;
+			object_list[obj_list_iter].bIsUpdateTrack = true; 
+		
+		countOccFrameNum = 0;
 	}
+
 	if ((object_list.size() == 2) && (object_list[0].PtCount > 2) && ((object_list[1].PtCount > 2)))
 	{
 		// two bounding boxes is overlap
@@ -607,6 +612,14 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			{
 					object_list[1].bIsUpdateTrack = false;
 					object_list[0].bIsUpdateTrack = false;
+			}
+			
+			countOccFrameNum = countOccFrameNum = countOccFrameNum + 1; // Counting frame number after starting occlusion
+			
+			if (countOccFrameNum == 28) // No solve occlusion for the long time (default: 28 frames)
+			{
+				for (size_t obj_list_iter = object_list.size() - 1; object_list.size() != 0; obj_list_iter--)
+				object_list_erase(object_list, obj_list_iter);
 			}
 		}
 	}
