@@ -469,7 +469,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 	int black = 0, times = 0;
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
-		if (object_list[obj_list_iter].bIsUpdateTrack == true)
+		if ((object_list[obj_list_iter].bIsUpdateTrack == true) && (object_list[obj_list_iter].PtCount != 0)) // Prevent to delete new object
 		{
 			for (int i = 0; i < MaxObjNum; i++)
 			{
@@ -481,7 +481,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 				}
 			}
 			// Restarting count when count > DELE_RECT_FRAMENO number
-			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO + 1)
+			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO)
 				object_list[obj_list_iter].cPtNumber = 0;
 
 			// findBbs[i] = 0 -> no object; findBbs[i] = 1 -> has object
