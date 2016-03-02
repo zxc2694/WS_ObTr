@@ -283,123 +283,118 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 					int N0_cenPoint = object_list[0].boundingBox.x + 0.5 * object_list[0].boundingBox.width;
 					int N1_cenPoint = object_list[1].boundingBox.x + 0.5 * object_list[1].boundingBox.width;
 
-					if (New_cenPoint < N0_cenPoint) // New object appears on the left side of the occlusion
+					//----- Condition 1 [New][N0][N1] -----//
+					if ((N1_cenPoint > N0_cenPoint) && (New_cenPoint < N0_cenPoint)) // New object appears on the left side of the occlusion
 					{
-						// Condition 1
-						if (N1_cenPoint > N0_cenPoint) // First: [New][N0][N1]
+						// Next: [New][XX][N0(N1)]
+						OverlapCompare ocp[10];
+						Rect resizeLeftRect;
+						resizeLeftRect = object_list[1].boundingBox;
+						resizeLeftRect.x = object_list[1].boundingBox.x;
+						resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
+
+						for (int i = 0; i < MaxObjNum; i++)
 						{
-							// Next: [New][XX][N0(N1)]
-							OverlapCompare ocp[10];
-							Rect resizeLeftRect;
-							resizeLeftRect = object_list[1].boundingBox;
-							resizeLeftRect.x = object_list[1].boundingBox.x;
-							resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
-
-							for (int i = 0; i < MaxObjNum; i++)
-							{
-								ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
-								ocp[i].objNum = i;
-							}
-							int maxNum = ocp[0].objNum;
-
-							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
-							{
-								if (ocp[maxNum].value < ocp[j].value)
-									maxNum = ocp[j].objNum;
-							}
-							ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 0);
-							
-							// Next: [N1(New)][N0]
-							ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
+							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
+							ocp[i].objNum = i;
 						}
-						// Condition 2
-						else // First: [New][N1][N0]
+						int maxNum = ocp[0].objNum;
+
+						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 						{
-							// Next: [New][XX][N1(N0)]
-							OverlapCompare ocp[10];
-							Rect resizeLeftRect;
-							resizeLeftRect = object_list[0].boundingBox;
-							resizeLeftRect.x = object_list[0].boundingBox.x;
-							resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
-
-							for (int i = 0; i < MaxObjNum; i++)
-							{
-								ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
-								ocp[i].objNum = i;
-							}
-							int maxNum = ocp[0].objNum;
-							
-							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
-							{
-								if (ocp[maxNum].value < ocp[j].value)
-									maxNum = ocp[j].objNum;
-							}
-							ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 1);
-
-							// Next: [N0(New)][N1]
-							ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0);
+							if (ocp[maxNum].value < ocp[j].value)
+								maxNum = ocp[j].objNum;
 						}
+						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 0);
+							
+						// Next: [N1(New)][N0]
+						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
 					}
-					else // New object appears on the right side of the occlusion
+					//----- Condition 2 [New][N1][N0] -----//
+					else if ((N1_cenPoint <= N0_cenPoint) && (New_cenPoint < N0_cenPoint)) // New object appears on the left side of the occlusion
 					{
-						// Condition 3
-						if (N1_cenPoint > N0_cenPoint) // First: [N0][N1][New]
+						// Next: [New][XX][N1(N0)]
+						OverlapCompare ocp[10];
+						Rect resizeLeftRect;
+						resizeLeftRect = object_list[0].boundingBox;
+						resizeLeftRect.x = object_list[0].boundingBox.x;
+						resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
+
+						for (int i = 0; i < MaxObjNum; i++)
 						{
-							// Next: [N1(N0)][XX][New]
-							OverlapCompare ocp[10];
-							Rect resizeLeftRect;
-							resizeLeftRect = object_list[0].boundingBox;
-							resizeLeftRect.x = object_list[0].boundingBox.x - object_list[0].boundingBox.width;
-							resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
-
-							for (int i = 0; i < MaxObjNum; i++)
-							{
-								ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
-								ocp[i].objNum = i;
-							}
-							int maxNum = ocp[0].objNum;
-
-							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
-							{
-								if (ocp[maxNum].value < ocp[j].value)
-									maxNum = ocp[j].objNum;
-							}
-							ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 1);
+							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
+							ocp[i].objNum = i;
+						}
+						int maxNum = ocp[0].objNum;
 							
-							// Next: [N1][N0(New)]
-							ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0); //Reset the scale of the tracking box.
-						}
-						// Condition 4
-						else // First: [N1][N0][New]
+						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 						{
-							// Next: [N0(N1)][XX][New]
-							OverlapCompare ocp[10];
-							Rect resizeLeftRect;
-							resizeLeftRect = object_list[1].boundingBox;
-							resizeLeftRect.x = object_list[1].boundingBox.x - object_list[1].boundingBox.width;
-							resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
-
-							for (int i = 0; i < MaxObjNum; i++)
-							{
-								ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
-								ocp[i].objNum = i;
-							}
-							int maxNum = ocp[0].objNum;
-
-							for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
-							{
-								if (ocp[maxNum].value < ocp[j].value)
-									maxNum = ocp[j].objNum;
-							}
-							ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 0);
-
-							// Next: [N0][N1(New)]
-							ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
+							if (ocp[maxNum].value < ocp[j].value)
+								maxNum = ocp[j].objNum;
 						}
+						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 1);
+
+						// Next: [N0(New)][N1]
+						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0);
 					}
-					object_list[0].bIsUpdateTrack = true;
-					object_list[1].bIsUpdateTrack = true;
+					//----- Condition 3 [N0][N1][New] -----//
+					else if ((N1_cenPoint > N0_cenPoint) && (New_cenPoint >= N0_cenPoint)) // New object appears on the right side of the occlusion
+					{
+						// Next: [N1(N0)][XX][New]
+						OverlapCompare ocp[10];
+						Rect resizeLeftRect;
+						resizeLeftRect = object_list[0].boundingBox;
+						resizeLeftRect.x = object_list[0].boundingBox.x - object_list[0].boundingBox.width;
+						resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
+
+						for (int i = 0; i < MaxObjNum; i++)
+						{
+							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
+							ocp[i].objNum = i;
+						}
+						int maxNum = ocp[0].objNum;
+
+						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+						{
+							if (ocp[maxNum].value < ocp[j].value)
+								maxNum = ocp[j].objNum;
+						}
+						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 1);
+							
+						// Next: [N1][N0(New)]
+						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0); //Reset the scale of the tracking box.
+					}
+					//----- Condition 4 [N1][N0][New] -----//
+					else if ((N1_cenPoint < N0_cenPoint) && (New_cenPoint >= N0_cenPoint)) // New object appears on the right side of the occlusion
+					{
+						// Next: [N0(N1)][XX][New]
+						OverlapCompare ocp[10];
+						Rect resizeLeftRect;
+						resizeLeftRect = object_list[1].boundingBox;
+						resizeLeftRect.x = object_list[1].boundingBox.x - object_list[1].boundingBox.width;
+						resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
+
+						for (int i = 0; i < MaxObjNum; i++)
+						{
+							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
+							ocp[i].objNum = i;
+						}
+						int maxNum = ocp[0].objNum;
+
+						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+						{
+							if (ocp[maxNum].value < ocp[j].value)
+								maxNum = ocp[j].objNum;
+						}
+						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 0);
+
+						// Next: [N0][N1(New)]
+						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
+					}
 				}
+				object_list[0].bIsUpdateTrack = true;
+				object_list[1].bIsUpdateTrack = true;
+				
 
 				if (occSolve == 3)
 				{
