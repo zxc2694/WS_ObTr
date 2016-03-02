@@ -290,9 +290,14 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 						{
 							// Next: [New][XX][N0(N1)]
 							OverlapCompare ocp[10];
+							Rect resizeLeftRect;
+							resizeLeftRect = object_list[1].boundingBox;
+							resizeLeftRect.x = object_list[1].boundingBox.x;
+							resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
+
 							for (int i = 0; i < MaxObjNum; i++)
 							{
-								ocp[i].value = OverlapValue(object_list[1].boundingBox, bbs[i]);
+								ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
 								ocp[i].objNum = i;
 							}
 							int maxNum = ocp[0].objNum;
@@ -312,9 +317,14 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 						{
 							// Next: [New][XX][N1(N0)]
 							OverlapCompare ocp[10];
+							Rect resizeLeftRect;
+							resizeLeftRect = object_list[0].boundingBox;
+							resizeLeftRect.x = object_list[0].boundingBox.x;
+							resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
+
 							for (int i = 0; i < MaxObjNum; i++)
 							{
-								ocp[i].value = OverlapValue(object_list[0].boundingBox, bbs[i]);
+								ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
 								ocp[i].objNum = i;
 							}
 							int maxNum = ocp[0].objNum;
@@ -337,9 +347,14 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 						{
 							// Next: [N1(N0)][XX][New]
 							OverlapCompare ocp[10];
+							Rect resizeLeftRect;
+							resizeLeftRect = object_list[0].boundingBox;
+							resizeLeftRect.x = object_list[0].boundingBox.x - object_list[0].boundingBox.width;
+							resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
+
 							for (int i = 0; i < MaxObjNum; i++)
 							{
-								ocp[i].value = OverlapValue(object_list[0].boundingBox, bbs[i]);
+								ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
 								ocp[i].objNum = i;
 							}
 							int maxNum = ocp[0].objNum;
@@ -359,9 +374,14 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 						{
 							// Next: [N0(N1)][XX][New]
 							OverlapCompare ocp[10];
+							Rect resizeLeftRect;
+							resizeLeftRect = object_list[1].boundingBox;
+							resizeLeftRect.x = object_list[1].boundingBox.x - object_list[1].boundingBox.width;
+							resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
+
 							for (int i = 0; i < MaxObjNum; i++)
 							{
-								ocp[i].value = OverlapValue(object_list[1].boundingBox, bbs[i]);
+								ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
 								ocp[i].objNum = i;
 							}
 							int maxNum = ocp[0].objNum;
