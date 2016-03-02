@@ -837,6 +837,17 @@ MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_
 	ColorMatrix[8] = Scalar(0, 255, 122);
 	ColorMatrix[9] = Scalar(80, 255, 80);
 
+	/*ColorMatrix[0] = Scalar(0, 0, 255);
+	ColorMatrix[1] = Scalar(255, 0, 0);
+	ColorMatrix[2] = Scalar(0, 0, 255);
+	ColorMatrix[3] = Scalar(255, 0, 0);
+	ColorMatrix[4] = Scalar(0, 0, 255);
+	ColorMatrix[5] = Scalar(255, 0, 0);
+	ColorMatrix[6] = Scalar(0, 0, 255);
+	ColorMatrix[7] = Scalar(255, 0, 0);
+	ColorMatrix[8] = Scalar(0, 0, 255);
+	ColorMatrix[9] = Scalar(255, 0, 0);*/
+
 	ColorPtr = &ColorMatrix[0];
 
 	Max_Mean_Shift_Iter = 8;
