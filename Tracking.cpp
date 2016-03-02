@@ -459,30 +459,23 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 				}
 			}
 			// The following condition is that bbs and tracking box are not overlap from one to 'DELE_RECT_FRAMENO' consecutive frames.
-			if ((1 <= times) && ((times < DELE_RECT_FRAMENO)))
-			{			
-				if (keepTrajectory == true) // merge tracking box from previous similar one
-				{
-					int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
-					int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
+			if ((1 <= times) && ((times < DELE_RECT_FRAMENO)) && ((keepTrajectory == true)))
+			{						
+				int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
+				int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
 					
-					// Directly remove the object which is near edges
-					if ((cenPointX < img_input.cols * 0.1) || (cenPointX > img_input.cols * 0.9) || (cenPointY < img_input.rows * 0.1) || (cenPointY > img_input.rows * 0.9)) // Tracking box is on image edges
-					{
-						object_list_erase(object_list, obj_list_iter);
-						checkDel = true;
-					}
-					else // Tracking box is not on image edges
-					{
-						mergeBOX = true; // Wait for next object appearing
-						leftObjNo = object_list[obj_list_iter].No; // Get the left object number
-					}
-				}
-				else // Not merge previous similar box
+				// Directly remove the object which is near edges
+				if ((cenPointX < img_input.cols * 0.1) || (cenPointX > img_input.cols * 0.9) || (cenPointY < img_input.rows * 0.1) || (cenPointY > img_input.rows * 0.9)) // Tracking box is on image edges
 				{
 					object_list_erase(object_list, obj_list_iter);
 					checkDel = true;
 				}
+				// Tracking box is not on image edges
+				else // merge tracking box from previous similar one
+				{
+					mergeBOX = true; // Wait for next object appearing
+					leftObjNo = object_list[obj_list_iter].No; // Get the left object number
+				}			
 			}
 
 			// The following condition is that bbs and tracking box are not overlap for XX consecutive frames. (default: XX = 4).
