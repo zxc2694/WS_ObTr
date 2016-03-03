@@ -22,6 +22,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 {
 	static char runFirst = true;
 	static vector<ObjTrackInfo> object_list;
+	static vector<OcclusionInfo> occ_list;
 	static KalmanF KF;
 	static MeanShiftTracker ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
@@ -43,10 +44,10 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	ms_tracker.track(img_input, object_list);
 
 	// Add new useful ROI to the object_list for tracking
-	getNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);
+	getNewObj(img_input, ms_tracker, object_list, occ_list, bbs, MaxObjNum);
 
 	// Modify the size of the tracking boxes and delete useless boxes
-	ms_tracker.modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
+	ms_tracker.modifyTrackBox(img_input, ms_tracker, object_list, occ_list, bbs, MaxObjNum);
 
 	// Find trigger object
 	findTrigObj(object_list, trigROI);
@@ -134,7 +135,7 @@ void ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, vector<OcclusionInfo> &occ_list, CvRect *bbs, int MaxObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
@@ -217,7 +218,7 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 		if (!Overlapping && addToList)
 		{
 			ms_tracker.addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
-			ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
+			ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, occ_list, bbs, MaxObjNum);      // Consider two men occlusion
 			newObjFind = true;
 		}
 
@@ -225,7 +226,7 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 	}  // end of 1st for 
 }
 
-void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, vector<OcclusionInfo> &occ_list, CvRect *bbs, int MaxObjNum)
 {
 	if (addObj == true) // It confirms that one of objects has appeared after occlusion
 	{
@@ -412,7 +413,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 	}
 	addObj = false;
 }
-void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, vector<OcclusionInfo> &occ_list, CvRect *bbs, int MaxObjNum)
 {
 	/* Modify the size of the tracking box  */
 	int bbsNumber = 0;
@@ -434,13 +435,14 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			}
 		}
 	}
-	
+
 	/* Removing motionless tracking box */
 	static bool mergeBOX = false;
 	static size_t leftObjNo, leftObjNum;
 	bool checkDel = false;
 	int black = 0, times = 0;
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+		//for (size_t obj_list_iter = object_list.size() - 1; object_list.size() == 0; obj_list_iter --)
 	{
 		if ((object_list[obj_list_iter].bIsUpdateTrack == true) && (object_list[obj_list_iter].PtCount != 0)) // Prevent to delete new object
 		{
@@ -475,10 +477,10 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			}
 			// The following condition is that bbs and tracking box are not overlap from one to 'DELE_RECT_FRAMENO' consecutive frames.
 			if ((1 <= times) && ((times < DELE_RECT_FRAMENO)) && ((keepTrajectory == true)))
-			{						
+			{
 				int cenPointX = object_list[obj_list_iter].boundingBox.x + 0.5*object_list[obj_list_iter].boundingBox.width;
 				int cenPointY = object_list[obj_list_iter].boundingBox.y + 0.5*object_list[obj_list_iter].boundingBox.height;
-					
+
 				// Directly remove the object which is near edges
 				if ((cenPointX < img_input.cols * 0.1) || (cenPointX > img_input.cols * 0.9) || (cenPointY < img_input.rows * 0.1) || (cenPointY > img_input.rows * 0.9)) // Tracking box is on image edges
 				{
@@ -490,7 +492,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 				{
 					mergeBOX = true; // Wait for next object appearing
 					leftObjNo = object_list[obj_list_iter].No; // Get the left object number
-				}			
+				}
 			}
 
 			// The following condition is that bbs and tracking box are not overlap for XX consecutive frames. (default: XX = 4).
@@ -547,6 +549,16 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 		newObjFind = false;
 	}
 
+	/* Update of track */
+	static int countOccFrameNum = 0;
+	if (suspendUpdate == false)
+	{
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+			object_list[obj_list_iter].bIsUpdateTrack = true;
+
+		countOccFrameNum = 0;
+	}
+
 	/* Solve two men occlusion */
 	if (occSolve == 1)
 	{
@@ -586,50 +598,47 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 		}
 	}
 
-	static int countOccFrameNum = 0;
-	if (suspendUpdate == false) // Update of track
+	if (object_list.size() >= 2)
 	{
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-			object_list[obj_list_iter].bIsUpdateTrack = true; 
-		
-		countOccFrameNum = 0;
-	}
-
-	if ((object_list.size() == 2) && (object_list[0].PtCount > 2) && ((object_list[1].PtCount > 2)))
-	{
-		// two bounding boxes is overlap
-		if (Overlap(object_list[0].boundingBox, object_list[1].boundingBox, 0.1f))
+		for (size_t iter1 = 0; iter1 < int(object_list.size() - 1); iter1++)
 		{
-			suspendUpdate = true; //suspend update of track
+			for (size_t iter2 = iter1 + 1; iter2 < object_list.size(); iter2++)
+			{
+				//two bounding boxes is overlap
+				if (Overlap(object_list[iter1].boundingBox, object_list[iter2].boundingBox, 0.1f) && (object_list[iter1].PtCount > 2) && (object_list[iter2].PtCount > 2))
+				{
+					suspendUpdate = true; //suspend update of track	
 
-			if (occSolve == 1)
-			{
-				// suspend small box
-				if (object_list[0].boundingBox.height > object_list[1].boundingBox.height)
-				{
-					object_list[1].bIsUpdateTrack = false;
-					object_list[0].bIsUpdateTrack = true;
+					if (occSolve == 1)
+					{
+						// suspend small box
+						if (object_list[iter1].boundingBox.height > object_list[iter2].boundingBox.height)
+						{
+							object_list[iter2].bIsUpdateTrack = false;
+							object_list[iter1].bIsUpdateTrack = true;
+						}
+						else
+						{
+							object_list[iter1].bIsUpdateTrack = false;
+							object_list[iter2].bIsUpdateTrack = true;
+						}
+					}
+					if ((occSolve == 2) || (occSolve == 3))
+					{
+						object_list[iter2].bIsUpdateTrack = false;
+						object_list[iter1].bIsUpdateTrack = false;
+					}
+					countOccFrameNum = countOccFrameNum = countOccFrameNum + 1; // Counting frame number after starting occlusion
 				}
-				else
-				{
-					object_list[0].bIsUpdateTrack = false;
-					object_list[1].bIsUpdateTrack = true;
-				}
-			}
-			if ((occSolve == 2) || (occSolve == 3))
-			{
-					object_list[1].bIsUpdateTrack = false;
-					object_list[0].bIsUpdateTrack = false;
-			}
-			
-			countOccFrameNum = countOccFrameNum = countOccFrameNum + 1; // Counting frame number after starting occlusion
-			
-			if (countOccFrameNum == 28) // No solve occlusion for the long time (default: 28 frames)
-			{
-				for (size_t obj_list_iter = object_list.size() - 1; object_list.size() != 0; obj_list_iter--)
-				object_list_erase(object_list, obj_list_iter);
 			}
 		}
+	}
+	if (countOccFrameNum == 28) // No solve occlusion for the long time (default: 28 frames)
+	{
+		for (size_t obj_list_iter = object_list.size() - 1; object_list.size() != 0; obj_list_iter--)
+			object_list_erase(object_list, obj_list_iter);
+
+		countOccFrameNum = 0;
 	}
 
 	// Get the moving direction
