@@ -209,6 +209,6 @@ void BubbleSort(int* array, int size);
 void KF_init(cv::KalmanFilter *kf);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
 void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
-
+void BezierCurve(Point p0, Point p1, Point p2, Point p3, Point *pointArr_output);
 
 #endif

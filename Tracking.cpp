@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
+﻿#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <iostream>
 #include <iomanip> 
@@ -767,6 +767,24 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_track
 				object_list[obj_list_iter].pre_data_X = currentX;
 				object_list[obj_list_iter].pre_data_Y = currentY;
 				object_list[obj_list_iter].waitFrame = 0;
+			}
+		}
+
+		/* Run Bezier curve algorithm for getting smooth trajectory */
+		if (object_list[obj_list_iter].PtNumber > 10)
+		{
+			Point smoothPoint[1000];
+			int currentPointer = object_list[obj_list_iter].PtNumber;          //  o  '  '  o  '  '  o  '  '   o 
+			Point p0 = object_list[obj_list_iter].point[currentPointer - 10];   //  1  2  3  4  5  6  7  8  9  10
+			Point p1 = object_list[obj_list_iter].point[currentPointer - 7];   // get      get      get       get
+			Point p2 = object_list[obj_list_iter].point[currentPointer - 4];
+			Point p3 = object_list[obj_list_iter].point[currentPointer - 1];
+
+			BezierCurve(p0, p1, p2, p3, smoothPoint);
+
+			for (int i = 0; i < 10; i++)
+			{
+				object_list[obj_list_iter].point[currentPointer - 10 + i] = smoothPoint[i];
 			}
 		}
 
@@ -1896,4 +1914,25 @@ void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
 		}
 	}
 	object_list.erase(object_list.begin() + obj_list_iter);
+}
+
+// Plot smooth trajectory by Bézier curve algorithm 
+void BezierCurve(Point p0, Point p1, Point p2, Point p3, Point *pointArr_output)
+{
+	int n = 0;
+	for (float t = 0.0; t <= 1.0; t += 0.11)
+	{
+		float x = (-t*t*t + 3 * t*t - 3 * t + 1) * p0.x
+			+ (3 * t*t*t - 6 * t*t + 3 * t)      * p1.x
+			+ (-3 * t*t*t + 3 * t*t)             * p2.x
+			+ (t*t*t)                            * p3.x;
+		float y = (-t*t*t + 3 * t*t - 3 * t + 1) * p0.y
+			+ (3 * t*t*t - 6 * t*t + 3 * t)      * p1.y
+			+ (-3 * t*t*t + 3 * t*t)             * p2.y
+			+ (t*t*t)                            * p3.y;
+
+		pointArr_output[n].x = x;
+		pointArr_output[n].y = y;
+		n = n + 1;
+	}
 }
