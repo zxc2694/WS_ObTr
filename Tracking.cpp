@@ -861,7 +861,7 @@ void KFtrack(Mat &img_input, vector<ObjTrackInfo> &object_list, KalmanF &KF)
 	vector<cv::Rect> KFBox;
 
 	/*Kalman Filter Function */
-	if ((display_kalmanArrow == true) || (display_kalmanRectangle == true))
+	if (use_Kalman == true)
 	{
 		KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
 
@@ -1913,13 +1913,13 @@ void KalmanF::drawPredBox(Mat &img)
 	int i = 0;
 	for (i = 0; i < 10; i++)
 	{
-		if ((predRect[i].x != 0) && (predRect[i].y != 0) && display_kalmanRectangle == true)
+		if ((predRect[i].x != 0) && (predRect[i].y != 0) && (use_Kalman == true))
 		{
 			cv::circle(img, center[i], 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
 			cv::rectangle(img, predRect[i], CV_RGB(255, 0, 0), 2); //red rectangle --> predict
 		}
 
-		if (display_kalmanArrow == true)
+		if (use_Kalman == true)
 		{
 			static int plot_arrow[10];
 			if (plot_arrow[i] == true)

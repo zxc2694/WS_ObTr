@@ -15,20 +15,19 @@ using namespace std;
 #define stopTrackingObjWithTooSmallHeight_Scale 28 // Delete too small tracking obj when its height becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallHeight_Scale
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38           // Allowed max distance between the box and other tracking boxes
 #define MAX_OBJ_LIST_SIZE            100           // Allowed max number of objects 
+#define minObjWidth_Ini_Scale         60           // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
+#define minObjHeight_Ini_Scale        14           // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)] // Get two original tracking boxes'distance
-#define minObjWidth_Ini_Scale  60                  // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
-#define minObjHeight_Ini_Scale 14                  // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
 
 /* Display */
-#define plotLineLength          99  // Set tracking line length, (allowed range: 0~99)
-#define DELE_RECT_FRAMENO        4  // Allowed frames for boxes of loiter (suggest range: 5~15)
-#define occSolve                 2  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
-#define moveRate                 2  // It's used for modifying the moving rate of predicted objects in occSolve 3. (Range:2~10)
-#define keepTrajectory           1  // 0: not keep, 1: keep. (by color hist)
-#define setPointY                4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
-#define display_kalmanRectangle  0  // 0: Not show KF rectangles, 1: Show KF rectangles
-#define display_kalmanArrow      0  // 0: Not show KF arrows, 1: Show KF arrows 
-#define demoMode                 1  // Without accumulating number (0:debug mode, 1:demo mode) 
+#define plotLineLength     99  // Set tracking line length, (allowed range: 0~99)
+#define DELE_RECT_FRAMENO   4  // Allowed frames for boxes of loiter (suggest range: 5~15)
+#define occSolve            2  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
+#define moveRate            2  // It's used for modifying the moving rate of predicted objects in occSolve 3. (Range:2~10)
+#define keepTrajectory      1  // 0: not keep, 1: keep. (by color hist)
+#define setPointY           4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
+#define use_Kalman          0  // 0: Not show KF rectangles, 1: Show KF rectangles
+#define demoMode            1  // Without accumulating number (0:debug mode, 1:demo mode) 
 
 /* Math */
 #define PI 3.141592653589793238463 
@@ -87,16 +86,6 @@ typedef struct
 	float value;
 	int objNum;
 } OverlapCompare;
-
-typedef struct
-{
-	int No;               // the number of occurring occlusion
-	int objectNum_up;     // the number of object of upper position 
-	int objectNum_down;   // the number of object of lower position
-	int objectNum_left;   // the number of object on left side
-	int objectNum_right;  // the number of object on right side
-	char moveDirect;      // h: horizontal, v: vertical
-} OcclusionInfo;
 
 class MeanShiftTracker
 {
