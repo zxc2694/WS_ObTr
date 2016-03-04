@@ -810,19 +810,19 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_track
 		else if ((object_list[obj_list_iter].PtCount > 10) && (currentPointer <= 10))
 		{
 			// Special case (assume max size =99)
-			//  PtN  |     p3  p2  p1  p0
+			//  PtN   |     p3  p2  p1  p0
 			//----------------------------
-			// currentPointer =99 --> 99, 96, 93, 90
-			// currentPointer = 0 -->  0, 97, 94, 91
-			// currentPointer = 1 -->  1, 98, 95, 92
-			// currentPointer = 2 -->  2, 99, 96, 93
-			// currentPointer = 3 -->  3,  0, 97, 94
-			// currentPointer = 4 -->  4,  1, 98, 95
-			// currentPointer = 5 -->  5,  2, 99, 96
-			// currentPointer = 6 -->  6,  3,  0, 97
-			// currentPointer = 7 -->  7,  4,  1, 98
-			// currentPointer = 8 -->  8,  5,  2, 99
-			// currentPointer = 9 -->  9,  6,  3,  0
+			// PtN =0:| use 99, 96, 93, 90
+			// PtN =1:| use  0, 97, 94, 91
+			// PtN =2:| use  1, 98, 95, 92
+			// PtN =3:| use  2, 99, 96, 93
+			// PtN =4:| use  3,  0, 97, 94
+			// PtN =5:| use  4,  1, 98, 95
+			// PtN =6:| use  5,  2, 99, 96
+			// PtN =7:| use  6,  3,  0, 97
+			// PtN =8:| use  7,  4,  1, 98
+			// PtN =9:| use  8,  5,  2, 99
+			// PtN=10:| use  9,  6,  3,  0
 
 			Point p0 = currentPointer <= 9 ? object_list[obj_list_iter].point[plotLineLength - 9 + currentPointer] : object_list[obj_list_iter].point[currentPointer - 10];
 			Point p1 = currentPointer <= 6 ? object_list[obj_list_iter].point[plotLineLength - 6 + currentPointer] : object_list[obj_list_iter].point[currentPointer - 7];
