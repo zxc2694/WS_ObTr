@@ -22,7 +22,6 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 {
 	static char runFirst = true;
 	static vector<ObjTrackInfo> object_list;
-	static vector<OcclusionInfo> occ_list;
 	static KalmanF KF;
 	static MeanShiftTracker ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
@@ -44,10 +43,10 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	ms_tracker.track(img_input, object_list);
 
 	// Add new useful ROI to the object_list for tracking
-	getNewObj(img_input, ms_tracker, object_list, occ_list, bbs, MaxObjNum);
+	getNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
 	// Modify the size of the tracking boxes and delete useless boxes
-	ms_tracker.modifyTrackBox(img_input, ms_tracker, object_list, occ_list, bbs, MaxObjNum);
+	ms_tracker.modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
 	// Find trigger object
 	findTrigObj(object_list, trigROI);
@@ -135,7 +134,7 @@ void ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, vector<OcclusionInfo> &occ_list, CvRect *bbs, int MaxObjNum)
+void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
@@ -218,7 +217,7 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 		if (!Overlapping && addToList)
 		{
 			ms_tracker.addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
-			ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, occ_list, bbs, MaxObjNum);      // Consider two men occlusion
+			ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
 			newObjFind = true;
 		}
 
@@ -226,7 +225,7 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 	}  // end of 1st for 
 }
 
-void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, vector<OcclusionInfo> &occ_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	if (addObj == true) // It confirms that one of objects has appeared after occlusion
 	{
@@ -413,7 +412,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 	}
 	addObj = false;
 }
-void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, vector<OcclusionInfo> &occ_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	/* Modify the size of the tracking box  */
 	int bbsNumber = 0;
@@ -813,17 +812,17 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_track
 			// Special case (assume max size =99)
 			//  PtN  |     p3  p2  p1  p0
 			//----------------------------
-			// PtN=0:| use 99, 96, 93, 90
-			// PtN=1:| use  0, 97, 94, 91
-			// PtN=2:| use  1, 98, 95, 92
-			// PtN=3:| use  2, 99, 96, 93
-			// PtN=4:| use  3,  0, 97, 94
-			// PtN=5:| use  4,  1, 98, 95
-			// PtN=6:| use  5,  2, 99, 96
-			// PtN=7:| use  6,  3,  0, 97
-			// PtN=8:| use  7,  4,  1, 98
-			// PtN=9:| use  8,  5,  2, 99
-			//PtN=10:| use  9,  6,  3,  0
+			// currentPointer =99 --> 99, 96, 93, 90
+			// currentPointer = 0 -->  0, 97, 94, 91
+			// currentPointer = 1 -->  1, 98, 95, 92
+			// currentPointer = 2 -->  2, 99, 96, 93
+			// currentPointer = 3 -->  3,  0, 97, 94
+			// currentPointer = 4 -->  4,  1, 98, 95
+			// currentPointer = 5 -->  5,  2, 99, 96
+			// currentPointer = 6 -->  6,  3,  0, 97
+			// currentPointer = 7 -->  7,  4,  1, 98
+			// currentPointer = 8 -->  8,  5,  2, 99
+			// currentPointer = 9 -->  9,  6,  3,  0
 
 			Point p0 = currentPointer <= 9 ? object_list[obj_list_iter].point[plotLineLength - 9 + currentPointer] : object_list[obj_list_iter].point[currentPointer - 10];
 			Point p1 = currentPointer <= 6 ? object_list[obj_list_iter].point[plotLineLength - 6 + currentPointer] : object_list[obj_list_iter].point[currentPointer - 7];
