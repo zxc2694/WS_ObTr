@@ -770,15 +770,35 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_track
 			}
 		}
 
+		// Restarting count when count > plotLineLength number
+		if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
+			object_list[obj_list_iter].PtNumber = 0;
+
 		/* Run Bezier curve algorithm for getting smooth trajectory */
-		if (object_list[obj_list_iter].PtNumber > 10)
+		Point smoothPoint[20];
+		int currentPointer = object_list[obj_list_iter].PtNumber;
+		if ((currentPointer > 10) && (currentPointer <= plotLineLength)) // the number of point array is from 10 ~ 99
 		{
-			Point smoothPoint[1000];
-			int currentPointer = object_list[obj_list_iter].PtNumber;          //  o  '  '  o  '  '  o  '  '   o 
-			Point p0 = object_list[obj_list_iter].point[currentPointer - 10];   //  1  2  3  4  5  6  7  8  9  10
-			Point p1 = object_list[obj_list_iter].point[currentPointer - 7];   // get      get      get       get
+			// Use four points as input and obtain ten points as output for plotting
+			Point p0 = object_list[obj_list_iter].point[currentPointer - 10];  //  1  2  3  4  5  6  7  8  9  10
+			Point p1 = object_list[obj_list_iter].point[currentPointer - 7];   // use -  - use -  - use -  -  use
 			Point p2 = object_list[obj_list_iter].point[currentPointer - 4];
 			Point p3 = object_list[obj_list_iter].point[currentPointer - 1];
+
+			// Normal case (assume max size =99)
+			//  PtN   |     p3  p2  p1  p0
+			//----------------------------
+			// PtN=11:| use 10, 13, 16, 19
+			// PtN=12:| use 11, 14, 17, 20
+			// PtN=13:| use 12, 15, 18, 21
+			// PtN=14:| use 13, 16, 19, 22
+			// PtN=15:| use 14, 17, 20, 23
+			// PtN=16:| use 15, 18, 21, 24
+			// PtN=17:| use 16, 19, 22, 25
+			// PtN=18:| use 17, 20, 23, 26
+			// PtN=19:| use 18, 21, 24, 27
+			// PtN=20:| use 19, 22, 25, 28
+			// PtN=21:| use 20, 23, 26, 29
 
 			BezierCurve(p0, p1, p2, p3, smoothPoint);
 
@@ -787,10 +807,46 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_track
 				object_list[obj_list_iter].point[currentPointer - 10 + i] = smoothPoint[i];
 			}
 		}
+		// the number of point array is from 0 ~ 10 after restarting counting
+		else if ((object_list[obj_list_iter].PtCount > 10) && (currentPointer <= 10))
+		{
+			// Special case (assume max size =99)
+			//  PtN  |     p3  p2  p1  p0
+			//----------------------------
+			// PtN=0:| use 99, 96, 93, 90
+			// PtN=1:| use  0, 97, 94, 91
+			// PtN=2:| use  1, 98, 95, 92
+			// PtN=3:| use  2, 99, 96, 93
+			// PtN=4:| use  3,  0, 97, 94
+			// PtN=5:| use  4,  1, 98, 95
+			// PtN=6:| use  5,  2, 99, 96
+			// PtN=7:| use  6,  3,  0, 97
+			// PtN=8:| use  7,  4,  1, 98
+			// PtN=9:| use  8,  5,  2, 99
+			//PtN=10:| use  9,  6,  3,  0
 
-		// Restarting count when count > plotLineLength number
-		if (object_list[obj_list_iter].PtNumber == plotLineLength + 1)
-			object_list[obj_list_iter].PtNumber = 0;
+			Point p0 = currentPointer <= 9 ? object_list[obj_list_iter].point[plotLineLength - 9 + currentPointer] : object_list[obj_list_iter].point[currentPointer - 10];
+			Point p1 = currentPointer <= 6 ? object_list[obj_list_iter].point[plotLineLength - 6 + currentPointer] : object_list[obj_list_iter].point[currentPointer - 7];
+			Point p2 = currentPointer <= 3 ? object_list[obj_list_iter].point[plotLineLength - 3 + currentPointer] : object_list[obj_list_iter].point[currentPointer - 4];
+			Point p3 = currentPointer == 0 ? object_list[obj_list_iter].point[plotLineLength + currentPointer] : object_list[obj_list_iter].point[currentPointer - 1];
+
+			BezierCurve(p0, p1, p2, p3, smoothPoint);
+
+			for (int i = 0; i < 10; i++)
+			{
+				//smooth[i]   i= 0  1  2  3  4  5  6  7  8  9 
+				//PtN = 0 -->   90 91 92 93 94 95 96 97 98 99
+				//PtN = 1 -->   91 92 93 94 95 96 97 98 99  0 
+				//PtN = 2 -->   92 93 94 95 96 97 98 99  0  1
+				//PtN = 3 -->   93 94 95 96 97 98 98  0  1  2
+				//......                     ......
+				//PtN = 8 -->   98 99  0  1  2  3  4  5  6  7 
+				//PtN = 9 -->   99  0  1  2  3  4  5  6  7  8
+				//PtN =10 -->    0  1  2  3  4  5  6  7  8  9
+				int pointArrNum = i >= 10 - currentPointer ? i - (10 - currentPointer) : plotLineLength + currentPointer - 9 + i;
+				object_list[obj_list_iter].point[pointArrNum] = smoothPoint[i];
+			}
+		}
 
 		//Storage all of points on the array
 		object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(object_list[obj_list_iter].pre_data_X, object_list[obj_list_iter].pre_data_Y);
