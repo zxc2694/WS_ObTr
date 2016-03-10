@@ -875,7 +875,7 @@ void KFtrack(Mat &img_input, vector<ObjTrackInfo> &object_list, KalmanF &KF)
 				int p_y = object_list[obj_list_iter].boundingBox.y;
 				int q_x = object_list[obj_list_iter + 1].boundingBox.x;
 				int q_y = object_list[obj_list_iter + 1].boundingBox.y;
-				double hypotenuse = sqrt((p_y - q_y)*(p_y - q_y) + (p_x - q_x)*(p_x - q_x)); //length of pq line
+				double hypotenuse = sqrt((double)((p_y - q_y)*(p_y - q_y) + (p_x - q_x)*(p_x - q_x))); //length of pq line
 				int intHY = (int)hypotenuse;
 				//cout << "hypotenuse" << hypotenuse << endl;
 
@@ -1937,7 +1937,7 @@ void KalmanF::drawPredBox(Mat &img)
 void drawArrow(Mat img, CvPoint p, CvPoint q)
 {
 	double angle; angle = atan2((double)p.y - q.y, (double)p.x - q.x);           //bevel angle of pq line
-	double hypotenuse = sqrt((p.y - q.y)*(p.y - q.y) + (p.x - q.x)*(p.x - q.x)); //length of pq line
+	double hypotenuse = sqrt((double)((p.y - q.y)*(p.y - q.y) + (p.x - q.x)*(p.x - q.x))); //length of pq line
 
 	/*The length of the arrow becomes three times from the original length */
 	//	q.x = (int)(p.x - 3 * hypotenuse * cos(angle));
