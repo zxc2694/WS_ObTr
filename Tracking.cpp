@@ -14,11 +14,15 @@
 int objNumArray[10];
 int objNumArray_BS[10];
 Scalar *ColorPtr;
-bool suspendUpdate = false;
-bool addObj = false;
 bool newObjFind = false;
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI)
+/* Function: tracking_function
+* @param: img_input  - Original image (RGB, 640 X 480)
+* @param: img_output - Image output with plotting trajectory (RGB, 640 X 480) 
+* @param: bbs        - Detected ROIs. Input is a compressed size (320 X 240)
+* @param: MaxObjNum  - The number of ROIs
+*/
+void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum)
 {
 	static char runFirst = true;
 	static vector<ObjTrackInfo> object_list;
@@ -48,9 +52,6 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	// Modify the size of the tracking boxes and delete useless boxes
 	ms_tracker.modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
-	// Find trigger object
-	findTrigObj(object_list, trigROI);
-
 	// Arrange object number to prevent accumulation
 	ObjNumArr(objNumArray, objNumArray_BS);
 
@@ -58,7 +59,7 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	ms_tracker.drawTrackBox(img_input, object_list);
 
 	//Plotting trajectories
-	drawTrajectory(img_input, TrackingLine, ms_tracker, object_list, trigROI);
+	drawTrajectory(img_input, TrackingLine, ms_tracker, object_list);
 
 	// Prediction and update of Kalman Filter 	
 	KFtrack(img_input, object_list, KF);
@@ -78,38 +79,6 @@ void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
 		bbs[iter].y *= 2;
 		bbs[iter].width *= 2;
 		bbs[iter].height *= 2;
-	}
-
-	// Delete useless small bbs
-	int obj = MaxObjNum;
-	for (int iter = 0; iter < MaxObjNum; ++iter)
-	{
-		if ((bbs[iter].width < ((img_input.cols + img_input.rows) / minObjWidth_Ini_Scale)) || (bbs[iter].height < (img_input.cols + img_input.rows) / minObjHeight_Ini_Scale))
-		{
-			obj = obj - 1;
-			bbs[iter].width = 0;
-		}
-	}
-	Rect temp[10];
-	int j = 0;
-	for (int iter = 0; iter < MaxObjNum; ++iter)
-	{
-		if (bbs[iter].width != 0)
-		{
-			temp[j].x = bbs[iter].x;
-			temp[j].y = bbs[iter].y;
-			temp[j].width = bbs[iter].width;
-			temp[j].height = bbs[iter].height;
-			j++;
-		}
-	}
-	MaxObjNum = obj;
-	for (int iter = 0; iter < obj; ++iter)
-	{
-		bbs[iter].x = temp[iter].x;
-		bbs[iter].y = temp[iter].y;
-		bbs[iter].width = temp[iter].width;
-		bbs[iter].height = temp[iter].height;
 	}
 }
 
@@ -145,7 +114,8 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); ++obj_list_iter)
 		{
-			if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
+			if ((bbs[bbs_iter].height > 1.3f*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
+				//if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
 				// && (bbs[bbs_iter].width*bbs[bbs_iter].height < 4.0f*object_list[obj_list_iter].boundingBox.width*object_list[obj_list_iter].boundingBox.height)
 			{
 				if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.5f)) // Overlap > 0.5 --> replace the boundingBox
@@ -163,10 +133,10 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 
 		if ((int)replaceList.size() != 0)
 		{
-
-			for (unsigned int iter = 0; iter < object_list.size(); ++iter)
+			for (int iter = 0; iter < object_list.size(); ++iter)
 			{
-				if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above judgement
+				//if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above judgement
+				if ((bbs[bbs_iter].height <= 1.3f*object_list[iter].boundingBox.height)
 					&& Overlap(bbs[bbs_iter], object_list[iter].boundingBox, 0.5f))		replaceList.push_back(iter);
 			}
 
@@ -177,7 +147,8 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 					/*cout << Pixel32S(ms_tracker.DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
 					MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;*/
 
-					if (Pixel32S(ms_tracker.DistMat, object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
+					if (Pixel32S(ms_tracker.DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
+						MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
 					{
 						addToList = false;
 						goto end;
@@ -187,37 +158,42 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 		}
 	end: // break for loop
 
+
 		if ((int)replaceList.size() != 0 && iter1 == (int)replaceList.size())
 		{
 			Overlapping = true;
-			
-			if (!suspendUpdate) // keep update track
+
+			// choose obj with longest duration from replaceList to update it by new bbs found by codebook
+			int  objWithLongestDuration = 0;
+			for (int iter = 0; iter < (int)replaceList.size(); ++iter)
 			{
-				// choose obj with longest duration from replaceList to update it by new bbs found by codebook
-				int  objWithLongestDuration = 0;
-				for (int iter = 0; iter < (int)replaceList.size(); ++iter)
+				if (object_list[replaceList[iter]].PtCount > object_list[replaceList[objWithLongestDuration]].PtCount)		objWithLongestDuration = iter;
+			}
+
+			ms_tracker.updateObjBbs(img_input, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
+
+			replaceList.erase(replaceList.begin() + objWithLongestDuration); // reserve the obj with longest duration in replaceList (exclude it from replaceList)
+
+			if ((int)replaceList.size() > 1)	BubbleSort(&replaceList[0], (int)replaceList.size());
+
+			//for (int iter = 0; iter < (int)replaceList.size(); ++iter)
+			for (int iter = (int)replaceList.size() - 1; iter >= 0; --iter)
+			{
+				for (int iterColor = 0; iterColor < 10; iterColor++)
 				{
-					if (object_list[replaceList[iter]].PtCount > object_list[replaceList[objWithLongestDuration]].PtCount)		objWithLongestDuration = iter;
+					if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
+					{
+						objNumArray[iterColor] = 1000; // Recover the value of which the number will be remove  
+						break;
+					}
 				}
-
-				ms_tracker.updateObjBbs(img_input, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
-
-				replaceList.erase(replaceList.begin() + objWithLongestDuration); // reserve the obj with longest duration in replaceList (exclude it from replaceList)
-
-				if ((int)replaceList.size() > 1)	BubbleSort(&replaceList[0], (int)replaceList.size());
-
-				//for (int iter = 0; iter < (int)replaceList.size(); ++iter)
-				for (int iter = (int)replaceList.size() - 1; iter >= 0; --iter)
-				{
-					size_t delNum = replaceList[iter];
-					object_list_erase(object_list, delNum);
-				}
+				object_list.erase(object_list.begin() + replaceList[iter]);
 			}
 		}
+
 		if (!Overlapping && addToList)
 		{
 			ms_tracker.addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
-			ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
 			newObjFind = true;
 		}
 
@@ -225,211 +201,26 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 	}  // end of 1st for 
 }
 
-void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
-{
-	if (addObj == true) // It confirms that one of objects has appeared after occlusion
-	{
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		{
-			if (object_list[obj_list_iter].bIsUpdateTrack == false) // object_list[obj_list_iter].boundingbox is the suspended box
-			{
-				if (occSolve == 1)
-				{
-					// Compute color hist of each object				
-					double similarityToNew = 0;                         // Compare the suspended box with the new appearing box  
-					double similarityToOld = 0;                         // Compare the suspended box with the moving box
-					for (int histIdx = 0; histIdx < 4096; ++histIdx)    // Compute similarity
-					{
-						similarityToNew += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[(int)object_list.size() - 1].hist[histIdx]);
-					}
-
-					if (obj_list_iter == 0)
-					{
-						for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
-						{
-							similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[1].hist[histIdx]);
-						}
-					}
-					if (obj_list_iter == 1)
-					{
-						for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
-						{
-							similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[0].hist[histIdx]);
-						}
-					}
-					cout << "objNum = " << obj_list_iter << "similarityToOld = " << similarityToOld << "similarityToNew = " << similarityToNew << endl;
-
-					// Update the suspended object from new object 
-					ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
-
-					if (similarityToNew < similarityToOld)
-					{
-						// Exchange correct tracking box
-						if (object_list.size() == 2)
-						{
-							Rect tempRect;
-							tempRect = object_list[0].boundingBox;
-							ms_tracker.updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
-							ms_tracker.updateObjBbs(img_input, object_list, tempRect, 1);
-						}
-					}
-					object_list[obj_list_iter].bIsUpdateTrack = true;
-				}
-
-				if ((occSolve == 2) || (occSolve == 3))
-				{
-					/* Judgment appearing new object position and update it */
-					int New_cenPoint = object_list[(int)object_list.size() - 1].boundingBox.x + 0.5 * object_list[(int)object_list.size() - 1].boundingBox.width;
-					int N0_cenPoint = object_list[0].boundingBox.x + 0.5 * object_list[0].boundingBox.width;
-					int N1_cenPoint = object_list[1].boundingBox.x + 0.5 * object_list[1].boundingBox.width;
-
-					//----- Condition 1 [New][N0][N1] -----//
-					if ((N1_cenPoint > N0_cenPoint) && (New_cenPoint < N0_cenPoint)) // New object appears on the left side of the occlusion
-					{
-						// Next: [New][XX][N0(N1)]
-						OverlapCompare ocp[10];
-						Rect resizeLeftRect;
-						resizeLeftRect = object_list[1].boundingBox;
-						resizeLeftRect.x = object_list[1].boundingBox.x;
-						resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
-
-						for (int i = 0; i < MaxObjNum; i++)
-						{
-							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
-							ocp[i].objNum = i;
-						}
-						int maxNum = ocp[0].objNum;
-
-						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
-						{
-							if (ocp[maxNum].value < ocp[j].value)
-								maxNum = ocp[j].objNum;
-						}
-						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 0);
-							
-						// Next: [N1(New)][N0]
-						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
-					}
-					//----- Condition 2 [New][N1][N0] -----//
-					else if ((N1_cenPoint <= N0_cenPoint) && (New_cenPoint < N0_cenPoint)) // New object appears on the left side of the occlusion
-					{
-						// Next: [New][XX][N1(N0)]
-						OverlapCompare ocp[10];
-						Rect resizeLeftRect;
-						resizeLeftRect = object_list[0].boundingBox;
-						resizeLeftRect.x = object_list[0].boundingBox.x;
-						resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
-
-						for (int i = 0; i < MaxObjNum; i++)
-						{
-							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
-							ocp[i].objNum = i;
-						}
-						int maxNum = ocp[0].objNum;
-							
-						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
-						{
-							if (ocp[maxNum].value < ocp[j].value)
-								maxNum = ocp[j].objNum;
-						}
-						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 1);
-
-						// Next: [N0(New)][N1]
-						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0);
-					}
-					//----- Condition 3 [N0][N1][New] -----//
-					else if ((N1_cenPoint > N0_cenPoint) && (New_cenPoint >= N0_cenPoint)) // New object appears on the right side of the occlusion
-					{
-						// Next: [N1(N0)][XX][New]
-						OverlapCompare ocp[10];
-						Rect resizeLeftRect;
-						resizeLeftRect = object_list[0].boundingBox;
-						resizeLeftRect.x = object_list[0].boundingBox.x - object_list[0].boundingBox.width;
-						resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
-
-						for (int i = 0; i < MaxObjNum; i++)
-						{
-							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
-							ocp[i].objNum = i;
-						}
-						int maxNum = ocp[0].objNum;
-
-						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
-						{
-							if (ocp[maxNum].value < ocp[j].value)
-								maxNum = ocp[j].objNum;
-						}
-						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 1);
-							
-						// Next: [N1][N0(New)]
-						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0); //Reset the scale of the tracking box.
-					}
-					//----- Condition 4 [N1][N0][New] -----//
-					else if ((N1_cenPoint < N0_cenPoint) && (New_cenPoint >= N0_cenPoint)) // New object appears on the right side of the occlusion
-					{
-						// Next: [N0(N1)][XX][New]
-						OverlapCompare ocp[10];
-						Rect resizeLeftRect;
-						resizeLeftRect = object_list[1].boundingBox;
-						resizeLeftRect.x = object_list[1].boundingBox.x - object_list[1].boundingBox.width;
-						resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
-
-						for (int i = 0; i < MaxObjNum; i++)
-						{
-							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
-							ocp[i].objNum = i;
-						}
-						int maxNum = ocp[0].objNum;
-
-						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
-						{
-							if (ocp[maxNum].value < ocp[j].value)
-								maxNum = ocp[j].objNum;
-						}
-						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 0);
-
-						// Next: [N0][N1(New)]
-						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
-					}
-				}
-				object_list[0].bIsUpdateTrack = true;
-				object_list[1].bIsUpdateTrack = true;
-				
-
-				if (occSolve == 3)
-				{
-					Rect rectTemp = object_list[0].boundingBox;
-					ms_tracker.updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
-					ms_tracker.updateObjBbs(img_input, object_list, rectTemp, 1);
-				}
-				// Delete new object
-				size_t delNum = (int)object_list.size() - 1;
-				object_list_erase(object_list, delNum);
-
-				suspendUpdate = false;
-			}
-		}
-	}
-	addObj = false;
-}
 void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
-	/* Modify the size of the tracking box  */
-	int bbsNumber = 0;
+	/* shrink the size of the tracking box */
+	int bbsNumber;
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
-		if (object_list[obj_list_iter].bIsUpdateTrack == true)
+		bbsNumber = 0;
+
+		for (int i = 0; i < MaxObjNum; i++)
+		{
+			// Find how many bbs in the tracking box
+			if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
+				bbsNumber++;
+		}
+		// When the width of tracking box has 1.1 times bigger than the width of bbs:
+		if (bbsNumber == 1)
 		{
 			for (int i = 0; i < MaxObjNum; i++)
 			{
-				// Find how many bbs in the tracking box
-				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
-					bbsNumber++;
-			}
-			// When the width of tracking box has 1.5 times more bigger than the width of bbs:
-			for (int i = 0; i < MaxObjNum; i++)
-			{
-				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && ((object_list[obj_list_iter].boundingBox.width > 1.3 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height > 1.5 * bbs[i].height) || (object_list[obj_list_iter].boundingBox.width < 0.8 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height < 0.6 * bbs[i].height)) && (bbsNumber == 1))
+				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && (object_list[obj_list_iter].boundingBox.width > 1.2f * bbs[i].width))
 					ms_tracker.updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
 			}
 		}
@@ -545,200 +336,20 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 				object_list_erase(object_list, leftObjNum);
 		}
 		mergeBOX = false;
-		newObjFind = false;
-	}
-
-	/* Update of track */
-	static int countOccFrameNum = 0;
-	if (suspendUpdate == false)
-	{
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-			object_list[obj_list_iter].bIsUpdateTrack = true;
-
-		countOccFrameNum = 0;
-	}
-
-	/* Solve two men occlusion */
-	if (occSolve == 1)
-	{
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		{
-			if (((object_list[obj_list_iter].PtCount) % 5 == 0) && (object_list[obj_list_iter].PtCount <= 20)) // Get color histogram at every 5 frames to prevent large number of calculations
-			{
-				int wd = 10;  // |---------wd--------|
-				int hd = 10;  // |	   |--usew--|    |
-				int usew = 8; // | useh|   	    |	 |hd
-				int useh = 8; // |	   |	    |	 |
-
-				int Ori_x = object_list[obj_list_iter].boundingBox.x;
-				int Ori_y = object_list[obj_list_iter].boundingBox.y;
-				int Ori_w = object_list[obj_list_iter].boundingBox.width;
-				int Ori_h = object_list[obj_list_iter].boundingBox.height;
-
-				Rect R; // Get resized rectangle which is consistent with central point of original ROI 
-				R.width = Ori_w / wd*usew;
-				R.height = Ori_h / hd*useh;
-				R.x = Ori_x + (Ori_w - R.width) / 2;
-				R.y = Ori_y + (Ori_h - R.height) / 2;
-
-				// Use resized rectangle to compute color histogram 
-				object_list[obj_list_iter].kernelV2.create(R.height, R.width, CV_64FC1);
-				getKernel(object_list[obj_list_iter].kernelV2, kernel_type);
-				Mat tempMat = img_input(R);
-				double histTemp[MaxHistBins];
-				computeHist(tempMat, object_list[obj_list_iter].kernelV2, object_list[obj_list_iter].histV2);
-
-				// Update new color histogram. And its proportion: old hist is 70%, new hist is 30%
-				//for (int histIdx = 0; histIdx < 4096; ++histIdx)
-				//{
-				//	object_list[obj_list_iter].histV2[histIdx] = 0.3 * object_list[obj_list_iter].histV2[histIdx] + 0.7 * object_list[obj_list_iter].histV2[histIdx];
-				//}
-			}
-		}
-	}
-
-	if (object_list.size() >= 2)
-	{
-		for (size_t iter1 = 0; iter1 < int(object_list.size() - 1); iter1++)
-		{
-			for (size_t iter2 = iter1 + 1; iter2 < object_list.size(); iter2++)
-			{
-				//two bounding boxes is overlap
-				if (Overlap(object_list[iter1].boundingBox, object_list[iter2].boundingBox, 0.1f) && (object_list[iter1].PtCount > 2) && (object_list[iter2].PtCount > 2))
-				{
-					suspendUpdate = true; //suspend update of track	
-
-					if (occSolve == 1)
-					{
-						// suspend small box
-						if (object_list[iter1].boundingBox.height > object_list[iter2].boundingBox.height)
-						{
-							object_list[iter2].bIsUpdateTrack = false;
-							object_list[iter1].bIsUpdateTrack = true;
-						}
-						else
-						{
-							object_list[iter1].bIsUpdateTrack = false;
-							object_list[iter2].bIsUpdateTrack = true;
-						}
-					}
-					if ((occSolve == 2) || (occSolve == 3))
-					{
-						object_list[iter2].bIsUpdateTrack = false;
-						object_list[iter1].bIsUpdateTrack = false;
-					}
-					countOccFrameNum = countOccFrameNum = countOccFrameNum + 1; // Counting frame number after starting occlusion
-				}
-			}
-		}
-	}
-	if (countOccFrameNum == 28) // No solve occlusion for the long time (default: 28 frames)
-	{
-		for (size_t obj_list_iter = object_list.size() - 1; object_list.size() != 0; obj_list_iter--)
-			object_list_erase(object_list, obj_list_iter);
-
-		countOccFrameNum = 0;
-	}
-
-	// Get the moving direction
-	if (occSolve == 3) // 3: directly exchange with prediction
-	{
-		for (size_t c = 0; c < object_list.size(); c++)
-		{
-			if (object_list[c].bIsUpdateTrack == true) // In order to prevent wrong of moving direction at sometimes, we just get the fisrt moving direction.
-				object_list[c].startOcc = true;
-
-			if ((object_list[c].bIsUpdateTrack == false) && (object_list[c].PtNumber != 0) && (object_list[c].startOcc))
-			{
-				if ((object_list[c].PtNumber - 1) >= 2)
-				{
-					// Object direction moves to left, then old point x > new one 
-					if (object_list[c].point[object_list[c].PtNumber - 3].x > object_list[c].point[object_list[c].PtNumber - 1].x) // "object_list[c].PtNumber -1" is current status of point 
-					{
-						object_list[c].moveDirect = 'L'; // left
-					}
-					// Object direction moves to right, then old point x < new one 
-					else if (object_list[c].point[object_list[c].PtNumber - 3].x < object_list[c].point[object_list[c].PtNumber - 1].x)
-					{
-						object_list[c].moveDirect = 'R'; // right
-					}
-					else // Old point x = new one 
-					{
-					}
-				}
-				else if ((object_list[c].PtNumber - 1) < 2)
-				{
-					// Object direction moves to left, then old point x > new one 
-					if (object_list[c].point[plotLineLength - 3].x > object_list[c].point[object_list[c].PtNumber - 1].x)
-					{
-						object_list[c].moveDirect = 'L'; // left
-					}
-					// Object direction moves to right, then old point x < new one 
-					else if (object_list[c].point[plotLineLength - 3].x < object_list[c].point[object_list[c].PtNumber - 1].x)
-					{
-						object_list[c].moveDirect = 'R'; // right
-					}
-					else // Old point x = new one 
-					{
-					}
-				}
-				object_list[c].startOcc = false;
-			}
-		}
 	}
 
 	newObjFind = false;
 }
 
-void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
-{
-	// Find the triggered object when prohibited area is invaded
-	if (TriggerInfo->bIsTrigger == true)
-	{
-		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-		{
-			if (Overlap(object_list[obj_list_iter].boundingBox, TriggerInfo->boundingBox, 0.5f))
-			{
-				object_list[obj_list_iter].bIsDrawing = true;
-			}
-			else
-			{
-				object_list[obj_list_iter].bIsDrawing = false;
-			}
-		}
-	}
-}
-
-void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
+void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list)
 {
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
-		if (demoMode)
-		{
-			if (TriggerInfo->bIsTrigger == false) // if no trigger, draw all trajectories
-			{
-				ms_tracker.drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
-			}
-			else // trigger area is being invaded
-			{
-				if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
-				{
-					ms_tracker.drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
-
-					drawArrow(img_input,  // Draw the arrow on the pedestrian's head
-						Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-						(object_list[obj_list_iter].boundingBox.y) - 40)
-						, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-						(object_list[obj_list_iter].boundingBox.y) - 20));
-				}
-			}
-		}
-		else // for debug
-			ms_tracker.drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
+		ms_tracker.drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
 
 		// Position of plotting point
 		int currentX = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
-		int currentY = (int)(0.1 * setPointY * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
+		int currentY = (int)(0.4 * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
 
 		/* Solve politting pulse of track */
 		if (object_list[obj_list_iter].PtCount < 5)
@@ -959,11 +570,8 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<ObjTrackInfo> &obje
 	// don't tracking too small obj 
 	if (bbs.width < minObjWidth_Ini || bbs.height < minObjHeight_Ini)	return;
 
-	if (!demoMode) // Due to the fact that Etron camera is too close
-	{
-		// don't track when obj just emerge at img edge
-		if (bbs.x < 3 || bbs.y < 3 || bbs.x + bbs.width > img.cols - 1 || bbs.y + bbs.height > img.rows - 1)		return;
-	}
+	// don't track when obj just emerge at img edge
+	if (bbs.x < 3 || bbs.y < 3 || bbs.x + bbs.width > img.cols - 1 || bbs.y + bbs.height > img.rows - 1)		return;
 	++count;
 
 	if ((bbs.height & 1) == 0)    bbs.height -= 1; // bbs.height should be odd number
@@ -1029,8 +637,6 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<ObjTrackInfo> &obje
 		objNumArray_BS[iter] = objNumArray[iter];
 
 	BubbleSort(objNumArray_BS, 10);
-
-	addObj = true;
 }
 
 void MeanShiftTracker::updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx)
@@ -1070,20 +676,8 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
 		}
 		if (object_list[c].type == 2) //pedestrian
 		{
-			if ((occSolve == 3) && (object_list[c].bIsUpdateTrack == false)) // 3: directly exchange with prediction
-			{			
-				if (object_list[c].moveDirect == 'L')
-				{
-					object_list[c].boundingBox.x = object_list[c].boundingBox.x - moveRate;
-				}
-				else if (object_list[c].moveDirect == 'R')
-				{
-					object_list[c].boundingBox.x = object_list[c].boundingBox.x + moveRate;
-				}
-			}
-
 			stringstream ss;
-			if (demoMode == true)
+			if (countNum == false)
 			{
 				for (iter = 0; iter < 10; iter++)
 				{
@@ -1149,209 +743,67 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 	float scale;
 	bool delBbsOutImg;
 
+
 	for (size_t c = 0; c < object_list.size(); c++)
 	{
-		if (object_list[c].bIsUpdateTrack == true)
+		//int bestScaleIter;
+		double bestScale, similarity, largestSimilarity = 0; // choose best scale as the one with largest similarity to target model 
+		bool exceedImgBoundary = true;
+
+		scale = object_list[c].objScale - object_list[c].objScale*scaleBetFrame;
+		// for 3 different scales of Candidate Bbs: 1 - scaleBetFrame, 1, 1 + scaleBetFrame
+		for (int scaleIter = 0; scaleIter < 3; scale += object_list[c].objScale*scaleBetFrame, ++scaleIter)
 		{
-			//int bestScaleIter;
-			double bestScale, similarity, largestSimilarity = 0; // choose best scale as the one with largest similarity to target model 
-			bool exceedImgBoundary = true;
-
-			scale = object_list[c].objScale - object_list[c].objScale*scaleBetFrame;
-			// for 3 different scales of Candidate Bbs: 1 - scaleBetFrame, 1, 1 + scaleBetFrame
-			for (int scaleIter = 0; scaleIter < 3; scale += object_list[c].objScale*scaleBetFrame, ++scaleIter)
+			// scale bbs
+			if (scaleIter != 1) // down or up scale
 			{
-				// scale bbs
-				if (scaleIter != 1) // down or up scale
-				{
-					int bbsCen_x = object_list[c].boundingBox.x + (object_list[c].boundingBox.width - 1) / 2;
-					int bbsCen_y = object_list[c].boundingBox.y + (object_list[c].boundingBox.height - 1) / 2;
-					int halfWidth = (int)((object_list[c].initialBbsWidth - 1) / 2 * scale);
-					int halfHeight = (int)((object_list[c].initialBbsHeight - 1) / 2 * scale);
-					CandBbs[scaleIter].x = bbsCen_x - halfWidth;
-					CandBbs[scaleIter].y = bbsCen_y - halfHeight;
-					CandBbs[scaleIter].width = 2 * halfWidth + 1;
-					CandBbs[scaleIter].height = 2 * halfHeight + 1;
-				}
-				else
-				{
-					CandBbs[scaleIter] == object_list[c].boundingBox;
-				}
-
-
-				// if bbs exceed img boundary after scale, don't scale bbs
-				if (CandBbs[scaleIter].x < 0 || CandBbs[scaleIter].y < 0 || CandBbs[scaleIter].br().x >= img.cols || CandBbs[scaleIter].br().y >= img.rows)
-				{
-					//continue;
-
-					CandBbs[scaleIter] &= Rect(0, 0, img.cols, img.rows); // make bbs be inside img
-
-					if ((CandBbs[scaleIter].height & 1) == 0)    CandBbs[scaleIter].height -= 1; // bbs.height should be odd number
-					if ((CandBbs[scaleIter].width & 1) == 0)    CandBbs[scaleIter].width -= 1; // bbs.width should be odd number
-				}
-				if (CandBbs[scaleIter].width < minObjWidth || CandBbs[scaleIter].height < minObjHeight)   continue; // if bbs is too small after scale, don't scale bbs			
-
-
-				CandCen = Point((CandBbs[scaleIter].width - 1) / 2, (CandBbs[scaleIter].height - 1) / 2); // let 
-
-				// initialize kernel
-				kernel.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
-				getKernel(kernel, kernel_type);
-
-				// compute color hist
-				tempMat = img(CandBbs[scaleIter]);
-				computeHist(tempMat, kernel, hist[scaleIter]);
-
-				// set weight
-				weight.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
-				setWeight(tempMat, kernel, object_list[c].hist, hist[scaleIter], weight);
-
-				Mean_Shift_Iter = 0; // Mean_Shift iteration count
-				//Point oldBbsCen = Point(0, 0), newBbsCen = Point(epsilon, 0); // candidate bbs center coordinates during Mean_Shift iteration (let upper left corner of img have coordinate (0, 0))
-
-				// Mean_Shift iteration
-				delBbsOutImg = false;
-				while (1)
-				{
-					++Mean_Shift_Iter;
-
-					Point2d normalizedShiftVec = Point2d(0, 0); // computed as sum of w(i,j)*x(i,j) for all pixels (i,j) in bbs, where w(i,j) is weight at (i,j) and x(i,j) is normalized coordinate of (i,j), divided by weiSum
-					weiSum = 0; // sum of w(i,j) for all pixels (i,j) in bbs, where w(i,j) is weight at (i,j)
-
-					for (int i = 0; i < CandBbs[scaleIter].height; i++)
-					{
-						for (int j = 0; j < CandBbs[scaleIter].width; j++)
-						{
-							if (kernel.at<double>(i, j) == 0)	 continue;
-
-							normalizedShiftVec += (weight.at<double>(i, j)*Point2d((double)(j - CandCen.x) / CandCen.x, (double)(i - CandCen.y) / CandCen.y));
-							weiSum += weight.at<double>(i, j);
-						}
-					}
-
-					normalizedShiftVec.x /= weiSum;
-					normalizedShiftVec.y /= weiSum;
-
-					double shift_x = normalizedShiftVec.x * CandCen.x; // denormalized bbs shift in img x-axis
-					double shift_y = normalizedShiftVec.y * CandCen.y; // denormalized bbs shift in img y-axis
-
-					CandBbs[scaleIter].x += (int)shift_x;
-					CandBbs[scaleIter].y += (int)shift_y;
-
-					// if bbs exceed img boundary after shift, then stop iteration
-					if (CandBbs[scaleIter].x < 0 || CandBbs[scaleIter].y < 0 || CandBbs[scaleIter].br().x >= img.cols || CandBbs[scaleIter].br().y >= img.rows)
-					{
-						CandBbs[scaleIter] &= Rect(0, 0, img.cols, img.rows); // make bbs be inside img
-
-						//break;
-
-						if (CandBbs[scaleIter].width < minObjWidth || CandBbs[scaleIter].height < minObjHeight)
-						{
-							delBbsOutImg = true;
-							break; // if the part of bbs inside img is too small after shift, stop shift 	
-						}
-
-						if ((CandBbs[scaleIter].height & 1) == 0)    CandBbs[scaleIter].height -= 1; // bbs.height should be odd number
-						if ((CandBbs[scaleIter].width & 1) == 0)    CandBbs[scaleIter].width -= 1; // bbs.width should be odd number
-
-						CandCen = Point((CandBbs[scaleIter].width - 1) / 2, (CandBbs[scaleIter].height - 1) / 2);
-
-						// if bbs has been changed, kernel should also be changed
-						kernel.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
-						getKernel(kernel, kernel_type);
-						// if bbs has been changed, weight should also be changed
-						weight.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
-					}
-
-					// if too small bbs center shift, then stop iteration
-					if (pow(shift_x, 2) + pow(shift_y, 2) < epsilon)	break;
-
-					// iterate at most Max_Mean_Shift_Iter times
-					if (Mean_Shift_Iter == Max_Mean_Shift_Iter)		break;
-
-					// compute color hist
-					tempMat = img(CandBbs[scaleIter]);
-					computeHist(tempMat, kernel, hist[scaleIter]);
-
-					// set weight
-					setWeight(tempMat, kernel, object_list[c].hist, hist[scaleIter], weight);
-				} //end of while
-
-				if (delBbsOutImg)   continue; // if the part of bbs inside img is too small after scale and shift, abandon this scale and choose other scale
-
-				// compute color hist
-				tempMat = img(CandBbs[scaleIter]);
-				computeHist(tempMat, kernel, hist[scaleIter]);
-
-				// choose scale with largest similarity to target model
-				similarity = 0;
-				for (int histIdx = 0; histIdx < histSize; ++histIdx) // compute similarity
-				{
-					similarity += sqrt(object_list[c].hist[histIdx] * hist[scaleIter][histIdx]);
-				}
-				if (similarity > largestSimilarity) // choose largest similarity
-				{
-					largestSimilarity = similarity;
-					//bestScaleIter = scaleIter;
-					bestScale = scale;
-				}
-
-				exceedImgBoundary = false;
-			} // for all scale
-
-			// if the part of bbs inside img is too small for all scales after shifts, abandon tracking this obj, i.e. delete this obj from object_list 
-			if (exceedImgBoundary)
+				int bbsCen_x = object_list[c].boundingBox.x + (object_list[c].boundingBox.width - 1) / 2;
+				int bbsCen_y = object_list[c].boundingBox.y + (object_list[c].boundingBox.height - 1) / 2;
+				int halfWidth = (object_list[c].initialBbsWidth - 1) / 2 * scale;
+				int halfHeight = (object_list[c].initialBbsHeight - 1) / 2 * scale;
+				CandBbs[scaleIter].x = bbsCen_x - halfWidth;
+				CandBbs[scaleIter].y = bbsCen_y - halfHeight;
+				CandBbs[scaleIter].width = 2 * halfWidth + 1;
+				CandBbs[scaleIter].height = 2 * halfHeight + 1;
+			}
+			else
 			{
-				//object_list_erase(object_list, c);
-				//--c;
-				//continue;
+				CandBbs[scaleIter] == object_list[c].boundingBox;
 			}
 
-
-			// determine scale by bestScale and scaleLearningRate
-			object_list[c].objScale = (float)(scaleLearningRate*bestScale + (1 - scaleLearningRate)*object_list[c].objScale);
-
-
-			// adopt candidate bbs scale determined above and implement Mean-Shift again
-			int bbsCen_x = object_list[c].boundingBox.x + (object_list[c].boundingBox.width - 1) / 2;
-			int bbsCen_y = object_list[c].boundingBox.y + (object_list[c].boundingBox.height - 1) / 2;
-			int halfWidth = (int)((object_list[c].initialBbsWidth - 1) / 2 * object_list[c].objScale);
-			int halfHeight = (int)((object_list[c].initialBbsHeight - 1) / 2 * object_list[c].objScale);
-			object_list[c].boundingBox.x = bbsCen_x - halfWidth;
-			object_list[c].boundingBox.y = bbsCen_y - halfHeight;
-			object_list[c].boundingBox.width = 2 * halfWidth + 1;
-			object_list[c].boundingBox.height = 2 * halfHeight + 1;
 
 			// if bbs exceed img boundary after scale, don't scale bbs
-			if (object_list[c].boundingBox.x < 0 || object_list[c].boundingBox.y < 0 || object_list[c].boundingBox.br().x >= img.cols || object_list[c].boundingBox.br().y >= img.rows)
+			if (CandBbs[scaleIter].x < 0 || CandBbs[scaleIter].y < 0 || CandBbs[scaleIter].br().x >= img.cols || CandBbs[scaleIter].br().y >= img.rows)
 			{
-				object_list[c].boundingBox &= Rect(0, 0, img.cols, img.rows); // make bbs be inside img
-
-				if ((object_list[c].boundingBox.height & 1) == 0)    object_list[c].boundingBox.height -= 1; // bbs.height should be odd number
-				if ((object_list[c].boundingBox.width & 1) == 0)    object_list[c].boundingBox.width -= 1; // bbs.width should be odd number
-
 				//continue;
-			}
 
-			CandCen = Point((object_list[c].boundingBox.width - 1) / 2, (object_list[c].boundingBox.height - 1) / 2);
+				CandBbs[scaleIter] &= Rect(0, 0, img.cols, img.rows); // make bbs be inside img
+
+				if ((CandBbs[scaleIter].height & 1) == 0)    CandBbs[scaleIter].height -= 1; // bbs.height should be odd number
+				if ((CandBbs[scaleIter].width & 1) == 0)    CandBbs[scaleIter].width -= 1; // bbs.width should be odd number
+			}
+			if (CandBbs[scaleIter].width < minObjWidth || CandBbs[scaleIter].height < minObjHeight)   continue; // if bbs is too small after scale, don't scale bbs			
+
+
+			CandCen = Point((CandBbs[scaleIter].width - 1) / 2, (CandBbs[scaleIter].height - 1) / 2); // let 
 
 			// initialize kernel
-			kernel.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
+			kernel.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
 			getKernel(kernel, kernel_type);
 
 			// compute color hist
-			tempMat = img(object_list[c].boundingBox);
-			computeHist(tempMat, kernel, hist[0]);
+			tempMat = img(CandBbs[scaleIter]);
+			computeHist(tempMat, kernel, hist[scaleIter]);
 
 			// set weight
-			weight.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
-			setWeight(tempMat, kernel, object_list[c].hist, hist[0], weight);
+			weight.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
+			setWeight(tempMat, kernel, object_list[c].hist, hist[scaleIter], weight);
 
 			Mean_Shift_Iter = 0; // Mean_Shift iteration count
+			//Point oldBbsCen = Point(0, 0), newBbsCen = Point(epsilon, 0); // candidate bbs center coordinates during Mean_Shift iteration (let upper left corner of img have coordinate (0, 0))
 
 			// Mean_Shift iteration
 			delBbsOutImg = false;
-
 			while (1)
 			{
 				++Mean_Shift_Iter;
@@ -1359,9 +811,9 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 				Point2d normalizedShiftVec = Point2d(0, 0); // computed as sum of w(i,j)*x(i,j) for all pixels (i,j) in bbs, where w(i,j) is weight at (i,j) and x(i,j) is normalized coordinate of (i,j), divided by weiSum
 				weiSum = 0; // sum of w(i,j) for all pixels (i,j) in bbs, where w(i,j) is weight at (i,j)
 
-				for (int i = 0; i < object_list[c].boundingBox.height; i++)
+				for (int i = 0; i < CandBbs[scaleIter].height; i++)
 				{
-					for (int j = 0; j < object_list[c].boundingBox.width; j++)
+					for (int j = 0; j < CandBbs[scaleIter].width; j++)
 					{
 						if (kernel.at<double>(i, j) == 0)	 continue;
 
@@ -1373,101 +825,273 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 				normalizedShiftVec.x /= weiSum;
 				normalizedShiftVec.y /= weiSum;
 
-				double shift_x = normalizedShiftVec.x * CandCen.x; // denormalized shift in img x-axis
-				double shift_y = normalizedShiftVec.y * CandCen.y; // denormalized shift in img y-axis
-				shift_x = (int)(shift_x + 0.5);
-				shift_y = (int)(shift_y + 0.5);
+				double shift_x = normalizedShiftVec.x * CandCen.x; // denormalize bbs shift in img x-axis
+				double shift_y = normalizedShiftVec.y * CandCen.y; // denormalize bbs shift in img y-axis
 
-				//if (shift_x > 0)
-				//{
-				//	shift_x += 0.7;
-				//	shift_x = round(shift_x);
-				//}
-				//else
-				//{
-				//	shift_x -= 0.7;
-				//	shift_x = round(shift_x);
-				//}
+				//shift_x = round(shift_x);
+				//shift_y = round(shift_y);
 
-				//if (shift_y > 0)
-				//{
-				//	shift_y += 0.7;
-				//	shift_y = round(shift_y);
-				//}
-				//else
-				//{
-				//	shift_y -= 0.7;
-				//	shift_y = round(shift_y);
-				//}
+				if (shift_x >= 0)	shift_x = ceil(shift_x);
+				else	shift_x = floor(shift_x);
+				if (shift_y >= 0)	shift_y = ceil(shift_y);
+				else	shift_y = floor(shift_y);
 
-				object_list[c].boundingBox.x += (int)shift_x;
-				object_list[c].boundingBox.y += (int)shift_y;
+				CandBbs[scaleIter].x += (int)shift_x;
+				CandBbs[scaleIter].y += (int)shift_y;
+
 
 				// if bbs exceed img boundary after shift, then stop iteration
-				if (object_list[c].boundingBox.x < 0 || object_list[c].boundingBox.y < 0 || object_list[c].boundingBox.br().x >= img.cols || object_list[c].boundingBox.br().y >= img.rows)
+				if (CandBbs[scaleIter].x < 0 || CandBbs[scaleIter].y < 0 || CandBbs[scaleIter].br().x >= img.cols || CandBbs[scaleIter].br().y >= img.rows)
 				{
-					object_list[c].boundingBox &= Rect(0, 0, img.cols, img.rows); // make bbs be inside img
+					CandBbs[scaleIter] &= Rect(0, 0, img.cols, img.rows); // make bbs be inside img
 
 					//break;
 
-					if (object_list[c].boundingBox.width < minObjWidth || object_list[c].boundingBox.height < minObjHeight)
+					if (CandBbs[scaleIter].width < minObjWidth || CandBbs[scaleIter].height < minObjHeight)
 					{
 						delBbsOutImg = true;
 						break; // if the part of bbs inside img is too small after shift, stop shift 	
 					}
 
-					if ((object_list[c].boundingBox.height & 1) == 0)    object_list[c].boundingBox.height -= 1; // bbs.height should be odd number
-					if ((object_list[c].boundingBox.width & 1) == 0)    object_list[c].boundingBox.width -= 1; // bbs.width should be odd number
+					if ((CandBbs[scaleIter].height & 1) == 0)    CandBbs[scaleIter].height -= 1; // bbs.height should be odd number
+					if ((CandBbs[scaleIter].width & 1) == 0)    CandBbs[scaleIter].width -= 1; // bbs.width should be odd number
 
-					CandCen = Point((object_list[c].boundingBox.width - 1) / 2, (object_list[c].boundingBox.height - 1) / 2);
+					CandCen = Point((CandBbs[scaleIter].width - 1) / 2, (CandBbs[scaleIter].height - 1) / 2);
 
 					// if bbs has been changed, kernel should also be changed
-					kernel.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
+					kernel.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
 					getKernel(kernel, kernel_type);
 					// if bbs has been changed, weight should also be changed
-					weight.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
+					weight.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
 				}
 
 				// if too small bbs center shift, then stop iteration
-				if (pow(shift_x, 2) + pow(shift_y, 2) < epsilon)
-				{
-					//cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
-					break;
-				}
+				if (pow(shift_x, 2) + pow(shift_y, 2) < epsilon)	break;
 
 				// iterate at most Max_Mean_Shift_Iter times
-				if (Mean_Shift_Iter == Max_Mean_Shift_Iter)
-				{
-					//cout << "iter " << Mean_Shift_Iter << "   similarity" << similarity << endl;
-					break;
-				}
+				if (Mean_Shift_Iter == Max_Mean_Shift_Iter)		break;
 
 				// compute color hist
-				tempMat = img(object_list[c].boundingBox);
-				computeHist(tempMat, kernel, hist[0]);
+				tempMat = img(CandBbs[scaleIter]);
+				computeHist(tempMat, kernel, hist[scaleIter]);
 
 				// set weight
-				setWeight(tempMat, kernel, object_list[c].hist, hist[0], weight);
+				setWeight(tempMat, kernel, object_list[c].hist, hist[scaleIter], weight);
 			} //end of while
 
-			if (delBbsOutImg)
-			{
-				object_list_erase(object_list, c);
-				--c;
-				continue; // if the part of bbs inside img is too small after scale and shift, abandon tracking this obj
-			}
+			if (delBbsOutImg)   continue; // if the part of bbs inside img is too small after scale and shift, abandon this scale and choose other scale
 
 			// compute color hist
-			tempMat = img(object_list[c].boundingBox);
-			computeHist(tempMat, kernel, hist[0]);
+			tempMat = img(CandBbs[scaleIter]);
+			computeHist(tempMat, kernel, hist[scaleIter]);
 
 			// choose scale with largest similarity to target model
 			similarity = 0;
 			for (int histIdx = 0; histIdx < histSize; ++histIdx) // compute similarity
 			{
-				similarity += sqrt(object_list[c].hist[histIdx] * hist[0][histIdx]);
+				similarity += sqrt(object_list[c].hist[histIdx] * hist[scaleIter][histIdx]);
 			}
-		} // end of judging bIsUpdateTrack
+			if (similarity > largestSimilarity) // choose largest similarity
+			{
+				largestSimilarity = similarity;
+				//bestScaleIter = scaleIter;
+				bestScale = scale;
+			}
+
+			exceedImgBoundary = false;
+		} // for all scale
+
+		// if the part of bbs inside img is too small for all scales after shifts, abandon tracking this obj, i.e. delete this obj from object_list 
+		if (exceedImgBoundary)
+		{
+			for (int iterColor = 0; iterColor < 10; iterColor++)
+			{
+				if (objNumArray_BS[c] == objNumArray[iterColor])
+				{
+					objNumArray[iterColor] = 1000;
+					break;
+				}
+			}
+			object_list.erase(object_list.begin() + c);
+			--c;
+			continue;
+		}
+
+
+		// determine scale by bestScale and scaleLearningRate
+		object_list[c].objScale = scaleLearningRate*bestScale + (1 - scaleLearningRate)*object_list[c].objScale;
+
+
+		// adopt candidate bbs scale determined above and implement Mean-Shift again
+		int bbsCen_x = object_list[c].boundingBox.x + (object_list[c].boundingBox.width - 1) / 2;
+		int bbsCen_y = object_list[c].boundingBox.y + (object_list[c].boundingBox.height - 1) / 2;
+		int halfWidth = (object_list[c].initialBbsWidth - 1) / 2 * object_list[c].objScale;
+		int halfHeight = (object_list[c].initialBbsHeight - 1) / 2 * object_list[c].objScale;
+		object_list[c].boundingBox.x = bbsCen_x - halfWidth;
+		object_list[c].boundingBox.y = bbsCen_y - halfHeight;
+		object_list[c].boundingBox.width = 2 * halfWidth + 1;
+		object_list[c].boundingBox.height = 2 * halfHeight + 1;
+
+		// if bbs exceed img boundary after scale, don't scale bbs
+		if (object_list[c].boundingBox.x < 0 || object_list[c].boundingBox.y < 0 || object_list[c].boundingBox.br().x >= img.cols || object_list[c].boundingBox.br().y >= img.rows)
+		{
+			object_list[c].boundingBox &= Rect(0, 0, img.cols, img.rows); // make bbs be inside img
+
+			if ((object_list[c].boundingBox.height & 1) == 0)    object_list[c].boundingBox.height -= 1; // bbs.height should be odd number
+			if ((object_list[c].boundingBox.width & 1) == 0)    object_list[c].boundingBox.width -= 1; // bbs.width should be odd number
+		}
+
+		CandCen = Point((object_list[c].boundingBox.width - 1) / 2, (object_list[c].boundingBox.height - 1) / 2);
+
+		// initialize kernel
+		kernel.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
+		getKernel(kernel, kernel_type);
+
+		// compute color hist
+		tempMat = img(object_list[c].boundingBox);
+		computeHist(tempMat, kernel, hist[0]);
+
+		// set weight
+		weight.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
+		setWeight(tempMat, kernel, object_list[c].hist, hist[0], weight);
+
+		Mean_Shift_Iter = 0; // Mean_Shift iteration count
+
+		// Mean_Shift iteration
+		delBbsOutImg = false;
+
+		while (1)
+		{
+			++Mean_Shift_Iter;
+
+			Point2d normalizedShiftVec = Point2d(0, 0); // computed as sum of w(i,j)*x(i,j) for all pixels (i,j) in bbs, where w(i,j) is weight at (i,j) and x(i,j) is normalized coordinate of (i,j), divided by weiSum
+			weiSum = 0; // sum of w(i,j) for all pixels (i,j) in bbs, where w(i,j) is weight at (i,j)
+
+			for (int i = 0; i < object_list[c].boundingBox.height; i++)
+			{
+				for (int j = 0; j < object_list[c].boundingBox.width; j++)
+				{
+					if (kernel.at<double>(i, j) == 0)	 continue;
+
+					normalizedShiftVec += (weight.at<double>(i, j)*Point2d((double)(j - CandCen.x) / CandCen.x, (double)(i - CandCen.y) / CandCen.y));
+					weiSum += weight.at<double>(i, j);
+				}
+			}
+
+			normalizedShiftVec.x /= weiSum;
+			normalizedShiftVec.y /= weiSum;
+
+			double shift_x = normalizedShiftVec.x * CandCen.x; // denormalize shift in img x-axis
+			double shift_y = normalizedShiftVec.y * CandCen.y; // denormalize shift in img y-axis
+
+			//shift_x = round(shift_x);
+			//shift_y = round(shift_y);
+
+			if (shift_x >= 0)	shift_x = ceil(shift_x);
+			else	shift_x = floor(shift_x);
+			if (shift_y >= 0)	shift_y = ceil(shift_y);
+			else	shift_y = floor(shift_y);
+
+			//cout << "Mean_Shift_Iter " << shift_x << " " << shift_y << " ";
+
+			//if (shift_x > 0)
+			//{
+			//	shift_x += 0.7;
+			//	shift_x = round(shift_x);
+			//}
+			//else
+			//{
+			//	shift_x -= 0.7;
+			//	shift_x = round(shift_x);
+			//}
+
+			//if (shift_y > 0)
+			//{
+			//	shift_y += 0.7;
+			//	shift_y = round(shift_y);
+			//}
+			//else
+			//{
+			//	shift_y -= 0.7;
+			//	shift_y = round(shift_y);
+			//}
+
+			//cout << "org boundingBox " << object_list[c].boundingBox.x << " " << object_list[c].boundingBox.y;
+
+
+			object_list[c].boundingBox.x += (int)shift_x;
+			object_list[c].boundingBox.y += (int)shift_y;
+
+			//cout << " to " << object_list[c].boundingBox.x << " " << object_list[c].boundingBox.y << endl;
+
+
+			// if bbs exceed img boundary after shift, then stop iteration
+			if (object_list[c].boundingBox.x < 0 || object_list[c].boundingBox.y < 0 || object_list[c].boundingBox.br().x >= img.cols || object_list[c].boundingBox.br().y >= img.rows)
+			{
+				object_list[c].boundingBox &= Rect(0, 0, img.cols, img.rows); // make bbs be inside img
+
+				//break;
+
+				if (object_list[c].boundingBox.width < minObjWidth || object_list[c].boundingBox.height < minObjHeight)
+				{
+					delBbsOutImg = true;
+					break; // if the part of bbs inside img is too small after shift, stop shift 	
+				}
+
+				if ((object_list[c].boundingBox.height & 1) == 0)    object_list[c].boundingBox.height -= 1; // bbs.height should be odd number
+				if ((object_list[c].boundingBox.width & 1) == 0)    object_list[c].boundingBox.width -= 1; // bbs.width should be odd number
+
+				CandCen = Point((object_list[c].boundingBox.width - 1) / 2, (object_list[c].boundingBox.height - 1) / 2);
+
+				// if bbs has been changed, kernel should also be changed
+				kernel.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
+				getKernel(kernel, kernel_type);
+				// if bbs has been changed, weight should also be changed
+				weight.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
+			}
+
+			// if too small bbs center shift, then stop iteration
+			if (pow(shift_x, 2) + pow(shift_y, 2) < epsilon)	break;
+
+			// iterate at most Max_Mean_Shift_Iter times
+			if (Mean_Shift_Iter == Max_Mean_Shift_Iter)		break;
+
+
+			// compute color hist
+			tempMat = img(object_list[c].boundingBox);
+			computeHist(tempMat, kernel, hist[0]);
+
+			// set weight
+			setWeight(tempMat, kernel, object_list[c].hist, hist[0], weight);
+		} //end of while
+
+
+		if (delBbsOutImg)
+		{
+			for (int iterColor = 0; iterColor < 10; iterColor++)
+			{
+				if (objNumArray_BS[c] == objNumArray[iterColor])
+				{
+					objNumArray[iterColor] = 1000;
+					break;
+				}
+			}
+			object_list.erase(object_list.begin() + c);
+			--c;
+			continue; // if the part of bbs inside img is too small after scale and shift, abandon tracking this obj
+		}
+
+		// compute color hist
+		tempMat = img(object_list[c].boundingBox);
+		computeHist(tempMat, kernel, hist[0]);
+
+		// compute resulting similarity
+		similarity = 0;
+		for (int histIdx = 0; histIdx < histSize; ++histIdx) // compute similarity
+		{
+			similarity += sqrt(object_list[c].hist[histIdx] * hist[0][histIdx]);
+		}
+		//cout << "final similarity " << similarity << endl;
 	} // for all obj
 
 	return 1;

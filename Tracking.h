@@ -22,12 +22,9 @@ using namespace std;
 /* Display */
 #define plotLineLength     99  // Set tracking line length, (allowed range: 0~99)
 #define DELE_RECT_FRAMENO   4  // Allowed frames for boxes of loiter (suggest range: 5~15)
-#define occSolve            2  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
-#define moveRate            2  // It's used for modifying the moving rate of predicted objects in occSolve 3. (Range:2~10)
-#define keepTrajectory      1  // 0: not keep, 1: keep. (by color hist)
-#define setPointY           4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
+#define keepTrajectory      0  // 0: not keep, 1: keep. (by color hist)
 #define use_Kalman          0  // 0: Not show KF rectangles, 1: Show KF rectangles
-#define demoMode            1  // Without accumulating number (0:debug mode, 1:demo mode) 
+#define countNum            1  // 0: Without accumulating number
 
 /* Math */
 #define PI 3.141592653589793238463 
@@ -74,12 +71,6 @@ typedef struct
 	char moveDirect;           //U:up, D:down, L:left, R:right
 	bool startOcc;
 } ObjTrackInfo;
-
-typedef struct
-{
-	Rect boundingBox;
-	bool bIsTrigger;
-} InputObjInfo;
 
 typedef struct
 {
@@ -184,12 +175,11 @@ private:
 	int pred_y[10];
 };
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI);
+void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum);
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
 void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
-void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
-void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
+void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list);
 void KFtrack(Mat &img_input, vector<ObjTrackInfo> &object_list, KalmanF &KF);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
