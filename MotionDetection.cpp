@@ -1,13 +1,3 @@
-#include "opencv2/core/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/video/background_segm.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/legacy/legacy.hpp"
-#include "opencv2/video/video.hpp"
-#include "opencv2/video/tracking.hpp"
-#include "Tracking.h"
-#include <iomanip> 
-#include <math.h>
 #include "MotionDetection.h"
 
 int nframesToLearnBG = 1; 

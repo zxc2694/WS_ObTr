@@ -1,15 +1,4 @@
-﻿#define _CRT_SECURE_NO_WARNINGS
-#include <stdio.h>
-#include <iostream>
-#include <iomanip> 
-#include "opencv2/core/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/video/background_segm.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/legacy/legacy.hpp"
-#include "opencv2/video/video.hpp"
-#include "opencv2/video/tracking.hpp"
-#include "Tracking.h"
+﻿#include "Tracking.h"
 
 int objNumArray[10];
 int objNumArray_BS[10];
@@ -57,12 +46,11 @@ CObjectTracking::~CObjectTracking()
 {
 }
 
-/* Function: tracking_function
+/* Function: ObjectTrackingProcessing
 * @param: img_input  - Original image (RGB, 640 X 480)
 * @param: img_output - Image output with plotting trajectory (RGB, 640 X 480)
-* @param: fgmaskIpl  - Original BS image (RGB, 320 X 240)
 * @param: bbs        - Detected ROIs. Input is a compressed size (320 X 240)
-* @param: ObjNum  - The number of ROIs
+* @param: ObjNum     - The number of ROIs
 */
 void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
@@ -294,7 +282,7 @@ void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &objec
 							similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[0].hist[histIdx]);
 						}
 					}
-					cout << "objNum = " << obj_list_iter << "similarityToOld = " << similarityToOld << "similarityToNew = " << similarityToNew << endl;
+					//cout << "objNum = " << obj_list_iter << "similarityToOld = " << similarityToOld << "similarityToNew = " << similarityToNew << endl;
 
 					// Update the suspended object from new object 
 					updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
@@ -1013,9 +1001,9 @@ void CObjectTracking::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
 		if (object_list[c].type == 1) //vehicle	
 		{
 			std::stringstream ss, ss1, ss2, ss3;
-			ss << std::fixed << std::setprecision(2) << object_list[c].xyz.z;
-			ss1 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.x;
-			ss2 << std::fixed << std::setprecision(2) << object_list[c].boundingBox.y;
+			ss << std::fixed << setprecision(2) << object_list[c].xyz.z;
+			ss1 << std::fixed << setprecision(2) << object_list[c].boundingBox.x;
+			ss2 << std::fixed << setprecision(2) << object_list[c].boundingBox.y;
 			//cv::putText(img, "person:" + ss.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y - 8), 1, 1, ColorMatrix[c]);
 			//cv::putText(img, "prob:" + ss1.str() + "," + ss2.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);
 			//cv::putText(img, "prob:" + ss1.str(), Point(object_list[c].boundingBox.x, object_list[c].boundingBox.y + 12), 1, 1, ColorMatrix[c]);			
