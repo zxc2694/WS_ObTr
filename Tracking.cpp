@@ -57,7 +57,14 @@ CObjectTracking::~CObjectTracking()
 {
 }
 
-void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
+/* Function: tracking_function
+* @param: img_input  - Original image (RGB, 640 X 480)
+* @param: img_output - Image output with plotting trajectory (RGB, 640 X 480)
+* @param: fgmaskIpl  - Original BS image (RGB, 320 X 240)
+* @param: bbs        - Detected ROIs. Input is a compressed size (320 X 240)
+* @param: ObjNum  - The number of ROIs
+*/
+void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
 	static CObjectTracking ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
@@ -71,16 +78,16 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 	}
 
 	// Enlarge the size of bbs 2 times
-	revertBbsSize(img_input, bbs, MaxObjNum);
+	revertBbsSize(img_input, bbs, ObjNum);
 
 	// Main tracking code using Mean-shift algorithm
 	track(img_input, object_list);
 
 	// Add new useful ROI to the object_list for tracking
-	getNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);
+	getNewObj(img_input, ms_tracker, object_list, bbs, ObjNum);
 
 	// Modify the size of the tracking boxes and delete useless boxes
-	modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
+	modifyTrackBox(img_input, ms_tracker, object_list, bbs, ObjNum);
 
 	// Find trigger object
 	findTrigObj(object_list, trigROI);
@@ -100,10 +107,10 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 	runFirst = false;
 }
 
-void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
+void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &ObjNum)
 {
 	// Enlarge the size of bbs 2 times
-	for (int iter = 0; iter < MaxObjNum; ++iter)
+	for (int iter = 0; iter < ObjNum; ++iter)
 	{
 		bbs[iter].x *= 2;
 		bbs[iter].y *= 2;
@@ -112,8 +119,8 @@ void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
 	}
 
 	// Delete useless small bbs
-	int obj = MaxObjNum;
-	for (int iter = 0; iter < MaxObjNum; ++iter)
+	int obj = ObjNum;
+	for (int iter = 0; iter < ObjNum; ++iter)
 	{
 		if ((bbs[iter].width < ((img_input.cols + img_input.rows) / minObjWidth_Ini_Scale)) || (bbs[iter].height < (img_input.cols + img_input.rows) / minObjHeight_Ini_Scale))
 		{
@@ -123,7 +130,7 @@ void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
 	}
 	Rect temp[10];
 	int j = 0;
-	for (int iter = 0; iter < MaxObjNum; ++iter)
+	for (int iter = 0; iter < ObjNum; ++iter)
 	{
 		if (bbs[iter].width != 0)
 		{
@@ -134,7 +141,7 @@ void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
 			j++;
 		}
 	}
-	MaxObjNum = obj;
+	ObjNum = obj;
 	for (int iter = 0; iter < obj; ++iter)
 	{
 		bbs[iter].x = temp[iter].x;
@@ -165,11 +172,11 @@ void CObjectTracking::ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
-	for (bbs_iter = 0; bbs_iter < MaxObjNum; ++bbs_iter)
+	for (bbs_iter = 0; bbs_iter < ObjNum; ++bbs_iter)
 	{
 		bool Overlapping = false, addToList = true;
 		vector<int> replaceList;
@@ -248,7 +255,7 @@ void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vect
 		if (!Overlapping && addToList)
 		{
 			ms_tracker.addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
-			ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);      // Consider two men occlusion
+			ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, bbs, ObjNum);      // Consider two men occlusion
 			newObjFind = true;
 		}
 
@@ -256,7 +263,7 @@ void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vect
 	}  // end of 1st for 
 }
 
-void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	if (addObj == true) // It confirms that one of objects has appeared after occlusion
 	{
@@ -324,14 +331,14 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 						resizeLeftRect.x = object_list[1].boundingBox.x;
 						resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
 
-						for (int i = 0; i < MaxObjNum; i++)
+						for (int i = 0; i < ObjNum; i++)
 						{
 							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
 							ocp[i].objNum = i;
 						}
 						int maxNum = ocp[0].objNum;
 
-						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+						for (int j = 1; j <= ObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 						{
 							if (ocp[maxNum].value < ocp[j].value)
 								maxNum = ocp[j].objNum;
@@ -351,14 +358,14 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 						resizeLeftRect.x = object_list[0].boundingBox.x;
 						resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
 
-						for (int i = 0; i < MaxObjNum; i++)
+						for (int i = 0; i < ObjNum; i++)
 						{
 							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
 							ocp[i].objNum = i;
 						}
 						int maxNum = ocp[0].objNum;
 							
-						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+						for (int j = 1; j <= ObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 						{
 							if (ocp[maxNum].value < ocp[j].value)
 								maxNum = ocp[j].objNum;
@@ -378,14 +385,14 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 						resizeLeftRect.x = object_list[0].boundingBox.x - object_list[0].boundingBox.width;
 						resizeLeftRect.width = 2 * object_list[0].boundingBox.width;
 
-						for (int i = 0; i < MaxObjNum; i++)
+						for (int i = 0; i < ObjNum; i++)
 						{
 							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
 							ocp[i].objNum = i;
 						}
 						int maxNum = ocp[0].objNum;
 
-						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+						for (int j = 1; j <= ObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 						{
 							if (ocp[maxNum].value < ocp[j].value)
 								maxNum = ocp[j].objNum;
@@ -405,14 +412,14 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 						resizeLeftRect.x = object_list[1].boundingBox.x - object_list[1].boundingBox.width;
 						resizeLeftRect.width = 2 * object_list[1].boundingBox.width;
 
-						for (int i = 0; i < MaxObjNum; i++)
+						for (int i = 0; i < ObjNum; i++)
 						{
 							ocp[i].value = OverlapValue(resizeLeftRect, bbs[i]);
 							ocp[i].objNum = i;
 						}
 						int maxNum = ocp[0].objNum;
 
-						for (int j = 1; j <= MaxObjNum; j++) // Find the bbs number which is max overlap with bounding box 
+						for (int j = 1; j <= ObjNum; j++) // Find the bbs number which is max overlap with bounding box 
 						{
 							if (ocp[maxNum].value < ocp[j].value)
 								maxNum = ocp[j].objNum;
@@ -443,7 +450,7 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 	}
 	addObj = false;
 }
-void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	/* Modify the size of the tracking box  */
 	int bbsNumber = 0;
@@ -451,14 +458,14 @@ void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker,
 	{
 		if (object_list[obj_list_iter].bIsUpdateTrack == true)
 		{
-			for (int i = 0; i < MaxObjNum; i++)
+			for (int i = 0; i < ObjNum; i++)
 			{
 				// Find how many bbs in the tracking box
 				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
 					bbsNumber++;
 			}
 			// When the width of tracking box has 1.5 times more bigger than the width of bbs:
-			for (int i = 0; i < MaxObjNum; i++)
+			for (int i = 0; i < ObjNum; i++)
 			{
 				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && ((object_list[obj_list_iter].boundingBox.width > 1.3 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height > 1.5 * bbs[i].height) || (object_list[obj_list_iter].boundingBox.width < 0.8 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height < 0.6 * bbs[i].height)) && (bbsNumber == 1))
 					ms_tracker.updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
@@ -476,7 +483,7 @@ void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker,
 	{
 		if ((object_list[obj_list_iter].bIsUpdateTrack == true) && (object_list[obj_list_iter].PtCount != 0)) // Prevent to delete new object
 		{
-			for (int i = 0; i < MaxObjNum; i++)
+			for (int i = 0; i < ObjNum; i++)
 			{
 				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.2f))
 					break;
@@ -490,7 +497,7 @@ void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker,
 				object_list[obj_list_iter].cPtNumber = 0;
 
 			// findBbs[i] = 0 -> no object; findBbs[i] = 1 -> has object
-			if (black == MaxObjNum)
+			if (black == ObjNum)
 				object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 0;
 			else
 				object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 1;
@@ -546,7 +553,7 @@ void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker,
 			if (leftObjNo == object_list[obj_list_iter].No) // Find left object number
 				leftObjNum = obj_list_iter;                 // Get real left object number called leftObjNum
 		}
-		for (int i = 0; i < MaxObjNum; i++)
+		for (int i = 0; i < ObjNum; i++)
 		{
 			if ((object_list.size() >= 2) && (Overlap(object_list[leftObjNum].boundingBox, bbs[i], 0.5f)))
 			{
