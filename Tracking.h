@@ -114,14 +114,14 @@ public:
 	void drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list);
 	void drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 	int track(Mat &img, vector<ObjTrackInfo> &object_list);
-	void modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum);
-	void occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum);
+	void modifyTrackBox(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum);
+	void occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum);
 
 	void revertBbsSize(Mat &img_input, CvRect *bbs, int &ObjNum);
 	void ObjNumArr(int *objNumArray, int *objNumArray_BS);
-	void getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum);
+	void getNewObj(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum);
 	void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
-	void drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
+	void drawTrajectory(Mat img_input, Mat &TrackingLine, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
 	void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 	int Overlap(Rect a, Rect b, double ration);
 	double OverlapValue(Rect a, Rect b);

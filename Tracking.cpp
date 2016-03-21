@@ -67,7 +67,6 @@ CObjectTracking::~CObjectTracking()
 void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
-	static CObjectTracking ms_tracker(img_input.cols, img_input.rows);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
 	TrackingLine = Scalar::all(0);
 
@@ -84,10 +83,10 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 	track(img_input, object_list);
 
 	// Add new useful ROI to the object_list for tracking
-	getNewObj(img_input, ms_tracker, object_list, bbs, ObjNum);
+	getNewObj(img_input, object_list, bbs, ObjNum);
 
 	// Modify the size of the tracking boxes and delete useless boxes
-	modifyTrackBox(img_input, ms_tracker, object_list, bbs, ObjNum);
+	modifyTrackBox(img_input, object_list, bbs, ObjNum);
 
 	// Find trigger object
 	findTrigObj(object_list, trigROI);
@@ -99,7 +98,7 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 	drawTrackBox(img_input, object_list);
 
 	//Plotting trajectories
-	drawTrajectory(img_input, TrackingLine, ms_tracker, object_list, trigROI);
+	drawTrajectory(img_input, TrackingLine, object_list, trigROI);
 
 	// Tracking image output (merge 3-channel image and 4-channel trakcing lines)
 	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0));
@@ -172,7 +171,7 @@ void CObjectTracking::ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
+void CObjectTracking::getNewObj(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
@@ -212,10 +211,10 @@ void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vect
 			{
 				for (iter2 = iter1 + 1; iter2 < (int)replaceList.size(); ++iter2)
 				{
-					/*cout << Pixel32S(ms_tracker.DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
+					/*cout << Pixel32S(DistMat, MIN(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No),
 					MAX(object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No)) << endl;*/
 
-					if (Pixel32S(ms_tracker.DistMat, object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
+					if (Pixel32S(DistMat, object_list[replaceList[iter1]].No, object_list[replaceList[iter2]].No) > MAX_DIS_BET_PARTS_OF_ONE_OBJ)
 					{
 						addToList = false;
 						goto end;
@@ -238,7 +237,7 @@ void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vect
 					if (object_list[replaceList[iter]].PtCount > object_list[replaceList[objWithLongestDuration]].PtCount)		objWithLongestDuration = iter;
 				}
 
-				ms_tracker.updateObjBbs(img_input, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
+				updateObjBbs(img_input, object_list, bbs[bbs_iter], replaceList[objWithLongestDuration]);
 
 				replaceList.erase(replaceList.begin() + objWithLongestDuration); // reserve the obj with longest duration in replaceList (exclude it from replaceList)
 
@@ -254,8 +253,8 @@ void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vect
 		}
 		if (!Overlapping && addToList)
 		{
-			ms_tracker.addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
-			ms_tracker.occlusionNewObj(img_input, ms_tracker, object_list, bbs, ObjNum);      // Consider two men occlusion
+			addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
+			occlusionNewObj(img_input, object_list, bbs, ObjNum);      // Consider two men occlusion
 			newObjFind = true;
 		}
 
@@ -263,7 +262,7 @@ void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vect
 	}  // end of 1st for 
 }
 
-void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
+void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	if (addObj == true) // It confirms that one of objects has appeared after occlusion
 	{
@@ -298,7 +297,7 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 					cout << "objNum = " << obj_list_iter << "similarityToOld = " << similarityToOld << "similarityToNew = " << similarityToNew << endl;
 
 					// Update the suspended object from new object 
-					ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
+					updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
 
 					if (similarityToNew < similarityToOld)
 					{
@@ -307,8 +306,8 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 						{
 							Rect tempRect;
 							tempRect = object_list[0].boundingBox;
-							ms_tracker.updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
-							ms_tracker.updateObjBbs(img_input, object_list, tempRect, 1);
+							updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
+							updateObjBbs(img_input, object_list, tempRect, 1);
 						}
 					}
 					object_list[obj_list_iter].bIsUpdateTrack = true;
@@ -343,10 +342,10 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 							if (ocp[maxNum].value < ocp[j].value)
 								maxNum = ocp[j].objNum;
 						}
-						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 0);
+						updateObjBbs(img_input, object_list, bbs[maxNum], 0);
 							
 						// Next: [N1(New)][N0]
-						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
+						updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
 					}
 					//----- Condition 2 [New][N1][N0] -----//
 					else if ((N1_cenPoint <= N0_cenPoint) && (New_cenPoint < N0_cenPoint)) // New object appears on the left side of the occlusion
@@ -370,10 +369,10 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 							if (ocp[maxNum].value < ocp[j].value)
 								maxNum = ocp[j].objNum;
 						}
-						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 1);
+						updateObjBbs(img_input, object_list, bbs[maxNum], 1);
 
 						// Next: [N0(New)][N1]
-						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0);
+						updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0);
 					}
 					//----- Condition 3 [N0][N1][New] -----//
 					else if ((N1_cenPoint > N0_cenPoint) && (New_cenPoint >= N0_cenPoint)) // New object appears on the right side of the occlusion
@@ -397,10 +396,10 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 							if (ocp[maxNum].value < ocp[j].value)
 								maxNum = ocp[j].objNum;
 						}
-						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 1);
+						updateObjBbs(img_input, object_list, bbs[maxNum], 1);
 							
 						// Next: [N1][N0(New)]
-						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0); //Reset the scale of the tracking box.
+						updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 0); //Reset the scale of the tracking box.
 					}
 					//----- Condition 4 [N1][N0][New] -----//
 					else if ((N1_cenPoint < N0_cenPoint) && (New_cenPoint >= N0_cenPoint)) // New object appears on the right side of the occlusion
@@ -424,10 +423,10 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 							if (ocp[maxNum].value < ocp[j].value)
 								maxNum = ocp[j].objNum;
 						}
-						ms_tracker.updateObjBbs(img_input, object_list, bbs[maxNum], 0);
+						updateObjBbs(img_input, object_list, bbs[maxNum], 0);
 
 						// Next: [N0][N1(New)]
-						ms_tracker.updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
+						updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, 1); //Reset the scale of the tracking box.
 					}
 				}
 				object_list[0].bIsUpdateTrack = true;
@@ -437,8 +436,8 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 				if (occSolve == 3)
 				{
 					Rect rectTemp = object_list[0].boundingBox;
-					ms_tracker.updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
-					ms_tracker.updateObjBbs(img_input, object_list, rectTemp, 1);
+					updateObjBbs(img_input, object_list, object_list[1].boundingBox, 0);
+					updateObjBbs(img_input, object_list, rectTemp, 1);
 				}
 				// Delete new object
 				size_t delNum = (int)object_list.size() - 1;
@@ -450,7 +449,7 @@ void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker
 	}
 	addObj = false;
 }
-void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
+void CObjectTracking::modifyTrackBox(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	/* Modify the size of the tracking box  */
 	int bbsNumber = 0;
@@ -468,7 +467,7 @@ void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker,
 			for (int i = 0; i < ObjNum; i++)
 			{
 				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && ((object_list[obj_list_iter].boundingBox.width > 1.3 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height > 1.5 * bbs[i].height) || (object_list[obj_list_iter].boundingBox.width < 0.8 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height < 0.6 * bbs[i].height)) && (bbsNumber == 1))
-					ms_tracker.updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
+					updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
 			}
 		}
 	}
@@ -572,7 +571,7 @@ void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker,
 			}
 			if (similarityH > 0.7)
 			{
-				ms_tracker.updateObjBbs(img_input, object_list, object_list[newObjNum].boundingBox, leftObjNum); //Reset the scale of the tracking box.
+				updateObjBbs(img_input, object_list, object_list[newObjNum].boundingBox, leftObjNum); //Reset the scale of the tracking box.
 				object_list_erase(object_list, newObjNum);
 				Similar = true;
 			}
@@ -747,7 +746,7 @@ void CObjectTracking::findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInf
 	}
 }
 
-void CObjectTracking::drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
+void CObjectTracking::drawTrajectory(Mat img_input, Mat &TrackingLine, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 {
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
@@ -755,13 +754,13 @@ void CObjectTracking::drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTr
 		{
 			if (TriggerInfo->bIsTrigger == false) // if no trigger, draw all trajectories
 			{
-				ms_tracker.drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
+				drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
 			}
 			else // trigger area is being invaded
 			{
 				if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
 				{
-					ms_tracker.drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
+					drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
 
 					drawArrow(img_input,  // Draw the arrow on the pedestrian's head
 						Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
@@ -772,7 +771,7 @@ void CObjectTracking::drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTr
 			}
 		}
 		else // for debug
-			ms_tracker.drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
+			drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
 
 		// Position of plotting point
 		int currentX = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
