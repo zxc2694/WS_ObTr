@@ -10,6 +10,7 @@
 #include "opencv2/video/video.hpp"
 #include "opencv2/video/tracking.hpp"
 #include "Tracking.h"
+#include "BackGroundModel.h"
 
 int objNumArray[10];
 int objNumArray_BS[10];
@@ -19,10 +20,11 @@ bool newObjFind = false;
 /* Function: tracking_function
 * @param: img_input  - Original image (RGB, 640 X 480)
 * @param: img_output - Image output with plotting trajectory (RGB, 640 X 480) 
+* @param: fgmaskIpl  - Original BS image (RGB, 320 X 240)
 * @param: bbs        - Detected ROIs. Input is a compressed size (320 X 240)
-* @param: MaxObjNum  - The number of ROIs
+* @param: ObjNum  - The number of ROIs
 */
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum)
+void tracking_function(Mat &img_input, Mat &img_output, IplImage *fgmaskIpl, CvRect *bbs, CvPoint *centers, int ObjNum)
 {
 	static char runFirst = true;
 	static vector<ObjTrackInfo> object_list;
@@ -30,6 +32,8 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	static MeanShiftTracker ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
 	TrackingLine = Scalar::all(0);
+
+	ms_tracker.fgmaskIpl = fgmaskIpl;
 
 	if (runFirst)
 	{	
@@ -40,17 +44,18 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 		KF.Init();
 	}
 
-	// Enlarge the size of bbs 2 times
-	revertBbsSize(img_input, bbs, MaxObjNum);
+	// Enlarge the size of bbs "imgCompressionScale" times
+	revertBbsSize(img_input, bbs, centers, ObjNum);
 
 	// Main tracking code using Mean-shift algorithm
 	ms_tracker.track(img_input, object_list);
 
-	// Add new useful ROI to the object_list for tracking
-	getNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);
+	// if a obj has a upper bbs and a lower bbs in previous frms due to broken background subtraction output, merge them
+	// and add new bbs into object_list for obj appearing for the 1st time in order to track it
+	mergeBbsAndGetNewObjBbs(img_input, ms_tracker, object_list, bbs, ObjNum);
 
 	// Modify the size of the tracking boxes and delete useless boxes
-	ms_tracker.modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
+	ms_tracker.modifyTrackBox(img_input, ms_tracker, object_list, bbs, ObjNum);
 
 	// Arrange object number to prevent accumulation
 	ObjNumArr(objNumArray, objNumArray_BS);
@@ -70,15 +75,17 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	runFirst = false;
 }
 
-void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
+void revertBbsSize(Mat &img_input, CvRect *bbs, CvPoint *centers, int &ObjNum)
 {
 	// Enlarge the size of bbs 2 times
-	for (int iter = 0; iter < MaxObjNum; ++iter)
+	for (int iter = 0; iter < ObjNum; ++iter)
 	{
-		bbs[iter].x *= 2;
-		bbs[iter].y *= 2;
-		bbs[iter].width *= 2;
-		bbs[iter].height *= 2;
+		bbs[iter].x *= imgCompressionScale;
+		bbs[iter].y *= imgCompressionScale;
+		bbs[iter].width *= imgCompressionScale;
+		bbs[iter].height *= imgCompressionScale;
+		centers[iter].x *= imgCompressionScale;
+		centers[iter].y *= imgCompressionScale;
 	}
 }
 
@@ -103,19 +110,23 @@ void ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+// if a obj has a upper bbs and a lower bbs in previous frms due to broken background subtraction output, merge them
+// and add new bbs into object_list for obj appearing for the 1st time in order to track it
+void mergeBbsAndGetNewObjBbs(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
+	// if a obj has a upper bbs and a lower bbs in previous frms due to broken background subtraction output, merge them
 	int bbs_iter;
 	size_t obj_list_iter;
-	for (bbs_iter = 0; bbs_iter < MaxObjNum; ++bbs_iter)
+	for (bbs_iter = 0; bbs_iter < ObjNum; ++bbs_iter)
 	{
 		bool Overlapping = false, addToList = true;
 		vector<int> replaceList;
 
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); ++obj_list_iter)
 		{
-			if ((bbs[bbs_iter].height > 1.3f*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
-				//if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
+			//If the height of bbs is 1.3 times lagrer than the height of boundingBox, determine whether replace the boundingBox by the following judgement
+			if ((bbs[bbs_iter].height > 1.3f*object_list[(int)obj_list_iter].boundingBox.height)) 
+			//if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
 				// && (bbs[bbs_iter].width*bbs[bbs_iter].height < 4.0f*object_list[obj_list_iter].boundingBox.width*object_list[obj_list_iter].boundingBox.height)
 			{
 				if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.5f)) // Overlap > 0.5 --> replace the boundingBox
@@ -125,7 +136,8 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 			}
 			else
 			{
-				if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.3f))		addToList = false; // If the size of overlap is small, don't add to object list. (no replace)
+				// In else case, if the size of overlap is large, don't add to object list. (no replace)
+				if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.3f))		addToList = false; 
 			}
 		} // end of 2nd for 
 
@@ -135,8 +147,8 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 		{
 			for (int iter = 0; iter < object_list.size(); ++iter)
 			{
-				//if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above judgement
-				if ((bbs[bbs_iter].height <= 1.3f*object_list[iter].boundingBox.height)
+				//if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above "if" above 
+				if ((bbs[bbs_iter].height <= 1.3f*object_list[iter].boundingBox.height) // contrary to above "if" above 
 					&& Overlap(bbs[bbs_iter], object_list[iter].boundingBox, 0.5f))		replaceList.push_back(iter);
 			}
 
@@ -191,7 +203,8 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 			}
 		}
 
-		if (!Overlapping && addToList)
+		// and add new bbs into object_list for obj appearing for the 1st time in order to track it
+		if (!Overlapping && addToList) 
 		{
 			ms_tracker.addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
 			newObjFind = true;
@@ -201,28 +214,31 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 	}  // end of 1st for 
 }
 
-void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	/* shrink the size of the tracking box */
 	int bbsNumber;
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
 		bbsNumber = 0;
+		int bbsIdxToReplace;
 
-		for (int i = 0; i < MaxObjNum; i++)
+		for (int i = 0; i < ObjNum; i++)
 		{
 			// Find how many bbs in the tracking box
 			if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
+			{
+				bbsIdxToReplace = i;
 				bbsNumber++;
+			}
+			if (bbsNumber > 1)	break;
 		}
-		// When the width of tracking box has 1.1 times bigger than the width of bbs:
+		// When the width or height of tracking box is 1.1 times larger than the width or height of bbs
 		if (bbsNumber == 1)
 		{
-			for (int i = 0; i < MaxObjNum; i++)
-			{
-				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && (object_list[obj_list_iter].boundingBox.width > 1.2f * bbs[i].width))
-					ms_tracker.updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
-			}
+			if ((object_list[obj_list_iter].boundingBox.width > 1.25f * bbs[bbsIdxToReplace].width) || 
+				(object_list[obj_list_iter].boundingBox.height > 1.25f * bbs[bbsIdxToReplace].height))
+				ms_tracker.updateObjBbs(img_input, object_list, bbs[bbsIdxToReplace], obj_list_iter); // Reset the scale of the tracking box.
 		}
 	}
 
@@ -236,7 +252,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 	{
 		if ((object_list[obj_list_iter].bIsUpdateTrack == true) && (object_list[obj_list_iter].PtCount != 0)) // Prevent to delete new object
 		{
-			for (int i = 0; i < MaxObjNum; i++)
+			for (int i = 0; i < ObjNum; i++)
 			{
 				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.2f))
 					break;
@@ -250,7 +266,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 				object_list[obj_list_iter].cPtNumber = 0;
 
 			// findBbs[i] = 0 -> no object; findBbs[i] = 1 -> has object
-			if (black == MaxObjNum)
+			if (black == ObjNum)
 				object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 0;
 			else
 				object_list[obj_list_iter].findBbs[object_list[obj_list_iter].cPtNumber] = 1;
@@ -306,7 +322,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			if (leftObjNo == object_list[obj_list_iter].No) // Find left object number
 				leftObjNum = obj_list_iter;                 // Get real left object number called leftObjNum
 		}
-		for (int i = 0; i < MaxObjNum; i++)
+		for (int i = 0; i < ObjNum; i++)
 		{
 			if ((object_list.size() >= 2) && (Overlap(object_list[leftObjNum].boundingBox, bbs[i], 0.5f)))
 			{
@@ -319,7 +335,7 @@ void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracke
 			bool Similar = false;
 			double similarityH = 0.0;
 
-			for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+			for (int histIdx = 0; histIdx < MaxHistBins; ++histIdx) // Compute similarity
 			{
 				similarityH += sqrt(object_list[leftObjNum].hist[histIdx] * object_list[newObjNum].hist[histIdx]);
 			}
@@ -511,7 +527,7 @@ MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_
 	//const int minObjArea = 1000;
 
 	bins = 256 / bin_width;
-	histSize = bins*bins*bins;
+	histSize = bins*bins*bins + 1;
 
 	DistMat = Mat::zeros(MAX_OBJ_LIST_SIZE, MAX_OBJ_LIST_SIZE, CV_32SC1);
 	ColorMatrix[0] = Scalar(0, 0, 255);
@@ -540,11 +556,12 @@ MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_
 
 	Max_Mean_Shift_Iter = 8;
 	Similar_Val_Threshold = 0.165;
-	scaleBetFrame = (float)0.1;
-	scaleLearningRate = 0.1;
-	epsilon = 1;
+	scaleBetFrame = 0.1f;
+	scaleLearningRate = 0.5; //0.1 // scale change rate
+	epsilon = 1.0;
 	count = 0;
 }
+
 MeanShiftTracker::~MeanShiftTracker()
 {
 }
@@ -604,7 +621,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<ObjTrackInfo> &obje
 	getKernel(obj.kernel, kernel_type);
 
 	Mat tempMat = img(obj.boundingBox);
-	computeHist(tempMat, obj.kernel, obj.hist);
+	computeHist(tempMat, obj.boundingBox, obj.kernel, obj.hist);
 
 	object_list.push_back(obj);
 
@@ -653,7 +670,7 @@ void MeanShiftTracker::updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object
 	getKernel(object_list[idx].kernel, kernel_type);
 
 	Mat tempMat = img(object_list[idx].boundingBox);
-	computeHist(tempMat, object_list[idx].kernel, object_list[idx].hist);
+	computeHist(tempMat, object_list[idx].boundingBox, object_list[idx].kernel, object_list[idx].hist);
 }
 
 void MeanShiftTracker::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
@@ -793,11 +810,11 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 			// compute color hist
 			tempMat = img(CandBbs[scaleIter]);
-			computeHist(tempMat, kernel, hist[scaleIter]);
+			computeHist(tempMat, CandBbs[scaleIter], kernel, hist[scaleIter]);
 
 			// set weight
 			weight.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
-			setWeight(tempMat, kernel, object_list[c].hist, hist[scaleIter], weight);
+			setWeight(tempMat, CandBbs[scaleIter], kernel, object_list[c].hist, hist[scaleIter], weight);
 
 			Mean_Shift_Iter = 0; // Mean_Shift iteration count
 			//Point oldBbsCen = Point(0, 0), newBbsCen = Point(epsilon, 0); // candidate bbs center coordinates during Mean_Shift iteration (let upper left corner of img have coordinate (0, 0))
@@ -873,17 +890,17 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 				// compute color hist
 				tempMat = img(CandBbs[scaleIter]);
-				computeHist(tempMat, kernel, hist[scaleIter]);
+				computeHist(tempMat, CandBbs[scaleIter], kernel, hist[scaleIter]);
 
 				// set weight
-				setWeight(tempMat, kernel, object_list[c].hist, hist[scaleIter], weight);
+				setWeight(tempMat, CandBbs[scaleIter], kernel, object_list[c].hist, hist[scaleIter], weight);
 			} //end of while
 
 			if (delBbsOutImg)   continue; // if the part of bbs inside img is too small after scale and shift, abandon this scale and choose other scale
 
 			// compute color hist
 			tempMat = img(CandBbs[scaleIter]);
-			computeHist(tempMat, kernel, hist[scaleIter]);
+			computeHist(tempMat, CandBbs[scaleIter], kernel, hist[scaleIter]);
 
 			// choose scale with largest similarity to target model
 			similarity = 0;
@@ -901,8 +918,9 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 			exceedImgBoundary = false;
 		} // for all scale
 
-		// if the part of bbs inside img is too small for all scales after shifts, abandon tracking this obj, i.e. delete this obj from object_list 
-		if (exceedImgBoundary)
+		// if the part of bbs inside img is too small for all scales after shifts, stop tracking this obj, i.e. delete this obj from object_list 
+		// if similarity < "ACCEPTABLE_SIMILARITY", stop tracking this obj, i.e. delete this obj from object_list 
+		if (exceedImgBoundary || largestSimilarity < ACCEPTABLE_SIMILARITY)
 		{
 			for (int iterColor = 0; iterColor < 10; iterColor++)
 			{
@@ -949,11 +967,11 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 		// compute color hist
 		tempMat = img(object_list[c].boundingBox);
-		computeHist(tempMat, kernel, hist[0]);
+		computeHist(tempMat, object_list[c].boundingBox, kernel, hist[0]);
 
 		// set weight
 		weight.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
-		setWeight(tempMat, kernel, object_list[c].hist, hist[0], weight);
+		setWeight(tempMat, object_list[c].boundingBox, kernel, object_list[c].hist, hist[0], weight);
 
 		Mean_Shift_Iter = 0; // Mean_Shift iteration count
 
@@ -1059,10 +1077,10 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 			// compute color hist
 			tempMat = img(object_list[c].boundingBox);
-			computeHist(tempMat, kernel, hist[0]);
+			computeHist(tempMat, object_list[c].boundingBox, kernel, hist[0]);
 
 			// set weight
-			setWeight(tempMat, kernel, object_list[c].hist, hist[0], weight);
+			setWeight(tempMat, object_list[c].boundingBox, kernel, object_list[c].hist, hist[0], weight);
 		} //end of while
 
 
@@ -1083,7 +1101,7 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 		// compute color hist
 		tempMat = img(object_list[c].boundingBox);
-		computeHist(tempMat, kernel, hist[0]);
+		computeHist(tempMat, object_list[c].boundingBox, kernel, hist[0]);
 
 		// compute resulting similarity
 		similarity = 0;
@@ -1166,7 +1184,7 @@ void MeanShiftTracker::getKernel(Mat &kernel, const int func_type)
 	} // end of switch
 }
 
-void MeanShiftTracker::computeHist(const Mat &roiMat, const Mat &kernel, double hist[])
+void MeanShiftTracker::computeHist(const Mat &roiMat, const Rect &objBbs, const Mat &kernel, double hist[])
 {
 	if (roiMat.data == NULL) return;
 
@@ -1180,6 +1198,12 @@ void MeanShiftTracker::computeHist(const Mat &roiMat, const Mat &kernel, double 
 			for (int j = 0; j < kernel.cols; j++)
 			{
 				if (kernel.at<double>(i, j) == 0)	 continue;
+				if (fgmaskIpl->imageData[(objBbs.y / imgCompressionScale + i / imgCompressionScale)*fgmaskIpl->widthStep + (objBbs.x / imgCompressionScale + j / imgCompressionScale)] == 0)
+				{
+					hist[MaxHistBins - 1] += kernel.at<double>(i, j);
+					kernel_sum += kernel.at<double>(i, j);
+					continue;
+				}
 
 				Vec3b bgr = roiMat.at<Vec3b>(i, j);
 				int idx = (bgr.val[0] / bin_width)*bins*bins + (bgr.val[1] / bin_width)*bins + bgr.val[2] / bin_width;
@@ -1213,7 +1237,7 @@ void MeanShiftTracker::computeHist(const Mat &roiMat, const Mat &kernel, double 
 	}
 }
 
-int MeanShiftTracker::setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight)
+int MeanShiftTracker::setWeight(const Mat &roiMat, const Rect &objBbs, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight)
 {
 	if (roiMat.data == NULL) return -1;
 
@@ -1224,6 +1248,12 @@ int MeanShiftTracker::setWeight(const Mat &roiMat, const Mat &kernel, const doub
 			for (int j = 0; j < roiMat.cols; j++)
 			{
 				if (kernel.at<double>(i, j) == 0)	 continue;
+
+				if (fgmaskIpl->imageData[(objBbs.y / 2 + i / 2)*fgmaskIpl->widthStep + (objBbs.x / 2 + j / 2)] == 0)
+				{
+					weight.at<double>(i, j) = sqrt(tarHist[MaxHistBins - 1] / candHist[MaxHistBins - 1]);
+					continue;
+				}
 
 				Vec3b bgr = roiMat.at<Vec3b>(i, j);
 				int idx = (bgr.val[0] / bin_width)*bins*bins + (bgr.val[1] / bin_width)*bins + bgr.val[2] / bin_width;

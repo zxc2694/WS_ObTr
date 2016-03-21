@@ -315,8 +315,21 @@ void FindConnectedComponents::returnBbs(IplImage *mask, int *num, CvRect *bbs, C
 	static CvMemStorage* mem_storage = NULL;
 	static CvSeq* contours = NULL;
 
-	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, 1);    //clear up raw mask
-	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_CLOSE, CVCLOSE_ITR);
+	// clear up raw mask
+	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_CLOSE, 1);
+	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, 1);
+	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_CLOSE, 1);
+	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, 1);
+	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_CLOSE, 1);
+	cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, 1);
+
+	//cvMorphologyEx(mask, mask, 0, 0, CV_MOP_CLOSE, 1);
+	//cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, 1);
+	//cvMorphologyEx(mask, mask, 0, 0, CV_MOP_CLOSE, 2);
+	//cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, 2);
+
+	//cvMorphologyEx(mask, mask, 0, 0, CV_MOP_CLOSE, CVCLOSE_ITR);
+	//cvMorphologyEx(mask, mask, 0, 0, CV_MOP_OPEN, CVOPEN_ITR);
 
 	/* find contours around only bigger regions */
 	if (mem_storage == NULL)
@@ -372,7 +385,7 @@ void FindConnectedComponents::returnBbs(IplImage *mask, int *num, CvRect *bbs, C
 	{
 		if (i < MAX_OBJ_NUM)
 		{
-			cvDrawContours(maskTemp, c, CVX_WHITE, CVX_WHITE, -1, CV_FILLED, 8); // Only process up to *num of them
+			cvDrawContours(maskTemp, c, CVX_WHITE, CVX_WHITE, -1, CV_FILLED, 8); 
 
 			if (centers != NULL) {				// Find the center of each contour
 				cvMoments(maskTemp, &moments, 1);
@@ -385,6 +398,7 @@ void FindConnectedComponents::returnBbs(IplImage *mask, int *num, CvRect *bbs, C
 			if (bbs != NULL) {					//Bounding rectangles around blobs
 				bbs[i] = cvBoundingRect(c);
 			}
+
 			cvZero(maskTemp);
 			numFilled++;
 		}

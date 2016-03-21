@@ -39,15 +39,14 @@ int main(int argc, const char** argv)
 	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
 	Mat img, img_compress;
 	Mat	img_bgsModel, fgmask, imgTracking;
-	
-	CvRect bbs[10];
-	CvPoint centers[10];
+
+	CvRect bbs[MAX_OBJ_NUM], bbsV2[MAX_OBJ_NUM];
+	CvPoint centers[MAX_OBJ_NUM];
 	int ObjNum;
-	static FindConnectedComponents bbsFinder(img.cols, img.rows, imgCompressionScale, connectedComponentPerimeterScale);
 
 	// Initialization of background subtractions
 	BackgroundSubtractorMOG2 bg_model;
-	IBGS *bgs = new DPEigenbackgroundBGS; 
+	IBGS *bgs = new DPEigenbackgroundBGS;
 	CodeBookInit();
 
 #if EtronCamera
@@ -66,7 +65,7 @@ int main(int argc, const char** argv)
 	Mat DisparityMap;
 #endif
 
-	while (1)
+	while (1) // for every frame
 	{
 #if inputPath_Paul
 		sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\video_output_1216\\%05d.png", nframes + 1);
@@ -115,20 +114,24 @@ int main(int argc, const char** argv)
 		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
 		bgs->process(img_compress, fgmask, img_bgsModel);
 #endif
+
+		static FindConnectedComponents bbsFinder(img.cols, img.rows, imgCompressionScale, connectedComponentPerimeterScale);
+
 		/* Get ROI */
 		IplImage *fgmaskIpl = &IplImage(fgmask);
+
 		bbsFinder.returnBbs(fgmaskIpl, &ObjNum, bbs, centers, true);
 
 		t = (double)cvGetTickCount();         // Get executing time 	
 
 
 		/* Plot tracking rectangles and its trajectory */
-		tracking_function(img, imgTracking, bbs, ObjNum);
+		tracking_function(img, imgTracking, fgmaskIpl, bbs, centers, ObjNum);
 
 
 		t = (double)cvGetTickCount() - t;
 		cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl;
-		
+
 		// Plot the rectangles background subtarction finds
 		if (display_bbsRectangle)
 		{

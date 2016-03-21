@@ -18,6 +18,7 @@ using namespace std;
 #define minObjWidth_Ini_Scale         60           // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
 #define minObjHeight_Ini_Scale        14           // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)] // Get two original tracking boxes'distance
+#define ACCEPTABLE_SIMILARITY        0.5           // if similarity < "ACCEPTABLE_SIMILARITY", stop tracking this obj, i.e. delete this obj from object_list 
 
 /* Display */
 #define plotLineLength     99  // Set tracking line length, (allowed range: 0~99)
@@ -29,7 +30,7 @@ using namespace std;
 /* Math */
 #define PI 3.141592653589793238463 
 
-const short MaxHistBins = 4096;
+const short MaxHistBins = 4096 + 1;
 
 typedef struct
 {
@@ -81,6 +82,9 @@ typedef struct
 class MeanShiftTracker
 {
 public:
+	// background subtraction output
+	IplImage *fgmaskIpl;
+
 	MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale);
 	~MeanShiftTracker();
 
@@ -88,8 +92,6 @@ public:
 	int DistBetObj(Rect a, Rect b);
 	void addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type);
 	void updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx);
-	bool checkTrackedList(vector<ObjTrackInfo> &object_list, vector<ObjTrackInfo> &prev_object_list);
-	bool updateTrackedList(vector<ObjTrackInfo> &object_list, vector<ObjTrackInfo> &prev_object_list);
 	void drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list);
 	void drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 	int track(Mat &img, vector<ObjTrackInfo> &object_list);
@@ -119,8 +121,8 @@ private:
 	double scaleLearningRate; // scale change rate
 	double epsilon;           // min shift in Mean-Shift iteration
 	void getKernel(Mat &kernel, const int func_type = 0);
-	void computeHist(const Mat &roiMat, const Mat &kernel, double hist[]);
-	int setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight);
+	void computeHist(const Mat &roiMat, const Rect &objBbs, const Mat &kernel, double hist[]);
+	int setWeight(const Mat &roiMat, const Rect &objBbs, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight);
 	bool testObjectIntersection(ObjTrackInfo &obj1, ObjTrackInfo &obj2);
 	bool testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos);
 };
@@ -175,10 +177,10 @@ private:
 	int pred_y[10];
 };
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum);
-void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
+void tracking_function(Mat &img_input, Mat &img_output, IplImage *fgmaskIpl, CvRect *bbs, CvPoint *centers, int MaxObjNum);
+void revertBbsSize(Mat &img_input, CvRect *bbs, CvPoint *centers, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
-void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
+void mergeBbsAndGetNewObjBbs(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
 void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list);
 void KFtrack(Mat &img_input, vector<ObjTrackInfo> &object_list, KalmanF &KF);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);

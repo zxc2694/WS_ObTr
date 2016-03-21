@@ -20,7 +20,8 @@ using namespace cv;
 #define minObjWidth_Ini_Scale  60                  // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
 #define minObjHeight_Ini_Scale 14                  // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
 #define CVCONTOUR_APPROX_LEVEL         2
-#define CVCLOSE_ITR                    1
+#define CVOPEN_ITR                     3
+#define CVCLOSE_ITR                    3
 #define MAX_DIS_BET_PARTS_OF_ONE_OBJ  38
 #define MAX_OBJ_LIST_SIZE            100
 #define MAX_OBJ_NUM                   10   
