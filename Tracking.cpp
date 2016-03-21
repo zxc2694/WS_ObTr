@@ -18,10 +18,10 @@ bool suspendUpdate = false;
 bool addObj = false;
 bool newObjFind = false;
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
+void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
-	static MeanShiftTracker ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
+	static CObjectTracking ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
 	TrackingLine = Scalar::all(0);
 
@@ -126,7 +126,7 @@ void ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
@@ -217,7 +217,7 @@ void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo>
 	}  // end of 1st for 
 }
 
-void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void CObjectTracking::occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	if (addObj == true) // It confirms that one of objects has appeared after occlusion
 	{
@@ -404,7 +404,7 @@ void MeanShiftTracker::occlusionNewObj(Mat img_input, MeanShiftTracker &ms_track
 	}
 	addObj = false;
 }
-void MeanShiftTracker::modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	/* Modify the size of the tracking box  */
 	int bbsNumber = 0;
@@ -701,7 +701,7 @@ void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 	}
 }
 
-void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
+void drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 {
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
@@ -848,7 +848,7 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_track
 
 }
 
-MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
+CObjectTracking::CObjectTracking(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
 {
 	// if obj bbs found by bbsFinder is too small, then addTrackedList don't add it into object_list to track it
 	minObjWidth_Ini = (imgWidth + imgHeight) / MinObjWidth_Ini_Scale;
@@ -895,11 +895,11 @@ MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_
 	epsilon = 1;
 	count = 0;
 }
-MeanShiftTracker::~MeanShiftTracker()
+CObjectTracking::~CObjectTracking()
 {
 }
 
-int MeanShiftTracker::DistBetObj(Rect a, Rect b)
+int CObjectTracking::DistBetObj(Rect a, Rect b)
 {
 	int c, d;
 	if ((a.x > b.x + b.width || b.x > a.x + a.width) || (a.y > b.y + b.height || b.y > a.y + a.height))
@@ -915,7 +915,7 @@ int MeanShiftTracker::DistBetObj(Rect a, Rect b)
 	else return 0;
 }
 
-void MeanShiftTracker::addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type)
+void CObjectTracking::addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type)
 {
 	// don't tracking too small obj 
 	if (bbs.width < minObjWidth_Ini || bbs.height < minObjHeight_Ini)	return;
@@ -994,7 +994,7 @@ void MeanShiftTracker::addTrackedList(const Mat &img, vector<ObjTrackInfo> &obje
 	addObj = true;
 }
 
-void MeanShiftTracker::updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx)
+void CObjectTracking::updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx)
 {
 	if ((bbs.height & 1) == 0)    bbs.height -= 1; // bbs.height should be odd number
 	if ((bbs.width & 1) == 0)    bbs.width -= 1; // bbs.width should be odd number
@@ -1011,7 +1011,7 @@ void MeanShiftTracker::updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object
 	computeHist(tempMat, object_list[idx].kernel, object_list[idx].hist);
 }
 
-void MeanShiftTracker::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
+void CObjectTracking::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
 {
 	int iter;
 	for (size_t c = 0; c < object_list.size(); c++)
@@ -1067,7 +1067,7 @@ void MeanShiftTracker::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
 	}
 }
 
-void MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
+void CObjectTracking::drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
 {
 	if (object_list[obj_list_iter].PtCount > plotLineLength + 1)										//When plotting arrary is overflow:
 	{
@@ -1094,7 +1094,7 @@ void MeanShiftTracker::drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInf
 	}
 }
 
-int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
+int CObjectTracking::track(Mat &img, vector<ObjTrackInfo> &object_list)
 {
 	Rect CandBbs[3]; // candidate bbs
 	Point CandCen; // candidate bbs center coordinates (let upper left corner of bbs have coordinate (0, 0))
@@ -1434,7 +1434,7 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 	return 1;
 }
 
-void MeanShiftTracker::getKernel(Mat &kernel, const int func_type)
+void CObjectTracking::getKernel(Mat &kernel, const int func_type)
 {
 	int H = kernel.rows - 1; // kernel.rows is odd 
 	int W = kernel.cols - 1; // kernel.cols is odd
@@ -1503,7 +1503,7 @@ void MeanShiftTracker::getKernel(Mat &kernel, const int func_type)
 	} // end of switch
 }
 
-void MeanShiftTracker::computeHist(const Mat &roiMat, const Mat &kernel, double hist[])
+void CObjectTracking::computeHist(const Mat &roiMat, const Mat &kernel, double hist[])
 {
 	if (roiMat.data == NULL) return;
 
@@ -1550,7 +1550,7 @@ void MeanShiftTracker::computeHist(const Mat &roiMat, const Mat &kernel, double 
 	}
 }
 
-int MeanShiftTracker::setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight)
+int CObjectTracking::setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight)
 {
 	if (roiMat.data == NULL) return -1;
 
@@ -1594,13 +1594,13 @@ bool testBoxIntersection(int left1, int top1, int right1, int bottom1, int left2
 	return true;
 }
 
-bool MeanShiftTracker::testObjectIntersection(ObjTrackInfo &obj1, ObjTrackInfo &obj2)
+bool CObjectTracking::testObjectIntersection(ObjTrackInfo &obj1, ObjTrackInfo &obj2)
 {
 	return testBoxIntersection(obj1.boundingBox.x, obj1.boundingBox.y, obj1.boundingBox.x + obj1.boundingBox.width - 1, obj1.boundingBox.y + obj1.boundingBox.height - 1,
 		obj2.boundingBox.x, obj2.boundingBox.y, obj2.boundingBox.x + obj2.boundingBox.width - 1, obj2.boundingBox.y + obj2.boundingBox.height - 1);
 }
 
-bool MeanShiftTracker::testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos)
+bool CObjectTracking::testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos)
 {
 	bool bSection = false;
 	for (size_t c = 0; c < object_list.size(); c++){

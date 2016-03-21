@@ -98,11 +98,11 @@ typedef struct
 	int objNum;
 } OverlapCompare;
 
-class CLASS_OBJECTTRACKING MeanShiftTracker
+class CLASS_OBJECTTRACKING CObjectTracking
 {
 public:
-	MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale);
-	~MeanShiftTracker();
+	CObjectTracking(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale);
+	~CObjectTracking();
 
 	Mat DistMat;
 	int DistBetObj(Rect a, Rect b);
@@ -113,8 +113,8 @@ public:
 	void drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list);
 	void drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 	int track(Mat &img, vector<ObjTrackInfo> &object_list);
-	void modifyTrackBox(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
-	void occlusionNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
+	void modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
+	void occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
 
 private:
 	// don't tracking too small obj 
@@ -145,12 +145,12 @@ private:
 	bool testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos);
 };
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
+void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
-void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
+void getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
 void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
-void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
+void drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
 double OverlapValue(Rect a, Rect b);

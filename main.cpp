@@ -101,7 +101,7 @@ int main(int argc, const char** argv)
 			t = (double)cvGetTickCount();         // Get executing time 
 
 			/* Plotting trajectories */
-			tracking_function(img, imgTracking, ROI, ObjNum, &trigROI, object_list);
+			ObjectTrackingProcessing(img, imgTracking, ROI, ObjNum, &trigROI, object_list);
 			
 			t = (double)cvGetTickCount() - t;
 			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 
