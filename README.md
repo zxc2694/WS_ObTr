@@ -1,4 +1,4 @@
-# WS_Tracking
+# WS_ObTr
 
 The opencv library is 2.4.11 version.
 
