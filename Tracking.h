@@ -101,7 +101,7 @@ typedef struct
 class CLASS_OBJECTTRACKING CObjectTracking
 {
 public:
-	CObjectTracking(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale);
+	CObjectTracking(int imgWidth, int imgHeight);
 	~CObjectTracking();
 
 	Mat DistMat;

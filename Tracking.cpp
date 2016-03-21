@@ -18,16 +18,16 @@ bool suspendUpdate = false;
 bool addObj = false;
 bool newObjFind = false;
 
-CObjectTracking::CObjectTracking(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
+CObjectTracking::CObjectTracking(int imgWidth, int imgHeight) : kernel_type(2), bin_width(16), count(0)
 {
 	// if obj bbs found by bbsFinder is too small, then addTrackedList don't add it into object_list to track it
-	minObjWidth_Ini = (imgWidth + imgHeight) / MinObjWidth_Ini_Scale;
-	minObjHeight_Ini = (imgWidth + imgHeight) / MinObjHeight_Ini_Scale;
+	minObjWidth_Ini = (imgWidth + imgHeight) / minObjWidth_Ini_Scale;
+	minObjHeight_Ini = (imgWidth + imgHeight) / minObjHeight_Ini_Scale;
 	//const int minObjArea_Ini = IMG_WIDTH*IMG_HEIGHT / 30;
 
 	// del too small obj from object_list (ie stop tracking it)
-	minObjWidth = (imgWidth + imgHeight) / StopTrackingObjWithTooSmallWidth_Scale;
-	minObjHeight = (imgWidth + imgHeight) / StopTrackingObjWithTooSmallHeight_Scale;
+	minObjWidth = (imgWidth + imgHeight) / stopTrackingObjWithTooSmallWidth_Scale;
+	minObjHeight = (imgWidth + imgHeight) / stopTrackingObjWithTooSmallHeight_Scale;
 	//const int minObjArea = 1000;
 
 	bins = 256 / bin_width;
@@ -67,7 +67,7 @@ CObjectTracking::~CObjectTracking()
 void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
-	static CObjectTracking ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
+	static CObjectTracking ms_tracker(img_input.cols, img_input.rows);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
 	TrackingLine = Scalar::all(0);
 

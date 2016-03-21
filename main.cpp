@@ -101,7 +101,7 @@ int main(int argc, const char** argv)
 			t = (double)cvGetTickCount();         // Get executing time 
 
 			/* Plotting trajectories */
-			static CObjectTracking ObjTrack(img.cols, img.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
+			static CObjectTracking ObjTrack(img.cols, img.rows);
 			ObjTrack.ObjectTrackingProcessing(img, imgTracking, ROI, ObjNum, &trigROI, object_list);
 			
 			t = (double)cvGetTickCount() - t;
