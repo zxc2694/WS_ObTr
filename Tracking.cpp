@@ -18,10 +18,9 @@ bool suspendUpdate = false;
 bool addObj = false;
 bool newObjFind = false;
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI)
+void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
-	static vector<ObjTrackInfo> object_list;
 	static KalmanF KF;
 	static MeanShiftTracker ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);

@@ -184,7 +184,7 @@ private:
 	int pred_y[10];
 };
 
-void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI);
+void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
 void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);

@@ -29,7 +29,8 @@ int main(int argc, const char** argv)
 	int nframes = 0, ObjNum;
 	double t = 0;
 	Mat img, imgCompress, fgmask, imgTracking;
-	CvRect ROI[10];	
+	CvRect ROI[10];
+	vector<ObjTrackInfo> object_list;
 	InputObjInfo trigROI;
 
 	/* Select BS algorithm */
@@ -100,7 +101,7 @@ int main(int argc, const char** argv)
 			t = (double)cvGetTickCount();         // Get executing time 
 
 			/* Plotting trajectories */
-			tracking_function(img, imgTracking, ROI, ObjNum, &trigROI);
+			tracking_function(img, imgTracking, ROI, ObjNum, &trigROI, object_list);
 			
 			t = (double)cvGetTickCount() - t;
 			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 
