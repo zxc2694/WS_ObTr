@@ -1,14 +1,26 @@
-#ifndef MEANSHIFTTRACKER_H
-#define MEANSHIFTTRACKER_H
+#ifndef __OBJECTTRACKING_H__
+#define __OBJECTTRACKING_H__
 
-#include <iostream>
-#include <memory>
-#include <opencv2/opencv.hpp>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <time.h>
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/highgui/highgui.hpp"
 #include "opencv2/core/core.hpp"
-#include "opencv2/video/tracking.hpp"
 
 using namespace cv;
 using namespace std;
+
+#if (defined(_WIN32) | defined(_WIN64))
+#ifdef EXPORT_CLASS_OBJECTTRACKING
+#define CLASS_OBJECTTRACKING __declspec(dllexport)
+#else
+#define CLASS_OBJECTTRACKING __declspec(dllimport)
+#endif
+#else
+#define CLASS_OBJECTTRACKING
+#endif
 
 /* Tracking parameters */
 #define stopTrackingObjWithTooSmallWidth_Scale 120 // Delete too small tracking obj when its width becomes < (imgWidth + imgHeight) / stopTrackingObjWithTooSmallWidth_Scale
@@ -26,7 +38,6 @@ using namespace std;
 #define moveRate            2  // It's used for modifying the moving rate of predicted objects in occSolve 3. (Range:2~10)
 #define keepTrajectory      1  // 0: not keep, 1: keep. (by color hist)
 #define setPointY           4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
-#define use_Kalman          0  // 0: Not show KF rectangles, 1: Show KF rectangles
 #define demoMode            1  // Without accumulating number (0:debug mode, 1:demo mode) 
 
 /* Math */
@@ -87,7 +98,7 @@ typedef struct
 	int objNum;
 } OverlapCompare;
 
-class MeanShiftTracker
+class CLASS_OBJECTTRACKING MeanShiftTracker
 {
 public:
 	MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale);
@@ -134,68 +145,16 @@ private:
 	bool testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos);
 };
 
-class KalmanF
-{
-public:
-	KalmanF()
-	{
-		ticks = 0;
-		found = false;
-		notFoundCount = 0;
-		precTick = ticks;
-		stateSize = 6;
-		measSize = 4;
-		contrSize = 0;
-		type = CV_32F;
-
-		kf[0] = KalmanFilter(stateSize, measSize, contrSize, type);	state[0] = Mat(stateSize, 1, type);	meas[0] = Mat(measSize, 1, type);
-		kf[1] = KalmanFilter(stateSize, measSize, contrSize, type);	state[1] = Mat(stateSize, 1, type);	meas[1] = Mat(measSize, 1, type);
-		kf[2] = KalmanFilter(stateSize, measSize, contrSize, type);	state[2] = Mat(stateSize, 1, type);	meas[2] = Mat(measSize, 1, type);
-		kf[3] = KalmanFilter(stateSize, measSize, contrSize, type);	state[3] = Mat(stateSize, 1, type);	meas[3] = Mat(measSize, 1, type);
-		kf[4] = KalmanFilter(stateSize, measSize, contrSize, type);	state[4] = Mat(stateSize, 1, type);	meas[4] = Mat(measSize, 1, type);
-		kf[5] = KalmanFilter(stateSize, measSize, contrSize, type);	state[5] = Mat(stateSize, 1, type);	meas[5] = Mat(measSize, 1, type);
-		kf[6] = KalmanFilter(stateSize, measSize, contrSize, type);	state[6] = Mat(stateSize, 1, type);	meas[6] = Mat(measSize, 1, type);
-		kf[7] = KalmanFilter(stateSize, measSize, contrSize, type);	state[7] = Mat(stateSize, 1, type);	meas[7] = Mat(measSize, 1, type);
-		kf[8] = KalmanFilter(stateSize, measSize, contrSize, type);	state[8] = Mat(stateSize, 1, type);	meas[8] = Mat(measSize, 1, type);
-		kf[9] = KalmanFilter(stateSize, measSize, contrSize, type);	state[9] = Mat(stateSize, 1, type);	meas[9] = Mat(measSize, 1, type);
-	}
-	~KalmanF(){}
-	void Init();
-	void Predict(vector<ObjTrackInfo> &object_list, vector<cv::Rect> &ballsBox);
-	void Update(vector<ObjTrackInfo> &object_list, vector<cv::Rect> &ballsBox, int Upate);
-	void drawPredBox(Mat &img);
-	double ticks;
-	bool found;
-	int notFoundCount;
-	double precTick;
-	double dT;
-
-private:
-	int stateSize;
-	int measSize;
-	int contrSize;
-	unsigned int type;
-	KalmanFilter kf[10];
-	Mat state[10];
-	Mat meas[10];
-	Rect predRect[10];
-	Point center[10];
-	int pred_x[10];
-	int pred_y[10];
-};
-
 void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
 void getNewObj(Mat img_input, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
 void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
 void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
-void KFtrack(Mat &img_input, vector<ObjTrackInfo> &object_list, KalmanF &KF);
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
 int Overlap(Rect a, Rect b, double ration);
 double OverlapValue(Rect a, Rect b);
 void BubbleSort(int* array, int size);
-void KF_init(cv::KalmanFilter *kf);
 void drawArrow(Mat img, CvPoint p, CvPoint q);
 void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 void BezierCurve(Point p0, Point p1, Point p2, Point p3, Point *pointArr_output);

@@ -21,7 +21,6 @@ bool newObjFind = false;
 void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
-	static KalmanF KF;
 	static MeanShiftTracker ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
 	TrackingLine = Scalar::all(0);
@@ -30,9 +29,6 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 	{	
 		// Arrange object number to prevent accumulation
 		ObjNumArr(objNumArray, objNumArray_BS);
-
-		// Kalman Filter initialization
-		KF.Init();
 	}
 
 	// Enlarge the size of bbs 2 times
@@ -58,9 +54,6 @@ void tracking_function(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjN
 
 	//Plotting trajectories
 	drawTrajectory(img_input, TrackingLine, ms_tracker, object_list, trigROI);
-
-	// Prediction and update of Kalman Filter 	
-	KFtrack(img_input, object_list, KF);
 
 	// Tracking image output (merge 3-channel image and 4-channel trakcing lines)
 	overlayImage(img_input, TrackingLine, img_output, cv::Point(0, 0));
@@ -853,37 +846,6 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, MeanShiftTracker &ms_track
 
 	}// end of plotting trajectory
 
-}
-
-void KFtrack(Mat &img_input, vector<ObjTrackInfo> &object_list, KalmanF &KF)
-{
-	vector<cv::Rect> KFBox;
-
-	/*Kalman Filter Function */
-	if (use_Kalman == true)
-	{
-		KF.Predict(object_list, KFBox); //Predict bounding box by Kalman filter
-
-		int UpateKF = true;
-		KF.drawPredBox(img_input);             // Draw predict bounding boxes	
-		if (object_list.size() == 2)
-		{
-			for (size_t obj_list_iter = 0; obj_list_iter < object_list.size() - 1; obj_list_iter++)
-			{
-				int p_x = object_list[obj_list_iter].boundingBox.x;
-				int p_y = object_list[obj_list_iter].boundingBox.y;
-				int q_x = object_list[obj_list_iter + 1].boundingBox.x;
-				int q_y = object_list[obj_list_iter + 1].boundingBox.y;
-				double hypotenuse = sqrt((double)((p_y - q_y)*(p_y - q_y) + (p_x - q_x)*(p_x - q_x))); //length of pq line
-				int intHY = (int)hypotenuse;
-				//cout << "hypotenuse" << hypotenuse << endl;
-
-				if (intHY == 64)//if (Overlap(object_list[obj_list_iter].boundingBox, object_list[obj_list_iter + 1].boundingBox, 0.001f))			
-					UpateKF = false;
-			}
-		}
-		KF.Update(object_list, KFBox, UpateKF);   // Update of Kalman filter
-	}
 }
 
 MeanShiftTracker::MeanShiftTracker(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
@@ -1771,168 +1733,6 @@ void BubbleSort(int* array, int size)
 	}
 }
 
-//Refer to https://github.com/Myzhar/simple-opencv-kalman-tracker 
-void KalmanF::Init()
-{
-	for (int i = 0; i < 5; i++)
-	{
-		// Transition State Matrix A
-		// Note: set dT at each processing step!
-		// [ 1 0 dT 0  0 0 ]
-		// [ 0 1 0  dT 0 0 ]
-		// [ 0 0 1  0  0 0 ]
-		// [ 0 0 0  1  0 0 ]
-		// [ 0 0 0  0  1 0 ]
-		// [ 0 0 0  0  0 1 ]
-		setIdentity(kf[i].transitionMatrix);
-
-		// Measure Matrix H
-		// [ 1 0 0 0 0 0 ]
-		// [ 0 1 0 0 0 0 ]
-		// [ 0 0 0 0 1 0 ]
-		// [ 0 0 0 0 0 1 ]
-		kf[i].measurementMatrix = Mat::zeros(measSize, stateSize, type);
-		kf[i].measurementMatrix.at<float>(0) = 1.0f;
-		kf[i].measurementMatrix.at<float>(7) = 1.0f;
-		kf[i].measurementMatrix.at<float>(16) = 1.0f;
-		kf[i].measurementMatrix.at<float>(23) = 1.0f;
-
-		// Process Noise Covariance Matrix Q
-		// [ Ex   0   0     0     0    0  ]
-		// [ 0    Ey  0     0     0    0  ]
-		// [ 0    0   Ev_x  0     0    0  ]
-		// [ 0    0   0     Ev_y  0    0  ]
-		// [ 0    0   0     0     Ew   0  ]
-		// [ 0    0   0     0     0    Eh ]
-		//setIdentity(kf.processNoiseCov, Scalar(1e-2));
-		kf[i].processNoiseCov.at<float>(0) = (float)(1e-2);
-		kf[i].processNoiseCov.at<float>(7) = (float)(1e-2);
-		kf[i].processNoiseCov.at<float>(14) = 5.0f;
-		kf[i].processNoiseCov.at<float>(21) = 5.0f;
-		kf[i].processNoiseCov.at<float>(28) = (float)(1e-2);
-		kf[i].processNoiseCov.at<float>(35) = (float)(1e-2);
-
-		// Measures Noise Covariance Matrix R
-		setIdentity(kf[i].measurementNoiseCov, Scalar(1e-1));
-		// <<<< Kalman Filter
-	}
-}
-
-void KalmanF::Predict(vector<ObjTrackInfo> &object_list, vector<cv::Rect> &ballsBox)
-{
-	ticks = (double)cv::getTickCount();
-	dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
-	//cout << "dT: " << dT << endl;
-
-	if (found)
-	{
-		//for (int i = 0; i < object_list.size(); i++)
-		for (int i = 0; i < 10; i++)
-		{
-			// >>>> Matrix A
-			kf[i].transitionMatrix.at<float>(2) = (float)dT;
-			kf[i].transitionMatrix.at<float>(9) = (float)dT;
-			// <<<< Matrix A
-
-			//cout << "dT:" << endl << dT << endl;
-			state[i] = kf[i].predict();
-			//cout << "State post:" << endl << state[i] << endl;
-
-			predRect[i].width = (int)(state[i].at<float>(4));
-			predRect[i].height = (int)(state[i].at<float>(5));
-			predRect[i].x = (int)(state[i].at<float>(0) - predRect[i].width / 2);
-			predRect[i].y = (int)(state[i].at<float>(1) - predRect[i].height / 2);
-
-			center[i].x = (int)(state[i].at<float>(0));
-			center[i].y = (int)(state[i].at<float>(1));
-		}
-	}
-}
-
-void KalmanF::Update(vector<ObjTrackInfo> &object_list, vector<cv::Rect> &ballsBox, int Upate)
-{
-	for (unsigned int iter = 0; iter < object_list.size(); iter++)
-		ballsBox.push_back(object_list[iter].boundingBox);
-
-	if (object_list.size() == 0)
-	{
-		notFoundCount++;
-		if (notFoundCount >= 100)
-			found = false;
-	}
-	else
-	{
-		notFoundCount = 0;
-		static int stopFrame = 0;
-
-		if ((Upate == 1) && (stopFrame == 0))
-		{
-			for (unsigned int i = 0; i < object_list.size(); i++)
-			{
-				meas[i].at<float>(0) = (float)(ballsBox[i].x + ballsBox[i].width / 2);
-				meas[i].at<float>(1) = (float)(ballsBox[i].y + ballsBox[i].height / 2);
-				meas[i].at<float>(2) = (float)ballsBox[i].width;
-				meas[i].at<float>(3) = (float)ballsBox[i].height;
-
-				if (!found) // First detection!
-				{
-					// >>>> Initialization
-					kf[i].errorCovPre.at<float>(0) = 1; // px
-					kf[i].errorCovPre.at<float>(7) = 1; // px
-					kf[i].errorCovPre.at<float>(14) = 1;
-					kf[i].errorCovPre.at<float>(21) = 1;
-					kf[i].errorCovPre.at<float>(28) = 1; // px
-					kf[i].errorCovPre.at<float>(35) = 1; // px
-
-					state[i].at<float>(0) = meas[i].at<float>(0);
-					state[i].at<float>(1) = meas[i].at<float>(1);
-					state[i].at<float>(2) = 0;
-					state[i].at<float>(3) = 0;
-					state[i].at<float>(4) = meas[i].at<float>(2);
-					state[i].at<float>(5) = meas[i].at<float>(3);
-					// <<<< Initialization
-
-					found = true;
-				}
-				else
-					kf[i].correct(meas[i]); // Kalman Correction
-				//cout << "Measure matrix:" << endl << meas[i] << endl;
-			}
-		}
-		else
-		{
-			stopFrame++;
-			if (stopFrame == 50)
-				stopFrame = 0;
-		}
-	}
-}
-void KalmanF::drawPredBox(Mat &img)
-{
-	int i = 0;
-	for (i = 0; i < 10; i++)
-	{
-		if ((predRect[i].x != 0) && (predRect[i].y != 0) && (use_Kalman == true))
-		{
-			cv::circle(img, center[i], 2, CV_RGB(255, 0, 0), -1); // central point of red rectangle
-			cv::rectangle(img, predRect[i], CV_RGB(255, 0, 0), 2); //red rectangle --> predict
-		}
-
-		if (use_Kalman == true)
-		{
-			static int plot_arrow[10];
-			if (plot_arrow[i] == true)
-			{
-				drawArrow(img, Point(pred_x[i], pred_y[i]), Point(center[i].x, center[i].y));
-				pred_x[i] = center[i].x;
-				pred_y[i] = center[i].y;
-				plot_arrow[i] = false;
-			}
-			if ((predRect[i].x != 0) && (predRect[i].y != 0))
-				plot_arrow[i] = true;
-		}
-	}
-}
 void drawArrow(Mat img, CvPoint p, CvPoint q)
 {
 	double angle; angle = atan2((double)p.y - q.y, (double)p.x - q.x);           //bevel angle of pq line
