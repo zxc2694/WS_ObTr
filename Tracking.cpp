@@ -764,7 +764,7 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 	for (size_t c = 0; c < object_list.size(); c++)
 	{
 		//int bestScaleIter;
-		double bestScale, similarity, largestSimilarity = 0; // choose best scale as the one with largest similarity to target model 
+		double bestScale, similarity, largestSimilarity = 0.0; // choose best scale as the one with largest similarity to target model 
 		bool exceedImgBoundary = true;
 
 		scale = object_list[c].objScale - object_list[c].objScale*scaleBetFrame;
@@ -903,7 +903,7 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 			computeHist(tempMat, CandBbs[scaleIter], kernel, hist[scaleIter]);
 
 			// choose scale with largest similarity to target model
-			similarity = 0;
+			similarity = 0.0;
 			for (int histIdx = 0; histIdx < histSize; ++histIdx) // compute similarity
 			{
 				similarity += sqrt(object_list[c].hist[histIdx] * hist[scaleIter][histIdx]);
@@ -1104,7 +1104,7 @@ int MeanShiftTracker::track(Mat &img, vector<ObjTrackInfo> &object_list)
 		computeHist(tempMat, object_list[c].boundingBox, kernel, hist[0]);
 
 		// compute resulting similarity
-		similarity = 0;
+		similarity = 0.0;
 		for (int histIdx = 0; histIdx < histSize; ++histIdx) // compute similarity
 		{
 			similarity += sqrt(object_list[c].hist[histIdx] * hist[0][histIdx]);
