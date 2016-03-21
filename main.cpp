@@ -128,8 +128,8 @@ int main(int argc, const char** argv)
 			// Show image output
 			imshow("Tracking_image", imgTracking);
 			imshow("foreground mask", fgmask);
-			sprintf(outputPath, "video_output_tracking//%05d.png", nframes + 1);
-			sprintf(outputPath2, "video_output_BS//%05d.png", nframes + 1);
+			sprintf(outputPath, "video_output_tracking\\%05d.png", nframes + 1);
+			sprintf(outputPath2, "video_output_BS\\%05d.png", nframes + 1);
 			imwrite(outputPath, imgTracking);
 			imwrite(outputPath2, fgmask);			
 		}
