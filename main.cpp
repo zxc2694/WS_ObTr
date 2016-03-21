@@ -101,7 +101,8 @@ int main(int argc, const char** argv)
 			t = (double)cvGetTickCount();         // Get executing time 
 
 			/* Plotting trajectories */
-			ObjectTrackingProcessing(img, imgTracking, ROI, ObjNum, &trigROI, object_list);
+			static CObjectTracking ObjTrack(img.cols, img.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
+			ObjTrack.ObjectTrackingProcessing(img, imgTracking, ROI, ObjNum, &trigROI, object_list);
 			
 			t = (double)cvGetTickCount() - t;
 			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 

@@ -106,6 +106,7 @@ public:
 
 	Mat DistMat;
 	int DistBetObj(Rect a, Rect b);
+	void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
 	void addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type);
 	void updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx);
 	bool checkTrackedList(vector<ObjTrackInfo> &object_list, vector<ObjTrackInfo> &prev_object_list);
@@ -145,7 +146,6 @@ private:
 	bool testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos);
 };
 
-void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
 void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
 void ObjNumArr(int *objNumArray, int *objNumArray_BS);
 void getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);

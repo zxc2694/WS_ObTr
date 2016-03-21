@@ -18,7 +18,7 @@ bool suspendUpdate = false;
 bool addObj = false;
 bool newObjFind = false;
 
-void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
+void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
 	static CObjectTracking ms_tracker(img_input.cols, img_input.rows, minObjWidth_Ini_Scale, minObjHeight_Ini_Scale, stopTrackingObjWithTooSmallWidth_Scale, stopTrackingObjWithTooSmallHeight_Scale);
@@ -35,13 +35,13 @@ void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int 
 	revertBbsSize(img_input, bbs, MaxObjNum);
 
 	// Main tracking code using Mean-shift algorithm
-	ms_tracker.track(img_input, object_list);
+	track(img_input, object_list);
 
 	// Add new useful ROI to the object_list for tracking
 	getNewObj(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
 	// Modify the size of the tracking boxes and delete useless boxes
-	ms_tracker.modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
+	modifyTrackBox(img_input, ms_tracker, object_list, bbs, MaxObjNum);
 
 	// Find trigger object
 	findTrigObj(object_list, trigROI);
@@ -50,7 +50,7 @@ void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int 
 	ObjNumArr(objNumArray, objNumArray_BS);
 
 	// Draw all the track boxes and their numbers 
-	ms_tracker.drawTrackBox(img_input, object_list);
+	drawTrackBox(img_input, object_list);
 
 	//Plotting trajectories
 	drawTrajectory(img_input, TrackingLine, ms_tracker, object_list, trigROI);
