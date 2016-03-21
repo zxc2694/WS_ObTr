@@ -117,6 +117,19 @@ public:
 	void modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
 	void occlusionNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
 
+	void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
+	void ObjNumArr(int *objNumArray, int *objNumArray_BS);
+	void getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
+	void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
+	void drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
+	void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
+	int Overlap(Rect a, Rect b, double ration);
+	double OverlapValue(Rect a, Rect b);
+	void BubbleSort(int* array, int size);
+	void drawArrow(Mat img, CvPoint p, CvPoint q);
+	void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
+	void BezierCurve(Point p0, Point p1, Point p2, Point p3, Point *pointArr_output);
+
 private:
 	// don't tracking too small obj 
 	int minObjWidth_Ini;
@@ -145,18 +158,5 @@ private:
 	bool testObjectIntersection(ObjTrackInfo &obj1, ObjTrackInfo &obj2);
 	bool testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos);
 };
-
-void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum);
-void ObjNumArr(int *objNumArray, int *objNumArray_BS);
-void getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum);
-void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
-void drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
-void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
-int Overlap(Rect a, Rect b, double ration);
-double OverlapValue(Rect a, Rect b);
-void BubbleSort(int* array, int size);
-void drawArrow(Mat img, CvPoint p, CvPoint q);
-void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
-void BezierCurve(Point p0, Point p1, Point p2, Point p3, Point *pointArr_output);
 
 #endif

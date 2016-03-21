@@ -18,6 +18,45 @@ bool suspendUpdate = false;
 bool addObj = false;
 bool newObjFind = false;
 
+CObjectTracking::CObjectTracking(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
+{
+	// if obj bbs found by bbsFinder is too small, then addTrackedList don't add it into object_list to track it
+	minObjWidth_Ini = (imgWidth + imgHeight) / MinObjWidth_Ini_Scale;
+	minObjHeight_Ini = (imgWidth + imgHeight) / MinObjHeight_Ini_Scale;
+	//const int minObjArea_Ini = IMG_WIDTH*IMG_HEIGHT / 30;
+
+	// del too small obj from object_list (ie stop tracking it)
+	minObjWidth = (imgWidth + imgHeight) / StopTrackingObjWithTooSmallWidth_Scale;
+	minObjHeight = (imgWidth + imgHeight) / StopTrackingObjWithTooSmallHeight_Scale;
+	//const int minObjArea = 1000;
+
+	bins = 256 / bin_width;
+	histSize = bins*bins*bins;
+	DistMat = Mat::zeros(MAX_OBJ_LIST_SIZE, MAX_OBJ_LIST_SIZE, CV_32SC1);
+
+	ColorMatrix[0] = Scalar(0, 0, 255);
+	ColorMatrix[1] = Scalar(255, 0, 0);
+	ColorMatrix[2] = Scalar(0, 255, 0);
+	ColorMatrix[3] = Scalar(0, 255, 255);
+	ColorMatrix[4] = Scalar(255, 0, 255);
+	ColorMatrix[5] = Scalar(255, 255, 0);
+	ColorMatrix[6] = Scalar(122, 0, 255);
+	ColorMatrix[7] = Scalar(255, 122, 0);
+	ColorMatrix[8] = Scalar(0, 255, 122);
+	ColorMatrix[9] = Scalar(80, 255, 80);
+	ColorPtr = &ColorMatrix[0];
+
+	Max_Mean_Shift_Iter = 8;
+	Similar_Val_Threshold = 0.165;
+	scaleBetFrame = (float)0.1;
+	scaleLearningRate = 0.1;
+	epsilon = 1;
+	count = 0;
+}
+CObjectTracking::~CObjectTracking()
+{
+}
+
 void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int MaxObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
@@ -61,7 +100,7 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 	runFirst = false;
 }
 
-void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
+void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
 {
 	// Enlarge the size of bbs 2 times
 	for (int iter = 0; iter < MaxObjNum; ++iter)
@@ -105,7 +144,7 @@ void revertBbsSize(Mat &img_input, CvRect *bbs, int &MaxObjNum)
 	}
 }
 
-void ObjNumArr(int *objNumArray, int *objNumArray_BS)
+void CObjectTracking::ObjNumArr(int *objNumArray, int *objNumArray_BS)
 {
 	static char runFirst = true;
 	if (runFirst)
@@ -126,7 +165,7 @@ void ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
+void CObjectTracking::getNewObj(Mat img_input, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, CvRect *bbs, int MaxObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
@@ -682,7 +721,7 @@ void CObjectTracking::modifyTrackBox(Mat img_input, CObjectTracking &ms_tracker,
 	newObjFind = false;
 }
 
-void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
+void CObjectTracking::findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 {
 	// Find the triggered object when prohibited area is invaded
 	if (TriggerInfo->bIsTrigger == true)
@@ -701,7 +740,7 @@ void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 	}
 }
 
-void drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
+void CObjectTracking::drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTracking &ms_tracker, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo)
 {
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
@@ -846,57 +885,6 @@ void drawTrajectory(Mat img_input, Mat &TrackingLine, CObjectTracking &ms_tracke
 
 	}// end of plotting trajectory
 
-}
-
-CObjectTracking::CObjectTracking(int imgWidth, int imgHeight, int MinObjWidth_Ini_Scale, int MinObjHeight_Ini_Scale, int StopTrackingObjWithTooSmallWidth_Scale, int StopTrackingObjWithTooSmallHeight_Scale) : kernel_type(2), bin_width(16), count(0)
-{
-	// if obj bbs found by bbsFinder is too small, then addTrackedList don't add it into object_list to track it
-	minObjWidth_Ini = (imgWidth + imgHeight) / MinObjWidth_Ini_Scale;
-	minObjHeight_Ini = (imgWidth + imgHeight) / MinObjHeight_Ini_Scale;
-	//const int minObjArea_Ini = IMG_WIDTH*IMG_HEIGHT / 30;
-
-	// del too small obj from object_list (ie stop tracking it)
-	minObjWidth = (imgWidth + imgHeight) / StopTrackingObjWithTooSmallWidth_Scale;
-	minObjHeight = (imgWidth + imgHeight) / StopTrackingObjWithTooSmallHeight_Scale;
-	//const int minObjArea = 1000;
-
-	bins = 256 / bin_width;
-	histSize = bins*bins*bins;
-
-	DistMat = Mat::zeros(MAX_OBJ_LIST_SIZE, MAX_OBJ_LIST_SIZE, CV_32SC1);
-	ColorMatrix[0] = Scalar(0, 0, 255);
-	ColorMatrix[1] = Scalar(255, 0, 0);
-	ColorMatrix[2] = Scalar(0, 255, 0);
-	ColorMatrix[3] = Scalar(0, 255, 255);
-	ColorMatrix[4] = Scalar(255, 0, 255);
-	ColorMatrix[5] = Scalar(255, 255, 0);
-	ColorMatrix[6] = Scalar(122, 0, 255);
-	ColorMatrix[7] = Scalar(255, 122, 0);
-	ColorMatrix[8] = Scalar(0, 255, 122);
-	ColorMatrix[9] = Scalar(80, 255, 80);
-
-	/*ColorMatrix[0] = Scalar(0, 0, 255);
-	ColorMatrix[1] = Scalar(255, 0, 0);
-	ColorMatrix[2] = Scalar(0, 0, 255);
-	ColorMatrix[3] = Scalar(255, 0, 0);
-	ColorMatrix[4] = Scalar(0, 0, 255);
-	ColorMatrix[5] = Scalar(255, 0, 0);
-	ColorMatrix[6] = Scalar(0, 0, 255);
-	ColorMatrix[7] = Scalar(255, 0, 0);
-	ColorMatrix[8] = Scalar(0, 0, 255);
-	ColorMatrix[9] = Scalar(255, 0, 0);*/
-
-	ColorPtr = &ColorMatrix[0];
-
-	Max_Mean_Shift_Iter = 8;
-	Similar_Val_Threshold = 0.165;
-	scaleBetFrame = (float)0.1;
-	scaleLearningRate = 0.1;
-	epsilon = 1;
-	count = 0;
-}
-CObjectTracking::~CObjectTracking()
-{
 }
 
 int CObjectTracking::DistBetObj(Rect a, Rect b)
@@ -1618,7 +1606,7 @@ bool CObjectTracking::testIntraObjectIntersection(vector<ObjTrackInfo> &object_l
 *  This code is applied to merge two images of different channel, only works if:
 - The background is in BGR colour space.
 - The foreground is in BGRA colour space. */
-void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location)
+void CObjectTracking::overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location)
 {
 	background.copyTo(output);
 
@@ -1666,7 +1654,7 @@ void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat 
 	}
 }
 
-int Overlap(Rect a, Rect b, double ration)
+int CObjectTracking::Overlap(Rect a, Rect b, double ration)
 {
 	Rect c = a.x + a.width >= b.x + b.width ? a : b;
 	Rect d = a.x + a.width >= b.x + b.width ? b : a;
@@ -1691,7 +1679,7 @@ int Overlap(Rect a, Rect b, double ration)
 	return 0;
 }
 
-double OverlapValue(Rect a, Rect b)
+double CObjectTracking::OverlapValue(Rect a, Rect b)
 {
 	double ration;
 
@@ -1717,7 +1705,7 @@ double OverlapValue(Rect a, Rect b)
 	return (double)overlapArea / (double)minArea;
 }
 
-void BubbleSort(int* array, int size)
+void CObjectTracking::BubbleSort(int* array, int size)
 {
 	for (int i = 0; i < size; i++)
 	{
@@ -1733,7 +1721,7 @@ void BubbleSort(int* array, int size)
 	}
 }
 
-void drawArrow(Mat img, CvPoint p, CvPoint q)
+void CObjectTracking::drawArrow(Mat img, CvPoint p, CvPoint q)
 {
 	double angle; angle = atan2((double)p.y - q.y, (double)p.x - q.x);           //bevel angle of pq line
 	double hypotenuse = sqrt((double)((p.y - q.y)*(p.y - q.y) + (p.x - q.x)*(p.x - q.x))); //length of pq line
@@ -1757,7 +1745,7 @@ void drawArrow(Mat img, CvPoint p, CvPoint q)
 	}
 }
 
-void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
+void CObjectTracking::object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
 {
 	for (int iterColor = 0; iterColor < 10; iterColor++)
 	{
@@ -1771,7 +1759,7 @@ void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
 }
 
 // Plot smooth trajectory by Bézier curve algorithm 
-void BezierCurve(Point p0, Point p1, Point p2, Point p3, Point *pointArr_output)
+void CObjectTracking::BezierCurve(Point p0, Point p1, Point p2, Point p3, Point *pointArr_output)
 {
 	int n = 0;
 	for (float t = 0.0; t <= 1.0; t += 0.11)
