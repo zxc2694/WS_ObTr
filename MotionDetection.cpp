@@ -10,6 +10,8 @@
 #include <math.h>
 #include "MotionDetection.h"
 
+int nframesToLearnBG = 1; 
+
 CMotionDetection::CMotionDetection(int nType)
 {
 	nBackGroudModel = nType;

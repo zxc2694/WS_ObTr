@@ -35,6 +35,9 @@ int main(int argc, const char** argv)
 	/* Select BS algorithm */
 	CMotionDetection BS(2);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS, 3: CodeBook+MOG
 
+	// Set the number of learning background  
+	nframesToLearnBG = 50;
+
 	//trigger box position
 	trigROI.boundingBox.x = 500;
 	trigROI.boundingBox.y = 350;

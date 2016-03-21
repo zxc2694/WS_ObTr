@@ -8,7 +8,7 @@
 #include "opencv2/legacy/legacy.hpp"
 #include "opencv2/video/tracking.hpp"
 
-#define nframesToLearnBG 50   // Update the initial frame number
+extern int nframesToLearnBG;   // Update the initial frame number
 
 class ImageBase
 {
