@@ -124,7 +124,7 @@ public:
 	void getNewObj(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum);
 	void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
 	void drawTrajectory(Mat img_input, Mat &TrackingLine, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
-	void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location);
+	void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output);
 	int Overlap(Rect a, Rect b, double ration);
 	double OverlapValue(Rect a, Rect b);
 	void BubbleSort(int* array, int size);
