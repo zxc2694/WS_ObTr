@@ -1,11 +1,5 @@
 ﻿#include "Tracking.h"
-
-int objNumArray[10];
-int objNumArray_BS[10];
-Scalar *ColorPtr;
-bool suspendUpdate = false;
-bool addObj = false;
-bool newObjFind = false;
+#include "kernel.h"
 
 CObjectTracking::CObjectTracking(int imgWidth, int imgHeight) : kernel_type(2), bin_width(16), count(0)
 {
@@ -41,6 +35,9 @@ CObjectTracking::CObjectTracking(int imgWidth, int imgHeight) : kernel_type(2), 
 	scaleLearningRate = 0.1;
 	epsilon = 1;
 	count = 0;
+	suspendUpdate = false;
+	addObj = false;
+	newObjFind = false;
 }
 CObjectTracking::~CObjectTracking()
 {
@@ -90,7 +87,7 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 
 	// Tracking image output (merge 3-channel image and 4-channel trakcing lines)
 	overlayImage(img_input, TrackingLine, img_output);
-
+	/////////////////// parallel_overlayImage(img_input, TrackingLine, img_output, 1);	///////////////////
 	runFirst = false;
 }
 
@@ -282,7 +279,7 @@ void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &objec
 							similarityToOld += sqrt(object_list[obj_list_iter].histV2[histIdx] * object_list[0].hist[histIdx]);
 						}
 					}
-					//cout << "objNum = " << obj_list_iter << "similarityToOld = " << similarityToOld << "similarityToNew = " << similarityToNew << endl;
+					cout << "objNum = " << obj_list_iter << "similarityToOld = " << similarityToOld << "similarityToNew = " << similarityToNew << endl;
 
 					// Update the suspended object from new object 
 					updateObjBbs(img_input, object_list, object_list[(int)object_list.size() - 1].boundingBox, obj_list_iter); //Reset the scale of the tracking box.
@@ -872,7 +869,10 @@ void CObjectTracking::drawTrajectory(Mat img_input, Mat &TrackingLine, vector<Ob
 			}
 		}
 
-		//Storage all of points on the array
+		// Get objects' movement direction
+		moveDirect(object_list, obj_list_iter);
+
+		// Storage all of points on the array
 		object_list[obj_list_iter].point[object_list[obj_list_iter].PtNumber] = Point(object_list[obj_list_iter].pre_data_X, object_list[obj_list_iter].pre_data_Y);
 		object_list[obj_list_iter].PtNumber++;
 		object_list[obj_list_iter].PtCount++;
@@ -940,6 +940,7 @@ void CObjectTracking::addTrackedList(const Mat &img, vector<ObjTrackInfo> &objec
 
 	Mat tempMat = img(obj.boundingBox);
 	computeHist(tempMat, obj.kernel, obj.hist);
+	///////////////////parallel_computeHist(tempMat, obj.hist);///////////////////
 
 	object_list.push_back(obj);
 
@@ -1745,5 +1746,68 @@ void CObjectTracking::BezierCurve(Point p0, Point p1, Point p2, Point p3, Point 
 		pointArr_output[n].x = x;
 		pointArr_output[n].y = y;
 		n = n + 1;
+	}
+}
+
+void CObjectTracking::moveDirect(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
+{
+	int currentPoint = object_list[obj_list_iter].PtNumber - 1;
+	int H = 0; // H=0:left; H=1:right
+	int V = 0; // V=0:up; V=1:down
+	int diff_H = 0;
+	int diff_V = 0;
+	if ((object_list[obj_list_iter].PtCount > 6) && (currentPoint != 0))
+	{
+		// Horizontal
+		if (object_list[obj_list_iter].point[currentPoint].x > object_list[obj_list_iter].point[currentPoint - 5].x)
+		{
+			diff_H = object_list[obj_list_iter].point[currentPoint].x - object_list[obj_list_iter].point[currentPoint - 5].x;
+			H = 1;
+		}
+		else if (object_list[obj_list_iter].point[currentPoint].x <= object_list[obj_list_iter].point[currentPoint - 5].x)
+		{
+			diff_H = object_list[obj_list_iter].point[currentPoint -5].x - object_list[obj_list_iter].point[currentPoint].x;
+			H = 0;
+		}
+
+		// Vertical
+		if (object_list[obj_list_iter].point[currentPoint].y > object_list[obj_list_iter].point[currentPoint - 5].y)
+		{
+			diff_V = object_list[obj_list_iter].point[currentPoint].y - object_list[obj_list_iter].point[currentPoint - 5].y;
+			V = 1;
+		}
+		else if (object_list[obj_list_iter].point[currentPoint].y <= object_list[obj_list_iter].point[currentPoint - 5].y)
+		{
+			diff_V = object_list[obj_list_iter].point[currentPoint - 5].y - object_list[obj_list_iter].point[currentPoint].y;
+			V = 0;
+		}
+
+	}
+	else if ((object_list[obj_list_iter].PtCount > 6) && (currentPoint < 6))
+	{
+		// Horizontal
+		if (object_list[obj_list_iter].point[currentPoint].x > object_list[obj_list_iter].point[currentPoint - 5].x)
+		{
+			diff_H = object_list[obj_list_iter].point[currentPoint].x - object_list[obj_list_iter].point[currentPoint - 5].x;
+			H = 1;
+		}
+		else if (object_list[obj_list_iter].point[currentPoint].x <= object_list[obj_list_iter].point[currentPoint - 5].x)
+		{
+			diff_H = object_list[obj_list_iter].point[currentPoint - 5].x - object_list[obj_list_iter].point[currentPoint].x;
+			H = 0;
+		}
+
+		// Vertical
+		if (object_list[obj_list_iter].point[currentPoint].y > object_list[obj_list_iter].point[currentPoint - 5].y)
+		{
+			diff_V = object_list[obj_list_iter].point[currentPoint].y - object_list[obj_list_iter].point[currentPoint - 5].y;
+			V = 1;
+		}
+		else if (object_list[obj_list_iter].point[currentPoint].y <= object_list[obj_list_iter].point[currentPoint - 5].y)
+		{
+			diff_V = object_list[obj_list_iter].point[currentPoint - 5].y - object_list[obj_list_iter].point[currentPoint].y;
+			V = 0;
+		}
+
 	}
 }

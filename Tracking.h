@@ -85,6 +85,7 @@ typedef struct
 	double histV2[MaxHistBins];
 	Mat kernelV2;
 	char moveDirect;           //U:up, D:down, L:left, R:right
+	int movement;              // 1:up, 2:up+right, 3:right, 4:right+down, 5:down, 6;down+left, 7:left, 8:left+up 
 	bool startOcc;
 } ObjTrackInfo;
 
@@ -131,6 +132,7 @@ public:
 	void drawArrow(Mat img, CvPoint p, CvPoint q);
 	void object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 	void BezierCurve(Point p0, Point p1, Point p2, Point p3, Point *pointArr_output);
+	void moveDirect(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 
 private:
 	// don't tracking too small obj 
@@ -154,6 +156,12 @@ private:
 	float scaleBetFrame;
 	double scaleLearningRate; // scale change rate
 	double epsilon;           // min shift in Mean-Shift iteration
+	int objNumArray[10];
+	int objNumArray_BS[10];
+	Scalar *ColorPtr;
+	bool suspendUpdate;
+	bool addObj;
+	bool newObjFind;
 	void getKernel(Mat &kernel, const int func_type = 0);
 	void computeHist(const Mat &roiMat, const Mat &kernel, double hist[]);
 	int setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight);
