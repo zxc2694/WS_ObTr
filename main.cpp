@@ -1,13 +1,11 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
-#include "opencv2/core/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/video/background_segm.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/legacy/legacy.hpp"
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/video/background_segm.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/legacy/legacy.hpp>
 #include "Tracking.h"
 #include "MotionDetection.h"
-#include "math.h"
-#include <stdio.h>
 
 /* Select images input */
 #define inputPath_Paul   1
@@ -18,8 +16,17 @@
 #define display_bbsRectangle    0  
 #define display_prohibitedArea  0
 
+/* Select device */
+#define Use_CUDA 1
+
 #if EtronCamera
 #include "WiCameraFactory.h"  //for Etron camera
+#endif
+
+#if Use_CUDA
+#include <opencv2/gpu/gpumat.hpp> 
+#include <opencv2/gpu/gpu.hpp>
+#include "kernel.h"
 #endif
 
 int main(int argc, const char** argv)
@@ -66,6 +73,7 @@ int main(int argc, const char** argv)
 	{
 #if inputPath_Paul
 		sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\video_output_1216\\%05d.png", nframes + 1);
+		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\20160315\\video_output2\\%05d.png", nframes + 1);
 		//sprintf(inputPath, "D:\\input_img\\%d.png", nframes + 30);
 		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\20160115Image\\L\\%d_L_Image.png", nframes + 194); // Vertical movement
 		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\20160115Image\\L_1\\%d_L_Image.png", nframes + 3424); //3424 //4024
@@ -105,7 +113,7 @@ int main(int argc, const char** argv)
 			ObjTrack.ObjectTrackingProcessing(img, imgTracking, ROI, ObjNum, &trigROI, object_list);
 			
 			t = (double)cvGetTickCount() - t;
-			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 
+//			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 
 				
 			// Show the number of the frame on the image
 			stringstream textFrameNo;
