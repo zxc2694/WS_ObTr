@@ -3,18 +3,8 @@
 
 int occSolve = 1;
 
-CObjectTracking::CObjectTracking(int imgWidth, int imgHeight) : kernel_type(2), bin_width(16), count(0)
+CObjectTracking::CObjectTracking(): kernel_type(2), bin_width(16), count(0)
 {
-	// if obj bbs found by bbsFinder is too small, then addTrackedList don't add it into object_list to track it
-	minObjWidth_Ini = (imgWidth + imgHeight) / minObjWidth_Ini_Scale;
-	minObjHeight_Ini = (imgWidth + imgHeight) / minObjHeight_Ini_Scale;
-	//const int minObjArea_Ini = IMG_WIDTH*IMG_HEIGHT / 30;
-
-	// del too small obj from object_list (ie stop tracking it)
-	minObjWidth = (imgWidth + imgHeight) / stopTrackingObjWithTooSmallWidth_Scale;
-	minObjHeight = (imgWidth + imgHeight) / stopTrackingObjWithTooSmallHeight_Scale;
-	//const int minObjArea = 1000;
-
 	bins = 256 / bin_width;
 	histSize = bins * bins * bins + 1;
 	DistMat = Mat::zeros(MAX_OBJ_LIST_SIZE, MAX_OBJ_LIST_SIZE, CV_32SC1);
@@ -100,6 +90,16 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 
 void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &ObjNum)
 {
+	int imgW_imgH = img_input.cols + img_input.rows;
+
+	// if obj bbs found by bbsFinder is too small, then addTrackedList don't add it into object_list to track it
+	minObjWidth_Ini = (imgW_imgH) / minObjWidth_Ini_Scale;
+	minObjHeight_Ini = (imgW_imgH) / minObjHeight_Ini_Scale;
+
+	// del too small obj from object_list (ie stop tracking it)
+	minObjWidth = (imgW_imgH) / stopTrackingObjWithTooSmallWidth_Scale;
+	minObjHeight = (imgW_imgH) / stopTrackingObjWithTooSmallHeight_Scale;
+
 	// Enlarge the size of bbs 2 times
 	for (int iter = 0; iter < ObjNum; ++iter)
 	{

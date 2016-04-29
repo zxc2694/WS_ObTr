@@ -39,6 +39,7 @@ int main(int argc, const char** argv)
 	CvRect ROI[10];
 	vector<ObjTrackInfo> object_list;
 	InputObjInfo trigROI;
+	CObjectTracking ObjTrack;
 
 	/* Select BS algorithm */
 	CMotionDetection BS(2);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS, 3: CodeBook+MOG
@@ -77,7 +78,7 @@ int main(int argc, const char** argv)
 		//sprintf(inputPath, "D:\\input_img\\%d.png", nframes + 30);
 		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\20160115Image\\L\\%d_L_Image.png", nframes + 194); // Vertical movement
 		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\20160115Image\\L_1\\%d_L_Image.png", nframes + 3424); //3424 //4024
-		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\CodeBook_videoOutput\\video_output_original\\%05d.png", nframes + 1);
+		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\CodeBook_videoOutput\\video_output_original\\%05d.png", nframes + 50);
 		img = cvLoadImage(inputPath, 1);
 #endif
 
@@ -109,7 +110,6 @@ int main(int argc, const char** argv)
 			t = (double)cvGetTickCount();         // Get executing time 
 
 			/* Plotting trajectories */
-			static CObjectTracking ObjTrack(img.cols, img.rows);
 			ObjTrack.ObjectTrackingProcessing(img, imgTracking, fgmask, ROI, ObjNum, &trigROI, object_list);
 			
 			t = (double)cvGetTickCount() - t;

@@ -106,12 +106,19 @@ typedef struct
 class CLASS_OBJECTTRACKING CObjectTracking
 {
 public:
-	CObjectTracking(int imgWidth, int imgHeight);
+	CObjectTracking();
 	~CObjectTracking();
 
 	Mat DistMat;
 	IplImage fgmaskIpl;
 	bool plotTraj, plotTrackROI;
+	// don't tracking too small obj 
+	int minObjWidth_Ini;
+	int minObjHeight_Ini;
+
+	// del too small obj 
+	int minObjWidth;
+	int minObjHeight;
 
 	int DistBetObj(Rect a, Rect b);
 	void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, Mat &fgmask_input, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
@@ -138,16 +145,6 @@ public:
 	void moveDirect(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 
 private:
-	// don't tracking too small obj 
-	int minObjWidth_Ini;
-	int minObjHeight_Ini;
-	//const int minObjArea_Ini = IMG_WIDTH*IMG_HEIGHT / 30;
-
-	// del too small obj 
-	int minObjWidth;
-	int minObjHeight;
-	//const int minObjArea = 1000;
-
 	int Max_Mean_Shift_Iter;
 	double Similar_Val_Threshold;
 	int kernel_type;
