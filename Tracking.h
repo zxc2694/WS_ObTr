@@ -38,11 +38,11 @@ using namespace std;
 #define plotLineLength     99  // Set tracking line length, (allowed range: 0~99)
 #define imgCompressionScale 2  // Enlarge the size of bbs X times
 #define DELE_RECT_FRAMENO   4  // Allowed frames for boxes of loiter (suggest range: 5~15)
-#define occSolve            0  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
 #define moveRate            2  // It's used for modifying the moving rate of predicted objects in occSolve 3. (Range:2~10)
 #define keepTrajectory      0  // 0: not keep, 1: keep. (by color hist)
 #define setPointY           4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
 #define demoMode            1  // Without accumulating number (0:debug mode, 1:demo mode) 
+extern int occSolve;           // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
 
 /* Math */
 #define PI 3.141592653589793238463 
@@ -111,6 +111,8 @@ public:
 
 	Mat DistMat;
 	IplImage fgmaskIpl;
+	bool plotTraj, plotTrackROI;
+
 	int DistBetObj(Rect a, Rect b);
 	void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, Mat &fgmask_input, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
 	void addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type);

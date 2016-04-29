@@ -1,6 +1,8 @@
 ﻿#include "Tracking.h"
 //#include "kernel.h"
 
+int occSolve = 1;
+
 CObjectTracking::CObjectTracking(int imgWidth, int imgHeight) : kernel_type(2), bin_width(16), count(0)
 {
 	// if obj bbs found by bbsFinder is too small, then addTrackedList don't add it into object_list to track it
@@ -35,6 +37,8 @@ CObjectTracking::CObjectTracking(int imgWidth, int imgHeight) : kernel_type(2), 
 	scaleLearningRate = 0.5; //0.1 // scale change rate
 	epsilon = 1.0;
 	count = 0;
+	plotTrackROI = true;
+	plotTraj = true;
 	suspendUpdate = false;
 	addObj = false;
 	newObjFind = false;
@@ -749,29 +753,31 @@ void CObjectTracking::drawTrajectory(Mat img_input, Mat &TrackingLine, vector<Ob
 {
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
-		if (demoMode)
+		if (plotTraj == true)
 		{
-			if (TriggerInfo->bIsTrigger == false) // if no trigger, draw all trajectories
+			if (demoMode)
 			{
-				drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
-			}
-			else // trigger area is being invaded
-			{
-				if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
+				if (TriggerInfo->bIsTrigger == false) // if no trigger, draw all trajectories
 				{
-					drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
+					drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Plotting all the tracking lines	
+				}
+				else // trigger area is being invaded
+				{
+					if (object_list[obj_list_iter].bIsDrawing == true) // trigger object 
+					{
+						drawTrackTrajectory(TrackingLine, object_list, obj_list_iter); // Only plot triggered tracking line	
 
-					drawArrow(img_input,  // Draw the arrow on the pedestrian's head
-						Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-						(object_list[obj_list_iter].boundingBox.y) - 40)
-						, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
-						(object_list[obj_list_iter].boundingBox.y) - 20));
+						drawArrow(img_input,  // Draw the arrow on the pedestrian's head
+							Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+							(object_list[obj_list_iter].boundingBox.y) - 40)
+							, Point(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x),
+							(object_list[obj_list_iter].boundingBox.y) - 20));
+					}
 				}
 			}
+			else // for debug
+				drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
 		}
-		else // for debug
-			drawTrackTrajectory(TrackingLine, object_list, obj_list_iter);
-
 		// Position of plotting point
 		int currentX = (int)(0.5 * object_list[obj_list_iter].boundingBox.width + (object_list[obj_list_iter].boundingBox.x));
 		int currentY = (int)(0.1 * setPointY * object_list[obj_list_iter].boundingBox.height + (object_list[obj_list_iter].boundingBox.y));
@@ -1052,12 +1058,14 @@ void CObjectTracking::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
 					}
 				}
 				object_list[c].color = *(ColorPtr + iter);
-				rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
+				if (plotTrackROI == true)
+					rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 			}
 			else // for debug
 			{
 				ss << object_list[c].No;
-                rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
+				if (plotTrackROI == true)
+					rectangle(img, object_list[c].boundingBox, object_list[c].color, 2);
 				putText(img, ss.str(), Point(object_list[c].boundingBox.x + object_list[c].boundingBox.width / 2 - 10, object_list[c].boundingBox.y + object_list[c].boundingBox.height / 2), 1, 3, object_list[c].color, 3);
 			}
 		}
