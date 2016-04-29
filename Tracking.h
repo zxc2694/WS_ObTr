@@ -42,7 +42,6 @@ using namespace std;
 #define keepTrajectory      0  // 0: not keep, 1: keep. (by color hist)
 #define setPointY           4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
 #define demoMode            1  // Without accumulating number (0:debug mode, 1:demo mode) 
-extern int occSolve;           // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
 
 /* Math */
 #define PI 3.141592653589793238463 
@@ -112,13 +111,11 @@ public:
 	Mat DistMat;
 	IplImage fgmaskIpl;
 	bool plotTraj, plotTrackROI;
-	// don't tracking too small obj 
-	int minObjWidth_Ini;
-	int minObjHeight_Ini;
-
-	// del too small obj 
-	int minObjWidth;
-	int minObjHeight;
+	int occSolve;        // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
+	int minObjWidth_Ini; // don't tracking too small obj 
+	int minObjHeight_Ini;// don't tracking too small obj 
+	int minObjWidth;     // del too small obj 
+	int minObjHeight;    // del too small obj 
 
 	int DistBetObj(Rect a, Rect b);
 	void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, Mat &fgmask_input, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
