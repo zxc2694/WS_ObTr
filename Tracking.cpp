@@ -68,7 +68,7 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 	track(img_input, object_list);
 
 	// Add new useful ROI to the object_list for tracking
-	getNewObj(img_input, object_list, bbs, ObjNum);
+	mergeBbsAndGetNewObjBbs(img_input, object_list, bbs, ObjNum);
 
 	// Modify the size of the tracking boxes and delete useless boxes
 	modifyTrackBox(img_input, object_list, bbs, ObjNum);
@@ -96,10 +96,10 @@ void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &ObjNum)
 	// Enlarge the size of bbs 2 times
 	for (int iter = 0; iter < ObjNum; ++iter)
 	{
-		bbs[iter].x *= 2;
-		bbs[iter].y *= 2;
-		bbs[iter].width *= 2;
-		bbs[iter].height *= 2;
+		bbs[iter].x *= imgCompressionScale;
+		bbs[iter].y *= imgCompressionScale;
+		bbs[iter].width *= imgCompressionScale;
+		bbs[iter].height *= imgCompressionScale;
 	}
 
 	// Delete useless small bbs
@@ -156,7 +156,9 @@ void CObjectTracking::ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 }
 
-void CObjectTracking::getNewObj(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
+// if a obj has a upper bbs and a lower bbs in previous frms due to broken background subtraction output, merge them
+// and add new bbs into object_list for obj appearing for the 1st time in order to track it
+void CObjectTracking::mergeBbsAndGetNewObjBbs(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	int bbs_iter;
 	size_t obj_list_iter;
@@ -167,7 +169,9 @@ void CObjectTracking::getNewObj(Mat img_input, vector<ObjTrackInfo> &object_list
 
 		for (obj_list_iter = 0; obj_list_iter < object_list.size(); ++obj_list_iter)
 		{
-			if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
+			//If the height of bbs is 1.3 times lagrer than the height of boundingBox, determine whether replace the boundingBox by the following judgement
+			if ((bbs[bbs_iter].height > 1.3f*object_list[(int)obj_list_iter].boundingBox.height))
+				//if ((bbs[bbs_iter].width*bbs[bbs_iter].height > 1.8f*object_list[(int)obj_list_iter].boundingBox.width*object_list[(int)obj_list_iter].boundingBox.height)) //If the size of bbs is 1.8 times lagrer than the size of boundingBox, determine whether replace the boundingBox by the following judgement
 				// && (bbs[bbs_iter].width*bbs[bbs_iter].height < 4.0f*object_list[obj_list_iter].boundingBox.width*object_list[obj_list_iter].boundingBox.height)
 			{
 				if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.5f)) // Overlap > 0.5 --> replace the boundingBox
@@ -177,7 +181,8 @@ void CObjectTracking::getNewObj(Mat img_input, vector<ObjTrackInfo> &object_list
 			}
 			else
 			{
-				if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.3f))		addToList = false; // If the size of overlap is small, don't add to object list. (no replace)
+				// In else case, if the size of overlap is large, don't add to object list. (no replace)
+				if (Overlap(bbs[bbs_iter], object_list[(int)obj_list_iter].boundingBox, 0.3f))		addToList = false;
 			}
 		} // end of 2nd for 
 
@@ -188,7 +193,8 @@ void CObjectTracking::getNewObj(Mat img_input, vector<ObjTrackInfo> &object_list
 
 			for (unsigned int iter = 0; iter < object_list.size(); ++iter)
 			{
-				if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above judgement
+				//if ((bbs[bbs_iter].width*bbs[bbs_iter].height <= 1.8f*object_list[iter].boundingBox.width*object_list[iter].boundingBox.height) // contrary to above "if" above 
+				if ((bbs[bbs_iter].height <= 1.3f*object_list[iter].boundingBox.height) // contrary to above "if" above 
 					&& Overlap(bbs[bbs_iter], object_list[iter].boundingBox, 0.5f))		replaceList.push_back(iter);
 			}
 
@@ -236,6 +242,7 @@ void CObjectTracking::getNewObj(Mat img_input, vector<ObjTrackInfo> &object_list
 				}
 			}
 		}
+		// and add new bbs into object_list for obj appearing for the 1st time in order to track it
 		if (!Overlapping && addToList)
 		{
 			addTrackedList(img_input, object_list, bbs[bbs_iter], 2); // No replace and add object list -> bbs convert boundingBox.
@@ -436,24 +443,29 @@ void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &objec
 }
 void CObjectTracking::modifyTrackBox(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
-	/* Modify the size of the tracking box  */
-	int bbsNumber = 0;
+	/* shrink the size of the tracking box */
+	int bbsNumber;
 	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
 	{
-		if (object_list[obj_list_iter].bIsUpdateTrack == true)
+		bbsNumber = 0;
+		int bbsIdxToReplace;
+
+		for (int i = 0; i < ObjNum; i++)
 		{
-			for (int i = 0; i < ObjNum; i++)
+			// Find how many bbs in the tracking box
+			if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
 			{
-				// Find how many bbs in the tracking box
-				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
-					bbsNumber++;
+				bbsIdxToReplace = i;
+				bbsNumber++;
 			}
-			// When the width of tracking box has 1.5 times more bigger than the width of bbs:
-			for (int i = 0; i < ObjNum; i++)
-			{
-				if ((Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f)) && ((object_list[obj_list_iter].boundingBox.width > 1.3 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height > 1.5 * bbs[i].height) || (object_list[obj_list_iter].boundingBox.width < 0.8 * bbs[i].width) || (object_list[obj_list_iter].boundingBox.height < 0.6 * bbs[i].height)) && (bbsNumber == 1))
-					updateObjBbs(img_input, object_list, bbs[i], obj_list_iter); //Reset the scale of the tracking box.
-			}
+			if (bbsNumber > 1)	break;
+		}
+		// When the width or height of tracking box is 1.1 times larger than the width or height of bbs
+		if (bbsNumber == 1)
+		{
+			if ((object_list[obj_list_iter].boundingBox.width > 1.25f * bbs[bbsIdxToReplace].width) ||
+				(object_list[obj_list_iter].boundingBox.height > 1.25f * bbs[bbsIdxToReplace].height))
+				updateObjBbs(img_input, object_list, bbs[bbsIdxToReplace], obj_list_iter); // Reset the scale of the tracking box.
 		}
 	}
 
@@ -550,7 +562,7 @@ void CObjectTracking::modifyTrackBox(Mat img_input, vector<ObjTrackInfo> &object
 			bool Similar = false;
 			double similarityH = 0.0;
 
-			for (int histIdx = 0; histIdx < 4096; ++histIdx) // Compute similarity
+			for (int histIdx = 0; histIdx < MaxHistBins; ++histIdx) // Compute similarity
 			{
 				similarityH += sqrt(object_list[leftObjNum].hist[histIdx] * object_list[newObjNum].hist[histIdx]);
 			}

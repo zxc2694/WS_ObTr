@@ -35,6 +35,7 @@ using namespace std;
 
 /* Display */
 #define plotLineLength     99  // Set tracking line length, (allowed range: 0~99)
+#define imgCompressionScale 2  // Enlarge the size of bbs X times
 #define DELE_RECT_FRAMENO   4  // Allowed frames for boxes of loiter (suggest range: 5~15)
 #define occSolve            2  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
 #define moveRate            2  // It's used for modifying the moving rate of predicted objects in occSolve 3. (Range:2~10)
@@ -122,7 +123,7 @@ public:
 
 	void revertBbsSize(Mat &img_input, CvRect *bbs, int &ObjNum);
 	void ObjNumArr(int *objNumArray, int *objNumArray_BS);
-	void getNewObj(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum);
+	void mergeBbsAndGetNewObjBbs(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum);
 	void findTrigObj(vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
 	void drawTrajectory(Mat img_input, Mat &TrackingLine, vector<ObjTrackInfo> &object_list, InputObjInfo *TriggerInfo);
 	void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output);
