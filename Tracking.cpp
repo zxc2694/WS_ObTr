@@ -1,5 +1,5 @@
 ﻿#include "Tracking.h"
-#include "kernel.h"
+//#include "kernel.h"
 
 CObjectTracking::CObjectTracking(int imgWidth, int imgHeight) : kernel_type(2), bin_width(16), count(0)
 {
@@ -87,7 +87,7 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 
 	// Tracking image output (merge 3-channel image and 4-channel trakcing lines)
 	overlayImage(img_input, TrackingLine, img_output);
-	/////////////////// parallel_overlayImage(img_input, TrackingLine, img_output, 1);	///////////////////
+	// parallel_overlayImage(img_input, TrackingLine, img_output, 1);
 	runFirst = false;
 }
 
@@ -1226,6 +1226,7 @@ int CObjectTracking::track(Mat &img, vector<ObjTrackInfo> &object_list)
 				// compute color hist
 				tempMat = img(CandBbs[scaleIter]);
 				computeHist(tempMat, kernel, hist[scaleIter]);
+				//parallel_similarity(object_list[c].hist, hist[scaleIter], similarity);
 
 				// choose scale with largest similarity to target model
 				similarity = 0;
