@@ -31,22 +31,23 @@ using namespace std;
 #define MAX_OBJ_LIST_SIZE            100           // Allowed max number of objects 
 #define minObjWidth_Ini_Scale         60           // if obj bbs found by bbsFinder has width < (imgWidth + imgHeight) / minObjWidth_Ini_Scale, then addTrackedList don't add it into object_list to track it
 #define minObjHeight_Ini_Scale        14           // if obj bbs found by bbsFinder has height < (imgWidth + imgHeight) / minObjHeight_Ini, then addTrackedList don't add it into object_list to track it
+#define ACCEPTABLE_SIMILARITY        0.5           // if similarity < "ACCEPTABLE_SIMILARITY", stop tracking this obj, i.e. delete this obj from object_list 
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)] // Get two original tracking boxes'distance
 
 /* Display */
 #define plotLineLength     99  // Set tracking line length, (allowed range: 0~99)
 #define imgCompressionScale 2  // Enlarge the size of bbs X times
 #define DELE_RECT_FRAMENO   4  // Allowed frames for boxes of loiter (suggest range: 5~15)
-#define occSolve            2  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
+#define occSolve            0  // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
 #define moveRate            2  // It's used for modifying the moving rate of predicted objects in occSolve 3. (Range:2~10)
-#define keepTrajectory      1  // 0: not keep, 1: keep. (by color hist)
+#define keepTrajectory      0  // 0: not keep, 1: keep. (by color hist)
 #define setPointY           4  // Proportional position. 0: Top of the head, 10: Soles of the feet (Range:0~10)
 #define demoMode            1  // Without accumulating number (0:debug mode, 1:demo mode) 
 
 /* Math */
 #define PI 3.141592653589793238463 
 
-const short MaxHistBins = 4096;
+const short MaxHistBins = 4096 + 1;
 
 typedef struct
 {
@@ -109,12 +110,11 @@ public:
 	~CObjectTracking();
 
 	Mat DistMat;
+	IplImage fgmaskIpl;
 	int DistBetObj(Rect a, Rect b);
-	void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
+	void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, Mat &fgmask_input, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
 	void addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type);
 	void updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx);
-	bool checkTrackedList(vector<ObjTrackInfo> &object_list, vector<ObjTrackInfo> &prev_object_list);
-	bool updateTrackedList(vector<ObjTrackInfo> &object_list, vector<ObjTrackInfo> &prev_object_list);
 	void drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list);
 	void drawTrackTrajectory(Mat &TrackingLine, vector<ObjTrackInfo> &object_list, size_t &obj_list_iter);
 	int track(Mat &img, vector<ObjTrackInfo> &object_list);
@@ -164,8 +164,8 @@ private:
 	bool addObj;
 	bool newObjFind;
 	void getKernel(Mat &kernel, const int func_type = 0);
-	void computeHist(const Mat &roiMat, const Mat &kernel, double hist[]);
-	int setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight);
+	void computeHist(const Mat &roiMat, const Rect &objBbs, const Mat &kernel, double hist[]);
+	int setWeight(const Mat &roiMat, const Rect &objBbs, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight);
 	bool testObjectIntersection(ObjTrackInfo &obj1, ObjTrackInfo &obj2);
 	bool testIntraObjectIntersection(vector<ObjTrackInfo> &object_list, int cur_pos);
 };

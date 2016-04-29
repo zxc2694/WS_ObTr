@@ -103,14 +103,14 @@ int main(int argc, const char** argv)
 		
 		else  // Initial background model has finished	
 		{
-			fgmask = BS.OutputFMask();            // Get image output of background subtraction						
+			fgmask = BS.OutputFMask();            // Get image output of background subtraction	
 			BS.Output2dROI(fgmask, ROI, &ObjNum); // Get ROI detection	
 			
 			t = (double)cvGetTickCount();         // Get executing time 
 
 			/* Plotting trajectories */
 			static CObjectTracking ObjTrack(img.cols, img.rows);
-			ObjTrack.ObjectTrackingProcessing(img, imgTracking, ROI, ObjNum, &trigROI, object_list);
+			ObjTrack.ObjectTrackingProcessing(img, imgTracking, fgmask, ROI, ObjNum, &trigROI, object_list);
 			
 			t = (double)cvGetTickCount() - t;
 //			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 

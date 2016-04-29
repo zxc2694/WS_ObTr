@@ -14,7 +14,7 @@ CObjectTracking::CObjectTracking(int imgWidth, int imgHeight) : kernel_type(2), 
 	//const int minObjArea = 1000;
 
 	bins = 256 / bin_width;
-	histSize = bins*bins*bins;
+	histSize = bins * bins * bins + 1;
 	DistMat = Mat::zeros(MAX_OBJ_LIST_SIZE, MAX_OBJ_LIST_SIZE, CV_32SC1);
 
 	ColorMatrix[0] = Scalar(0, 0, 255);
@@ -31,9 +31,9 @@ CObjectTracking::CObjectTracking(int imgWidth, int imgHeight) : kernel_type(2), 
 
 	Max_Mean_Shift_Iter = 8;
 	Similar_Val_Threshold = 0.165;
-	scaleBetFrame = (float)0.1;
-	scaleLearningRate = 0.1;
-	epsilon = 1;
+	scaleBetFrame = 0.1f;
+	scaleLearningRate = 0.5; //0.1 // scale change rate
+	epsilon = 1.0;
 	count = 0;
 	suspendUpdate = false;
 	addObj = false;
@@ -46,14 +46,16 @@ CObjectTracking::~CObjectTracking()
 /* Function: ObjectTrackingProcessing
 * @param: img_input  - Original image (RGB, 640 X 480)
 * @param: img_output - Image output with plotting trajectory (RGB, 640 X 480)
+* @param: fgmaskIpl  - Original BS image (RGB, 320 X 240)
 * @param: bbs        - Detected ROIs. Input is a compressed size (320 X 240)
 * @param: ObjNum     - The number of ROIs
 */
-void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
+void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, Mat &fgmask_input, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);
 	TrackingLine = Scalar::all(0);
+	fgmaskIpl = fgmask_input;
 
 	if (runFirst)
 	{	
@@ -67,7 +69,8 @@ void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, 
 	// Main tracking code using Mean-shift algorithm
 	track(img_input, object_list);
 
-	// Add new useful ROI to the object_list for tracking
+	// if a obj has a upper bbs and a lower bbs in previous frms due to broken background subtraction output, merge them
+	// and add new bbs into object_list for obj appearing for the 1st time in order to track it
 	mergeBbsAndGetNewObjBbs(img_input, object_list, bbs, ObjNum);
 
 	// Modify the size of the tracking boxes and delete useless boxes
@@ -620,8 +623,7 @@ void CObjectTracking::modifyTrackBox(Mat img_input, vector<ObjTrackInfo> &object
 				getKernel(object_list[obj_list_iter].kernelV2, kernel_type);
 				Mat tempMat = img_input(R);
 				double histTemp[MaxHistBins];
-				computeHist(tempMat, object_list[obj_list_iter].kernelV2, object_list[obj_list_iter].histV2);
-
+				computeHist(tempMat, object_list[obj_list_iter].boundingBox, object_list[obj_list_iter].kernelV2, object_list[obj_list_iter].histV2);
 				// Update new color histogram. And its proportion: old hist is 70%, new hist is 30%
 				//for (int histIdx = 0; histIdx < 4096; ++histIdx)
 				//{
@@ -951,7 +953,7 @@ void CObjectTracking::addTrackedList(const Mat &img, vector<ObjTrackInfo> &objec
 	getKernel(obj.kernel, kernel_type);
 
 	Mat tempMat = img(obj.boundingBox);
-	computeHist(tempMat, obj.kernel, obj.hist);
+	computeHist(tempMat, obj.boundingBox, obj.kernel, obj.hist);
 	///////////////////parallel_computeHist(tempMat, obj.hist);///////////////////
 
 	object_list.push_back(obj);
@@ -1003,7 +1005,7 @@ void CObjectTracking::updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_
 	getKernel(object_list[idx].kernel, kernel_type);
 
 	Mat tempMat = img(object_list[idx].boundingBox);
-	computeHist(tempMat, object_list[idx].kernel, object_list[idx].hist);
+	computeHist(tempMat, object_list[idx].boundingBox, object_list[idx].kernel, object_list[idx].hist);
 }
 
 void CObjectTracking::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
@@ -1156,11 +1158,11 @@ int CObjectTracking::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 				// compute color hist
 				tempMat = img(CandBbs[scaleIter]);
-				computeHist(tempMat, kernel, hist[scaleIter]);
+				computeHist(tempMat, CandBbs[scaleIter], kernel, hist[scaleIter]);
 
 				// set weight
 				weight.create(CandBbs[scaleIter].height, CandBbs[scaleIter].width, CV_64FC1);
-				setWeight(tempMat, kernel, object_list[c].hist, hist[scaleIter], weight);
+				setWeight(tempMat, CandBbs[scaleIter], kernel, object_list[c].hist, hist[scaleIter], weight);
 
 				Mean_Shift_Iter = 0; // Mean_Shift iteration count
 				//Point oldBbsCen = Point(0, 0), newBbsCen = Point(epsilon, 0); // candidate bbs center coordinates during Mean_Shift iteration (let upper left corner of img have coordinate (0, 0))
@@ -1227,17 +1229,17 @@ int CObjectTracking::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 					// compute color hist
 					tempMat = img(CandBbs[scaleIter]);
-					computeHist(tempMat, kernel, hist[scaleIter]);
+					computeHist(tempMat, CandBbs[scaleIter], kernel, hist[scaleIter]);
 
 					// set weight
-					setWeight(tempMat, kernel, object_list[c].hist, hist[scaleIter], weight);
+					setWeight(tempMat, CandBbs[scaleIter], kernel, object_list[c].hist, hist[scaleIter], weight);
 				} //end of while
 
 				if (delBbsOutImg)   continue; // if the part of bbs inside img is too small after scale and shift, abandon this scale and choose other scale
 
 				// compute color hist
 				tempMat = img(CandBbs[scaleIter]);
-				computeHist(tempMat, kernel, hist[scaleIter]);
+				computeHist(tempMat, CandBbs[scaleIter], kernel, hist[scaleIter]);
 				//parallel_similarity(object_list[c].hist, hist[scaleIter], similarity);
 
 				// choose scale with largest similarity to target model
@@ -1256,8 +1258,9 @@ int CObjectTracking::track(Mat &img, vector<ObjTrackInfo> &object_list)
 				exceedImgBoundary = false;
 			} // for all scale
 
-			// if the part of bbs inside img is too small for all scales after shifts, abandon tracking this obj, i.e. delete this obj from object_list 
-			if (exceedImgBoundary)
+			// if the part of bbs inside img is too small for all scales after shifts, stop tracking this obj, i.e. delete this obj from object_list 
+			// if similarity < "ACCEPTABLE_SIMILARITY", stop tracking this obj, i.e. delete this obj from object_list 
+			if (exceedImgBoundary || largestSimilarity < ACCEPTABLE_SIMILARITY)
 			{
 				//object_list_erase(object_list, c);
 				//--c;
@@ -1298,11 +1301,11 @@ int CObjectTracking::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 			// compute color hist
 			tempMat = img(object_list[c].boundingBox);
-			computeHist(tempMat, kernel, hist[0]);
+			computeHist(tempMat, object_list[c].boundingBox, kernel, hist[0]);
 
 			// set weight
 			weight.create(object_list[c].boundingBox.height, object_list[c].boundingBox.width, CV_64FC1);
-			setWeight(tempMat, kernel, object_list[c].hist, hist[0], weight);
+			setWeight(tempMat, object_list[c].boundingBox, kernel, object_list[c].hist, hist[0], weight);
 
 			Mean_Shift_Iter = 0; // Mean_Shift iteration count
 
@@ -1401,10 +1404,10 @@ int CObjectTracking::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 				// compute color hist
 				tempMat = img(object_list[c].boundingBox);
-				computeHist(tempMat, kernel, hist[0]);
+				computeHist(tempMat, object_list[c].boundingBox, kernel, hist[0]);
 
 				// set weight
-				setWeight(tempMat, kernel, object_list[c].hist, hist[0], weight);
+				setWeight(tempMat, object_list[c].boundingBox, kernel, object_list[c].hist, hist[0], weight);
 			} //end of while
 
 			if (delBbsOutImg)
@@ -1416,7 +1419,7 @@ int CObjectTracking::track(Mat &img, vector<ObjTrackInfo> &object_list)
 
 			// compute color hist
 			tempMat = img(object_list[c].boundingBox);
-			computeHist(tempMat, kernel, hist[0]);
+			computeHist(tempMat, object_list[c].boundingBox, kernel, hist[0]);
 
 			// choose scale with largest similarity to target model
 			similarity = 0;
@@ -1499,7 +1502,7 @@ void CObjectTracking::getKernel(Mat &kernel, const int func_type)
 	} // end of switch
 }
 
-void CObjectTracking::computeHist(const Mat &roiMat, const Mat &kernel, double hist[])
+void CObjectTracking::computeHist(const Mat &roiMat, const Rect &objBbs, const Mat &kernel, double hist[])
 {
 	if (roiMat.data == NULL) return;
 
@@ -1513,6 +1516,13 @@ void CObjectTracking::computeHist(const Mat &roiMat, const Mat &kernel, double h
 			for (int j = 0; j < kernel.cols; j++)
 			{
 				if (kernel.at<double>(i, j) == 0)	 continue;
+
+				if (fgmaskIpl.imageData[(objBbs.y / imgCompressionScale + i / imgCompressionScale) * fgmaskIpl.widthStep + (objBbs.x / imgCompressionScale + j / imgCompressionScale)] == 0)
+				{
+					hist[MaxHistBins - 1] += kernel.at<double>(i, j);
+					kernel_sum += kernel.at<double>(i, j);
+					continue;
+				}
 
 				Vec3b bgr = roiMat.at<Vec3b>(i, j);
 				int idx = (bgr.val[0] / bin_width)*bins*bins + (bgr.val[1] / bin_width)*bins + bgr.val[2] / bin_width;
@@ -1546,7 +1556,7 @@ void CObjectTracking::computeHist(const Mat &roiMat, const Mat &kernel, double h
 	}
 }
 
-int CObjectTracking::setWeight(const Mat &roiMat, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight)
+int CObjectTracking::setWeight(const Mat &roiMat, const Rect &objBbs, const Mat &kernel, const double tarHist[], const double candHist[], Mat &weight)
 {
 	if (roiMat.data == NULL) return -1;
 
@@ -1557,6 +1567,12 @@ int CObjectTracking::setWeight(const Mat &roiMat, const Mat &kernel, const doubl
 			for (int j = 0; j < roiMat.cols; j++)
 			{
 				if (kernel.at<double>(i, j) == 0)	 continue;
+
+				if (fgmaskIpl.imageData[(objBbs.y / 2 + i / 2) * fgmaskIpl.widthStep + (objBbs.x / 2 + j / 2)] == 0)
+				{
+					weight.at<double>(i, j) = sqrt(tarHist[MaxHistBins - 1] / candHist[MaxHistBins - 1]);
+					continue;
+				}
 
 				Vec3b bgr = roiMat.at<Vec3b>(i, j);
 				int idx = (bgr.val[0] / bin_width)*bins*bins + (bgr.val[1] / bin_width)*bins + bgr.val[2] / bin_width;
