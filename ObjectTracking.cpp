@@ -1,4 +1,4 @@
-﻿#include "Tracking.h"
+﻿#include "ObjectTracking.h"
 //#include "kernel.h"
 
 CObjectTracking::CObjectTracking(): kernel_type(2), bin_width(16), count(0)
@@ -30,7 +30,7 @@ CObjectTracking::CObjectTracking(): kernel_type(2), bin_width(16), count(0)
 	suspendUpdate = false;
 	addObj = false;
 	newObjFind = false;
-	occSolve = 0; // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
+	occSolve = 2; // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
 }
 CObjectTracking::~CObjectTracking()
 {

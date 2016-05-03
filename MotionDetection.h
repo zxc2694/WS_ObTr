@@ -8,7 +8,9 @@
 #include "opencv2/legacy/legacy.hpp"
 #include "opencv2/video/video.hpp"
 #include "opencv2/video/tracking.hpp"
-#include "Tracking.h"
+
+using namespace cv;
+using namespace std;
 
 extern int nframesToLearnBG;   // Update the initial frame number
 

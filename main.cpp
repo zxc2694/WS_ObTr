@@ -4,7 +4,7 @@
 #include <opencv2/video/background_segm.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/legacy/legacy.hpp>
-#include "Tracking.h"
+#include "ObjectTracking.h"
 #include "MotionDetection.h"
 
 /* Select images input */

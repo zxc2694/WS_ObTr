@@ -1,6 +1,6 @@
 #include "MotionDetection.h"
 
-int nframesToLearnBG = 1; 
+int nframesToLearnBG = 50; 
 
 CMotionDetection::CMotionDetection(int nType)
 {
