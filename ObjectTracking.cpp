@@ -1269,9 +1269,9 @@ int CObjectTracking::track(Mat &img, vector<ObjTrackInfo> &object_list)
 			// if similarity < "ACCEPTABLE_SIMILARITY", stop tracking this obj, i.e. delete this obj from object_list 
 			if (exceedImgBoundary || largestSimilarity < ACCEPTABLE_SIMILARITY)
 			{
-				//object_list_erase(object_list, c);
-				//--c;
-				//continue;
+				object_list_erase(object_list, c);
+				--c;
+				continue;
 			}
 
 
