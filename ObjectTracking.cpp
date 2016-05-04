@@ -139,6 +139,14 @@ void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &ObjNum)
 		bbs[iter].width = temp[iter].width;
 		bbs[iter].height = temp[iter].height;
 	}
+
+	for (int iter = obj; iter < 10; ++iter)
+	{
+		bbs[iter].x = 0;
+		bbs[iter].y = 0;
+		bbs[iter].width = 0;
+		bbs[iter].height = 0;
+	}
 }
 
 void CObjectTracking::ObjNumArr(int *objNumArray, int *objNumArray_BS)
@@ -450,28 +458,50 @@ void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &objec
 void CObjectTracking::modifyTrackBox(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	/* shrink the size of the tracking box */
-	int bbsNumber;
-	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
-	{
-		bbsNumber = 0;
-		int bbsIdxToReplace;
+	int bbsNumber[10], trackNumber[10];
+	int bbsCount = 0, trackCount = 0;
+	Rect ROI_Temp[10];
 
-		for (int i = 0; i < ObjNum; i++)
+	memset(bbsNumber, 0, 10 * sizeof(int));
+	memset(trackNumber, 0, 10 * sizeof(int));
+
+	// Prevent tracking box from enlarging its size when two tracking boxes meet. 
+	// (Instead of using bbs, use ROI_Temp to do next step)
+	for (int i = 0; i < ObjNum; i++, trackNumber[trackCount]++)
+	{
+		// Find how many tracking box in bbs
+		for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++)
+			if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.3f))
+				trackNumber[trackCount]++;
+
+		// There are over two tracking boxes on the inside of one bbs
+		if (trackNumber[trackCount] >= 2) 
 		{
-			// Find how many bbs in the tracking box
-			if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.5f))
-			{
-				bbsIdxToReplace = i;
-				bbsNumber++;
-			}
-			if (bbsNumber > 1)	break;
+			ROI_Temp[i].x = 0; // Let this bbs be temporary disappearance
+			ROI_Temp[i].y = 0; 
+			ROI_Temp[i].width = 0; 
+			ROI_Temp[i].height = 0;
 		}
-		// When the width or height of tracking box is 1.1 times larger than the width or height of bbs
-		if (bbsNumber == 1)
+		else
+			ROI_Temp[i] = bbs[i];
+	}
+
+	for (size_t obj_list_iter = 0; obj_list_iter < object_list.size(); obj_list_iter++, bbsCount++)
+	{
+		if (object_list[obj_list_iter].bIsUpdateTrack == true)
 		{
-			if ((object_list[obj_list_iter].boundingBox.width > 1.25f * bbs[bbsIdxToReplace].width) ||
-				(object_list[obj_list_iter].boundingBox.height > 1.25f * bbs[bbsIdxToReplace].height))
-				updateObjBbs(img_input, object_list, bbs[bbsIdxToReplace], obj_list_iter); // Reset the scale of the tracking box.
+			for (int i = 0; i < ObjNum; i++)
+			{
+				// Find how many bbs in the tracking box
+				if (Overlap(object_list[obj_list_iter].boundingBox, ROI_Temp[i], 0.5f))
+					bbsNumber[bbsCount]++;
+			}
+			// When the width of tracking box has 1.5 times more bigger than the width of bbs:
+			for (int i = 0; i < ObjNum; i++)
+			{
+				if ((Overlap(object_list[obj_list_iter].boundingBox, ROI_Temp[i], 0.2f)) && ((object_list[obj_list_iter].boundingBox.width > 1.25 * ROI_Temp[i].width) || (object_list[obj_list_iter].boundingBox.height > 1.25 * ROI_Temp[i].height) || (object_list[obj_list_iter].boundingBox.width < 0.75 * ROI_Temp[i].width) || (object_list[obj_list_iter].boundingBox.height < 0.6 * ROI_Temp[i].height)) && (bbsNumber[bbsCount] == 1))
+					updateObjBbs(img_input, object_list, ROI_Temp[i], obj_list_iter); //Reset the scale of the tracking box.
+			}
 		}
 	}
 
@@ -490,9 +520,7 @@ void CObjectTracking::modifyTrackBox(Mat img_input, vector<ObjTrackInfo> &object
 				if (Overlap(object_list[obj_list_iter].boundingBox, bbs[i], 0.2f))
 					break;
 				else
-				{
 					black++; // Count the accumulation of no overlapping object
-				}
 			}
 			// Restarting count when count > DELE_RECT_FRAMENO number
 			if (object_list[obj_list_iter].cPtNumber == DELE_RECT_FRAMENO)
