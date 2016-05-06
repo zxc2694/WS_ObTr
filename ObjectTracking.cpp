@@ -43,7 +43,7 @@ CObjectTracking::~CObjectTracking()
 * @param: bbs        - Detected ROIs. Input is a compressed size (320 X 240)
 * @param: ObjNum     - The number of ROIs
 */
-void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, Mat &fgmask_input, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
+void CObjectTracking::ObjectTrackingProcessing(Mat &img_input, Mat &img_output, Mat &fgmask_input, CvRect *bbs, int &ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list)
 {
 	static char runFirst = true;
 	static Mat TrackingLine(img_input.rows, img_input.cols, CV_8UC4);

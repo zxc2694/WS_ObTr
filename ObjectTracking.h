@@ -118,7 +118,7 @@ public:
 	int minObjHeight;    // del too small obj 
 
 	int DistBetObj(Rect a, Rect b);
-	void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, Mat &fgmask_input, CvRect *bbs, int ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
+	void ObjectTrackingProcessing(Mat &img_input, Mat &img_output, Mat &fgmask_input, CvRect *bbs, int &ObjNum, InputObjInfo *trigROI, vector<ObjTrackInfo> &object_list);
 	void addTrackedList(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, short type);
 	void updateObjBbs(const Mat &img, vector<ObjTrackInfo> &object_list, Rect bbs, int idx);
 	void drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list);
