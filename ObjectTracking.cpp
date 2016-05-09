@@ -30,7 +30,7 @@ CObjectTracking::CObjectTracking(): kernel_type(2), bin_width(16), count(0)
 	suspendUpdate = false;
 	addObj = false;
 	newObjFind = false;
-	occSolve = 2; // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
+	occSolve = 0; // 0: not use, 1: use color hist, 2: directly exchange, 3: directly exchange with prediction
 }
 CObjectTracking::~CObjectTracking()
 {
@@ -118,7 +118,7 @@ void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &ObjNum)
 			bbs[iter].width = 0;
 		}
 	}
-	Rect temp[10];
+	Rect temp[30];
 	int j = 0;
 	for (int iter = 0; iter < ObjNum; ++iter)
 	{
@@ -140,7 +140,7 @@ void CObjectTracking::revertBbsSize(Mat &img_input, CvRect *bbs, int &ObjNum)
 		bbs[iter].height = temp[iter].height;
 	}
 
-	for (int iter = obj; iter < 10; ++iter)
+	for (int iter = obj; iter < 30; ++iter)
 	{
 		bbs[iter].x = 0;
 		bbs[iter].y = 0;
@@ -154,7 +154,7 @@ void CObjectTracking::ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	static char runFirst = true;
 	if (runFirst)
 	{
-		for (unsigned int s = 0; s < 10; s++)
+		for (unsigned int s = 0; s < 30; s++)
 		{
 			objNumArray[s] = 65535;
 			objNumArray_BS[s] = 65535;
@@ -163,10 +163,10 @@ void CObjectTracking::ObjNumArr(int *objNumArray, int *objNumArray_BS)
 	}
 	else
 	{
-		for (int iter = 0; iter < 10; iter++)
+		for (int iter = 0; iter < 30; iter++)
 			objNumArray_BS[iter] = objNumArray[iter];
 
-		BubbleSort(objNumArray_BS, 10);
+		BubbleSort(objNumArray_BS, 30);
 	}
 }
 
@@ -330,7 +330,7 @@ void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &objec
 					if ((N1_cenPoint > N0_cenPoint) && (New_cenPoint < N0_cenPoint)) // New object appears on the left side of the occlusion
 					{
 						// Next: [New][XX][N0(N1)]
-						OverlapCompare ocp[10];
+						OverlapCompare ocp[30];
 						Rect resizeLeftRect;
 						resizeLeftRect = object_list[1].boundingBox;
 						resizeLeftRect.x = object_list[1].boundingBox.x;
@@ -357,7 +357,7 @@ void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &objec
 					else if ((N1_cenPoint <= N0_cenPoint) && (New_cenPoint < N0_cenPoint)) // New object appears on the left side of the occlusion
 					{
 						// Next: [New][XX][N1(N0)]
-						OverlapCompare ocp[10];
+						OverlapCompare ocp[30];
 						Rect resizeLeftRect;
 						resizeLeftRect = object_list[0].boundingBox;
 						resizeLeftRect.x = object_list[0].boundingBox.x;
@@ -384,7 +384,7 @@ void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &objec
 					else if ((N1_cenPoint > N0_cenPoint) && (New_cenPoint >= N0_cenPoint)) // New object appears on the right side of the occlusion
 					{
 						// Next: [N1(N0)][XX][New]
-						OverlapCompare ocp[10];
+						OverlapCompare ocp[30];
 						Rect resizeLeftRect;
 						resizeLeftRect = object_list[0].boundingBox;
 						resizeLeftRect.x = object_list[0].boundingBox.x - object_list[0].boundingBox.width;
@@ -411,7 +411,7 @@ void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &objec
 					else if ((N1_cenPoint < N0_cenPoint) && (New_cenPoint >= N0_cenPoint)) // New object appears on the right side of the occlusion
 					{
 						// Next: [N0(N1)][XX][New]
-						OverlapCompare ocp[10];
+						OverlapCompare ocp[30];
 						Rect resizeLeftRect;
 						resizeLeftRect = object_list[1].boundingBox;
 						resizeLeftRect.x = object_list[1].boundingBox.x - object_list[1].boundingBox.width;
@@ -458,12 +458,12 @@ void CObjectTracking::occlusionNewObj(Mat img_input, vector<ObjTrackInfo> &objec
 void CObjectTracking::modifyTrackBox(Mat img_input, vector<ObjTrackInfo> &object_list, CvRect *bbs, int ObjNum)
 {
 	/* shrink the size of the tracking box */
-	int bbsNumber[10], trackNumber[10];
+	int bbsNumber[30], trackNumber[30];
 	int bbsCount = 0, trackCount = 0;
-	Rect ROI_Temp[10];
+	Rect ROI_Temp[30];
 
-	memset(bbsNumber, 0, 10 * sizeof(int));
-	memset(trackNumber, 0, 10 * sizeof(int));
+	memset(bbsNumber, 0, 30 * sizeof(int));
+	memset(trackNumber, 0, 30 * sizeof(int));
 
 	// Prevent tracking box from enlarging its size when two tracking boxes meet. 
 	// (Instead of using bbs, use ROI_Temp to do next step)
@@ -1000,7 +1000,7 @@ void CObjectTracking::addTrackedList(const Mat &img, vector<ObjTrackInfo> &objec
 	static int countNo = 0;
 	char UpdateNo = false;
 
-	for (size_t iter = 0; iter < 10; ++iter)
+	for (size_t iter = 0; iter < 30; ++iter)
 	{
 		if (objNumArray[iter] == 1000)
 		{
@@ -1016,10 +1016,10 @@ void CObjectTracking::addTrackedList(const Mat &img, vector<ObjTrackInfo> &objec
 		countNo++;
 	}
 
-	for (int iter = 0; iter < 10; iter++)
+	for (int iter = 0; iter < 30; iter++)
 		objNumArray_BS[iter] = objNumArray[iter];
 
-	BubbleSort(objNumArray_BS, 10);
+	BubbleSort(objNumArray_BS, 30);
 
 	addObj = true;
 }
@@ -1076,7 +1076,7 @@ void CObjectTracking::drawTrackBox(Mat &img, vector<ObjTrackInfo> &object_list)
 			stringstream ss;
 			if (demoMode == true)
 			{
-				for (iter = 0; iter < 10; iter++)
+				for (iter = 0; iter < 30; iter++)
 				{
 					if (objNumArray_BS[c] == objNumArray[iter])
 					{
@@ -1781,7 +1781,7 @@ void CObjectTracking::drawArrow(Mat img, CvPoint p, CvPoint q)
 
 void CObjectTracking::object_list_erase(vector<ObjTrackInfo> &object_list, size_t &obj_list_iter)
 {
-	for (int iterColor = 0; iterColor < 10; iterColor++)
+	for (int iterColor = 0; iterColor < 30; iterColor++)
 	{
 		if (objNumArray_BS[obj_list_iter] == objNumArray[iterColor])
 		{

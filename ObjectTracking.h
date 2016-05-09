@@ -35,7 +35,7 @@ using namespace std;
 #define Pixel32S(img,x,y) ((int*)img.data)[(y)*img.cols + (x)] // Get two original tracking boxes'distance
 
 /* Display */
-#define plotLineLength     99  // Set tracking line length, (allowed range: 0~99)
+#define plotLineLength     98  // Set tracking line length, (allowed range: 0~99)
 #define imgCompressionScale 2  // Enlarge the size of bbs X times
 #define DELE_RECT_FRAMENO   4  // Allowed frames for boxes of loiter (suggest range: 5~15)
 #define moveRate            2  // It's used for modifying the moving rate of predicted objects in occSolve 3. (Range:2~10)
@@ -153,8 +153,8 @@ private:
 	float scaleBetFrame;
 	double scaleLearningRate; // scale change rate
 	double epsilon;           // min shift in Mean-Shift iteration
-	int objNumArray[10];
-	int objNumArray_BS[10];
+	int objNumArray[30];
+	int objNumArray_BS[30];
 	Scalar *ColorPtr;
 	bool suspendUpdate;
 	bool addObj;
