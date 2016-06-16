@@ -1,4 +1,4 @@
-# WS_ObTr
+# wsob
 
 The opencv library is 2.4.11 version.
 
