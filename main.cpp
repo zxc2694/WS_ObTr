@@ -8,9 +8,8 @@
 #include "MotionDetection.h"
 
 /* Select images input */
-#define inputPath_Paul   1
-#define inputPath_Hardy  0
-#define EtronCamera      0
+#define MyInputPath 1
+#define EtronCamera 0
 
 /* Display*/
 #define display_bbsRectangle    0  
@@ -72,21 +71,9 @@ int main(int argc, const char** argv)
 
 	while (1)
 	{
-#if inputPath_Paul
+#if MyInputPath
 		sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\video_output_1216\\%05d.png", nframes + 1);
-		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\20160315\\video_output2\\%05d.png", nframes + 1);
-		//sprintf(inputPath, "D:\\input_img\\%d.png", nframes + 30);
-		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\20160115Image\\L\\%d_L_Image.png", nframes + 194); // Vertical movement
-		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\20160115Image\\L_1\\%d_L_Image.png", nframes + 3424); //3424 //4024
-		//sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\CodeBook_videoOutput\\video_output_original\\%05d.png", nframes + 50);
 		img = cvLoadImage(inputPath, 1);
-#endif
-
-#if inputPath_Hardy
-		//sprintf(inputPath, "D://tracking data//3//%05d.png", nframes + 180);
-		sprintf(inputPath, "D://tracking data//4//%05d.png", nframes + 1);
-		//sprintf(inputPath, "D://tracking data//20160111Image//R_two_man//Jan%08d_R_Image.png", nframes + 11164513);
-		img = cvLoadImage(link, 1);
 #endif
 
 #if EtronCamera	
