@@ -10,6 +10,7 @@
 /* Select images input */
 #define MyInputPath 1
 #define EtronCamera 0
+#define webCamera   0
 
 /* Display*/
 #define display_bbsRectangle    0  
@@ -69,6 +70,13 @@ int main(int argc, const char** argv)
 	Mat DisparityMap;
 #endif
 
+#if webCamera	
+    //webCamera
+	IplImage* rawImage = 0; 
+	CvCapture* capture = 0;
+	capture = cvCaptureFromCAM(0); //choose webcam system,(0)means Automatically detect
+#endif
+
 	while (1)
 	{
 #if MyInputPath
@@ -81,6 +89,11 @@ int main(int argc, const char** argv)
 		frame(Rect(0, 30, 640, 360)).copyTo(L_SrcImg);
 		frame(Rect(640, 30, 640, 360)).copyTo(R_SrcImg);
 		L_SrcImg.copyTo(img);	
+#endif
+
+#if webCamera	
+		rawImage = cvQueryFrame(capture);
+		img = Mat(rawImage,0);
 #endif
 
 		if (img.empty()) break;
@@ -136,6 +149,11 @@ int main(int argc, const char** argv)
 		if (k == 27) break;
 
 	} // end of while
+	
+#if webCamera
+	cvReleaseCapture(&capture);
+	cvDestroyWindow("Raw");
+#endif
 
 	return 0;
 }
