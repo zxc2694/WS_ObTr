@@ -1,159 +1,117 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
-#include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/video/background_segm.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/legacy/legacy.hpp>
-#include "ObjectTracking.h"
-#include "MotionDetection.h"
+#include "opencv2/core/core.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/video/background_segm.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/legacy/legacy.hpp"
+#include "Tracking.h"
+#include "BackGroundModel.h"
+#include "math.h"
+#include <stdio.h>
 
-/* Select images input */
-#define MyInputPath 1
-#define EtronCamera 0
-#define webCamera   0
+// Select images input
+#define inputPath   1
 
-/* Display*/
-#define display_bbsRectangle    0  
-#define display_prohibitedArea  0
+// Select background subtrction algorithm
+#define Use_CodeBook   0
+#define Use_MOG        0
+#define Use_DPEigenBGS 1
 
-/* Select device */
-#define Use_CUDA 1
+// Display
+#define display_bbsRectangle  0  
 
-#if EtronCamera
-#include "WiCameraFactory.h"  //for Etron camera
-#endif
+void imageShow(Mat &imgTracking, Mat &fgmask, CvRect *bbs, CvPoint *centers, int ObjNum, int nframes)
+{
+	// Plot the rectangles background subtarction finds
+	if (display_bbsRectangle)
+	{
+		for (int iter = 0; iter < ObjNum; iter++)
+			rectangle(imgTracking, bbs[iter], Scalar(0, 255, 255), 2);
+	}
 
-#if Use_CUDA
-#include <opencv2/gpu/gpumat.hpp> 
-#include <opencv2/gpu/gpu.hpp>
-#include "kernel.h"
-#endif
+	// Show the number of the frame on the image
+	stringstream textFrameNo;
+	textFrameNo << nframes;
+	putText(imgTracking, "Frame=" + textFrameNo.str(), Point(10, imgTracking.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
+
+	// Show image output
+	imshow("Tracking_image", imgTracking);
+	imshow("foreground mask", fgmask);
+
+	// Save image output
+	char outputPath[100];
+	char outputPath2[100];
+	sprintf(outputPath, "video_output_tracking//%05d.png", nframes + 1);
+	sprintf(outputPath2, "video_output_BS//%05d.png", nframes + 1);
+	imwrite(outputPath, imgTracking);
+	imwrite(outputPath2, fgmask);
+}
 
 int main(int argc, const char** argv)
 {
-	char inputPath[100];
-	char outputPath[100], outputPath2[100];
-	int nframes = 0, ObjNum;
-	double t = 0;
-	Mat img, imgCompress, fgmask, imgTracking;
-	CvRect ROI[10];
-	vector<ObjTrackInfo> object_list;
-	InputObjInfo trigROI;
-	CObjectTracking ObjTrack;
+	char source[512];
+	bool update_bg_model = true;
+	int nframes = 0;
+	
+	IplImage *fgmaskIpl = 0;
+	IplImage* image = 0, *yuvImage = 0;
+	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
+	Mat img, img_compress;
+	Mat	img_bgsModel, fgmask, imgTracking;
 
-	/* Select BS algorithm */
-	CMotionDetection BS(2);    //Parameter 0: CodeBook, 1: MOG, 2: DPEigenBGS, 3: CodeBook+MOG
+	CvRect bbs[MAX_OBJ_NUM], bbsV2[MAX_OBJ_NUM];
+	CvPoint centers[MAX_OBJ_NUM];
+	int ObjNum;
 
-	// Set the number of learning background  
-	nframesToLearnBG = 50;
+	// Initialization of background subtractions
+	BackgroundSubtractorMOG2 bg_model;
+	IBGS *bgs = new DPEigenbackgroundBGS;
+	CodeBookInit();
 
-	//trigger box position
-	trigROI.boundingBox.x = 500;
-	trigROI.boundingBox.y = 350;
-	trigROI.boundingBox.width = 50;
-	trigROI.boundingBox.height = 80;
-	trigROI.bIsTrigger = false;
-
-#if EtronCamera
-	// Set the parameter for EStereo
-	static int img_width = 1280;
-	static int img_height = 480;
-	static string camera_type = "EStereoCamera";
-
-	// Initial EStereo
-	auto cam = WiCameraFactory::create(camera_type, img_width, img_height);
-	char *camera_name = cam->get_camera_name();
-	printf("camera name: %s\n", camera_name);
-	int ckey;
-	Mat frame(img_height, img_width, CV_8UC3);
-	Mat L_SrcImg, R_SrcImg, L_GrayImg, R_GrayImg;
-	Mat DisparityMap;
-#endif
-
-#if webCamera	
-    //webCamera
-	IplImage* rawImage = 0; 
-	CvCapture* capture = 0;
-	capture = cvCaptureFromCAM(0); //choose webcam system,(0)means Automatically detect
-#endif
-
-	while (1)
+	while (1) // for every frame
 	{
-#if MyInputPath
-		sprintf(inputPath, "D:\\Myproject\\VS_Project\\TestedVideo\\video_output_1216\\%05d.png", nframes + 1);
-		img = cvLoadImage(inputPath, 1);
+#if inputPath
+		sprintf(source, "D:\\Myproject\\VS_Project\\video_output_1216\\%05d.png", nframes + 1);
+		img = cvLoadImage(source, 1);
 #endif
-
-#if EtronCamera	
-		cam->getFrame((uchar*)frame.data);             // Capture the image from EStereo
-		frame(Rect(0, 30, 640, 360)).copyTo(L_SrcImg);
-		frame(Rect(640, 30, 640, 360)).copyTo(R_SrcImg);
-		L_SrcImg.copyTo(img);	
-#endif
-
-#if webCamera	
-		rawImage = cvQueryFrame(capture);
-		img = Mat(rawImage,0);
-#endif
-
 		if (img.empty()) break;
 
-		resize(img, imgCompress, cv::Size(img.cols * 0.5, img.rows * 0.5));
-
-		if (BS.MotionDetectionProcessing(imgCompress) != true){} // Build background model		
-		
-		else  // Initial background model has finished	
-		{
-			fgmask = BS.OutputFMask();            // Get image output of background subtraction	
-			BS.Output2dROI(fgmask, ROI, &ObjNum); // Get ROI detection	
-			
-			t = (double)cvGetTickCount();         // Get executing time 
-
-			/* Plotting trajectories */
-			ObjTrack.ObjectTrackingProcessing(img, imgTracking, fgmask, ROI, ObjNum, &trigROI, object_list);
-			
-			t = (double)cvGetTickCount() - t;
-//			cout << "tracking time = " << t / ((double)cvGetTickFrequency() *1000.) << "ms,	nframes = " << nframes << endl; 
-				
-			// Show the number of the frame on the image
-			stringstream textFrameNo;
-			textFrameNo << nframes;
-			putText(imgTracking, "Frame=" + textFrameNo.str(), Point(10, imgTracking.rows - 10), 1, 1, Scalar(0, 0, 255), 1); //Show the number of the frame on the picture
-
-			// Plot the rectangles background subtarction finds
-			if (display_bbsRectangle)
-			{
-				for (int iter = 0; iter < ObjNum; iter++)
-					rectangle(imgTracking, ROI[iter], Scalar(0, 255, 255), 2);
-			}
-
-			// Show prohibited area
-			if (display_prohibitedArea)
-			{
-				rectangle(imgTracking, trigROI.boundingBox, Scalar(125, 10, 255), 2);
-				line(imgTracking, Point(trigROI.boundingBox.x, trigROI.boundingBox.y), Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
-				line(imgTracking, Point(trigROI.boundingBox.x + trigROI.boundingBox.width, trigROI.boundingBox.y), Point(trigROI.boundingBox.x, trigROI.boundingBox.y + trigROI.boundingBox.height), Scalar(125, 10, 255), 2);
-			}
-
-			// Show image output
-			imshow("Tracking_image", imgTracking);
-			imshow("foreground mask", fgmask);
-			sprintf(outputPath, "video_output_tracking\\%05d.png", nframes + 1);
-			sprintf(outputPath2, "video_output_BS\\%05d.png", nframes + 1);
-			imwrite(outputPath, imgTracking);
-			imwrite(outputPath2, fgmask);			
-		}
-
-		nframes++;	
-		char k = (char)waitKey(10);
-		if (k == 27) break;
-
-	} // end of while
-	
-#if webCamera
-	cvReleaseCapture(&capture);
-	cvDestroyWindow("Raw");
+#if Use_MOG		
+		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
+		bg_model.operator()(img_compress, fgmask, -1); //update the model
+		//bg_model(img, fgmask, update_bg_model ? -1 : 0); //update the model
+		imshow("fg", fgmask);
 #endif
 
+#if Use_CodeBook	
+		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
+		image = &IplImage(img_compress);
+		RunCodeBook(image, yuvImage, ImaskCodeBook, ImaskCodeBookCC, nframes);  //Run codebook function
+		fgmaskIpl = cvCloneImage(ImaskCodeBook);
+		fgmask = Mat(fgmaskIpl);
+#endif
+
+#if Use_DPEigenBGS
+		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
+		bgs->process(img_compress, fgmask, img_bgsModel);
+#endif
+		// Get ROI
+		static FindConnectedComponents bbsFinder(img.cols, img.rows, imgCompressionScale, connectedComponentPerimeterScale);
+		IplImage *fgmaskIpl = &IplImage(fgmask);
+		bbsFinder.returnBbs(fgmaskIpl, &ObjNum, bbs, centers, true);
+
+		// Plot tracking rectangles and its trajectory
+		tracking_function(img, imgTracking, fgmaskIpl, bbs, centers, ObjNum);
+
+		// image output and saving data
+		imageShow(imgTracking, fgmask, bbs, centers, ObjNum, nframes);
+
+		nframes++;
+		char k = (char)waitKey(10);
+		if (k == 27) break;
+	} // end of while
+
+	delete bgs;
+	destroyAllWindows();
 	return 0;
 }
