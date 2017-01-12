@@ -10,12 +10,13 @@
 #include <stdio.h>
 
 // Select images input
-#define inputPath   1
+#define inputPath   0
+#define Use_Webcam  1
 
 // Select background subtrction algorithm
 #define Use_CodeBook   0
-#define Use_MOG        0
-#define Use_DPEigenBGS 1
+#define Use_MOG        1
+#define Use_DPEigenBGS 0
 
 // Display
 #define display_bbsRectangle  0  
@@ -47,35 +48,42 @@ void imageShow(Mat &imgTracking, Mat &fgmask, CvRect *bbs, CvPoint *centers, int
 	imwrite(outputPath2, fgmask);
 }
 
+void imgSource(Mat &img, int frame)
+{
+#if Use_Webcam
+	static CvCapture* capture = 0;
+	if (frame < 1)
+		capture = cvCaptureFromCAM(0);
+	img = cvQueryFrame(capture);
+#endif
+#if inputPath
+	char source[512];
+	sprintf(source, "D:\\Myproject\\VS_Project\\video_output_1216\\%05d.png", frame + 1);
+	img = cvLoadImage(source, 1);
+#endif
+}
+
 int main(int argc, const char** argv)
 {
-	char source[512];
 	bool update_bg_model = true;
-	int nframes = 0;
-	
-	IplImage *fgmaskIpl = 0;
-	IplImage* image = 0, *yuvImage = 0;
-	IplImage *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
-	Mat img, img_compress;
-	Mat	img_bgsModel, fgmask, imgTracking;
-
+	int nframes = 0, ObjNum;
+	IplImage *fgmaskIpl = 0, * image = 0, *yuvImage = 0, *ImaskCodeBook = 0, *ImaskCodeBookCC = 0;
+	Mat img, img_compress, img_bgsModel, fgmask, imgTracking;
 	CvRect bbs[MAX_OBJ_NUM], bbsV2[MAX_OBJ_NUM];
 	CvPoint centers[MAX_OBJ_NUM];
-	int ObjNum;
 
 	// Initialization of background subtractions
 	BackgroundSubtractorMOG2 bg_model;
 	IBGS *bgs = new DPEigenbackgroundBGS;
 	CodeBookInit();
 
-	while (1) // for every frame
+	while (1) // main loop
 	{
-#if inputPath
-		sprintf(source, "D:\\Myproject\\VS_Project\\video_output_1216\\%05d.png", nframes + 1);
-		img = cvLoadImage(source, 1);
-#endif
+		// image source 
+		imgSource(img, nframes);
 		if (img.empty()) break;
 
+		// Motion detection mode
 #if Use_MOG		
 		resize(img, img_compress, cv::Size(img.cols / imgCompressionScale, img.rows / imgCompressionScale)); // compress img to 1/imgCompressionScale to speed up background subtraction and FindConnectedComponents
 		bg_model.operator()(img_compress, fgmask, -1); //update the model
