@@ -23,9 +23,9 @@ using namespace std;
 /* Display */
 #define plotLineLength     99  // Set tracking line length, (allowed range: 0~99)
 #define DELE_RECT_FRAMENO   4  // Allowed frames for boxes of loiter (suggest range: 5~15)
-#define keepTrajectory      0  // 0: not keep, 1: keep. (by color hist)
+#define keepTrajectory      1  // 0: not keep, 1: keep. (by color hist)
 #define use_Kalman          0  // 0: Not show KF rectangles, 1: Show KF rectangles
-#define countNum            1  // 0: Without accumulating number
+#define countNum            0  // 0: Without accumulating number
 
 /* Math */
 #define PI 3.141592653589793238463 

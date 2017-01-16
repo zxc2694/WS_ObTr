@@ -6,7 +6,7 @@ SET("OpenCV_DIR" "D:/opencv/build")
 
 find_package(OpenCV REQUIRED)
 
-add_library(TrackingLibrary Tracking.cpp BackGroundModel.cpp)
+add_library(TrackingLibrary ObjectTracking.cpp motionDetection.cpp)
 
 add_executable(Main main.cpp)
 

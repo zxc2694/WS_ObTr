@@ -9,8 +9,8 @@
 #include "opencv2/legacy/legacy.hpp"
 #include "opencv2/video/video.hpp"
 #include "opencv2/video/tracking.hpp"
-#include "Tracking.h"
-#include "BackGroundModel.h"
+#include "ObjectTracking.h"
+#include "motionDetection.h"
 
 int objNumArray[10];
 int objNumArray_BS[10];
